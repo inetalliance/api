@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app xmlns="http://xmlns.jcp.org/xml/ns/javaee"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://xmlns.jcp.org/xml/ns/javaee
+		 http://xmlns.jcp.org/xml/ns/javaee/web-app_3_1.xsd"
+         version="3.1">
+    <display-name>Callback</display-name>
+    <context-param>
+        <description>db uri</description>
+        <param-name>db</param-name>
+        <param-value>jdbc:postgresql://cg2@db/cg2?pool=9</param-value>
+    </context-param>
+    <context-param>
+        <description>dev db uri</description>
+        <param-name>dev-db</param-name>
+        <param-value>jdbc:postgresql://cg2@localhost/cg2?pool=9</param-value>
+    </context-param>
+    <context-param>
+        <description>asterisk uri</description>
+        <param-name>asterisk</param-name>
+        <param-value>http://callgrove:ijBy8ngTZEo3WFMLFDZgxnu@192.168.96.6:5038</param-value>
+    </context-param>
+    <context-param>
+        <description>auth uri</description>
+        <param-name>authenticator</param-name>
+        <param-value>http://amberjack/auth</param-value>
+    </context-param>
+    <context-param>
+        <param-name>beejaxMessageServer</param-name>
+        <param-value>http://msg.bjx.inetalliance.net:8080</param-value>
+    </context-param>
+    <context-param>
+        <param-name>asset</param-name>
+        <param-value>callgrove</param-value>
+    </context-param>
+</web-app>

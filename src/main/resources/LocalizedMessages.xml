@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE properties PUBLIC "-//Sun Microsystems, Inc.//Properties File//EN" "http://java.sun.com/dtd/properties.dtd">
+<properties>
+    <entry key="class.ScriptRoot">{0,choice,0#script roots|1#script|1&lt;script roots}</entry>
+    <entry key="class.ScriptRoot.withArticle">a script root</entry>
+</properties>
