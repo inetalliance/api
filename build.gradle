@@ -7,7 +7,9 @@ apply plugin: 'war'
 dependencies {
     compile(
             'net.inetalliance.angular:base:1.0-SNAPSHOT',
-            'net.inetalliance:util:1.0-SNAPSHOT'
+            'net.inetalliance:util:1.0-SNAPSHOT',
+            project(':obj'),
+            project(':msg:aj')
     )
     providedCompile(
             'javax.servlet:javax.servlet-api:3.1.0',
