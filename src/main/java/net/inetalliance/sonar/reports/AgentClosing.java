@@ -106,6 +106,7 @@ public class AgentClosing
         final DailyPerformance productLineTotal = new DailyPerformance();
         productLineTotal.setQueueCalls(count(productLineCallQuery
           .and(queue)
+          .and(Call.Q.withSourceIn(sources))
           .and(Call.Q.withBlame(agent))));
         productLineTotal.setOutboundCalls(count(productLineCallQuery
           .and(outbound)
