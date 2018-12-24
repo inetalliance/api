@@ -21,6 +21,12 @@ public class FacebookLead
 	}
 
   @Override
+  protected void get(final HttpServletRequest request, final HttpServletResponse response)
+    throws Exception {
+	  response.getWriter().println("Use POST, dummy.");
+  }
+
+  @Override
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
 			throws Exception {
     final JsonMap json = JsonMap.parse(request.getInputStream());
