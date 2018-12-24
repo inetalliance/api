@@ -10,14 +10,14 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.regex.Pattern;
 
-@WebServlet("/hook/facebookLead")
+@WebServlet("/api/facebookLead")
 public class FacebookLead
 		extends AngularServlet
 		implements Dispatchable {
 
 	@Override
 	public Pattern getPattern() {
-		return Pattern.compile("/hook/facebookLead");
+		return Pattern.compile("/api/facebookLead");
 	}
 
   @Override
