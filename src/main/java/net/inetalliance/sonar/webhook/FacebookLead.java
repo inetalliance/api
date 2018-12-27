@@ -3,6 +3,7 @@ package net.inetalliance.sonar.webhook;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Contact;
 import com.callgrove.obj.Opportunity;
+import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Relation;
 import com.callgrove.obj.Site;
 import com.callgrove.types.Address;
@@ -25,6 +26,8 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Random;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static net.inetalliance.potion.Locator.*;
 
 @WebServlet("/hook/facebookLead")
 public class FacebookLead
@@ -60,9 +63,6 @@ public class FacebookLead
   protected void post(final HttpServletRequest request, final HttpServletResponse response) {
     try {
       final JsonMap json = JsonMap.parse(request.getInputStream());
-      System.out.println("Received: " + Json.F.pretty.$(json));
-
-      System.out.println(1);
       final Agent[] agents = new Agent[]{
         new Agent("7108"), // Sean Graham
         new Agent("7501")  // Chris Johnson
@@ -74,24 +74,25 @@ public class FacebookLead
       contact.setFirstName(split[0]);
       contact.setLastName(split[1]);
       contact.setContactType(ContactType.CUSTOMER);
-      System.out.println(2);
       final Address address = new Address();
       address.setPhone(extractPhone(json.get("phone")));
       contact.setBilling(address);
       contact.setShipping(address);
       contact.setEmail(json.get("email"));
-      System.out.println(3);
       Locator.create("FacebookLead", contact);
-      System.out.println(4);
 
-      final Site site = Locator.$1(Site.Q.withAbbreviation(json.get("site")));
-      System.out.println(5);
+      final Site site = $1(Site.Q.withAbbreviation(json.get("site")));
       final Agent agent = agents[random.nextInt(agents.length)];
-      System.out.println(6);
       final Currency amount = new Currency(json.getDouble("amount"));
-      System.out.println(7);
       final String fullDate = json.get("date");
       final DateTime date = Json.F.Parse.dateTime.$(fullDate.split("[+]", 2)[0]);
+      final ProductLine productLine = $1(ProductLine.Q.withNameLike(json.get("productLine")));
+
+      if (productLine == null) {
+        response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+        response.getWriter().println("Unknown product line: " + json.get("productLine"));
+        return;
+      }
 
       final Opportunity opp = new Opportunity();
       opp.setAssignedTo(agent);
@@ -103,9 +104,7 @@ public class FacebookLead
       opp.setSite(site);
       opp.setCreated(date);
       opp.setEstimatedClose(new DateMidnight());
-      System.out.println(8);
       Locator.create("FacebookLead", opp);
-      System.out.println(9);
       final JsonMap result = new JsonMap()
         .$("contact", contact.getId())
         .$("agent", agent.getSlackName())
