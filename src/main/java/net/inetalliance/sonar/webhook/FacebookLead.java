@@ -6,6 +6,7 @@ import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Relation;
 import com.callgrove.obj.Site;
 import com.callgrove.types.Address;
+import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
 import com.callgrove.types.SalesStage;
 import net.inetalliance.angular.AngularServlet;
@@ -71,6 +72,7 @@ public class FacebookLead
       String[] split = fullName.split("[ ]", 2);
       contact.setFirstName(split[0]);
       contact.setLastName(split[1]);
+      contact.setContactType(ContactType.CUSTOMER);
       System.out.println(2);
       final Address address = new Address();
       address.setPhone(extractPhone(json.get("phone")));
