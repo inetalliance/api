@@ -104,13 +104,13 @@ public class FacebookLead
       opp.setPurchasingFor(Relation.SELF);
       opp.setSite(site);
       opp.setCreated(date);
+      opp.setReminder(date.plusMinutes(15));
       opp.setEstimatedClose(new DateMidnight());
       Locator.create("FacebookLead", opp);
       final JsonMap result = new JsonMap()
         .$("contact", contact.getId())
         .$("agent", agent.getSlackName())
         .$("opp", opp.getId());
-      System.out.println("Responded: " + Json.F.pretty.$(result));
       respond(response, result);
     } catch (Throwable e) {
       log.error(e);
