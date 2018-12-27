@@ -10,6 +10,7 @@ import com.callgrove.types.SaleSource;
 import com.callgrove.types.SalesStage;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.dispatch.Dispatchable;
+import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.Json;
@@ -28,6 +29,7 @@ public class FacebookLead
   extends AngularServlet
   implements Dispatchable {
 
+  private static final transient Log log = Log.getInstance(FacebookLead.class);
   private static final Pattern phonePattern = Pattern.compile(".*(\\d{10})");
   private static final Random random = new Random();
 
@@ -55,46 +57,50 @@ public class FacebookLead
   @Override
   protected void post(final HttpServletRequest request, final HttpServletResponse response)
     throws Exception {
-    final JsonMap json = JsonMap.parse(request.getInputStream());
-    System.out.println("Received: " + Json.F.pretty.$(json));
+    try {
+      final JsonMap json = JsonMap.parse(request.getInputStream());
+      System.out.println("Received: " + Json.F.pretty.$(json));
 
-    final Agent[] agents = new Agent[]{
-      new Agent("7108"), // Sean Graham
-      new Agent("7501")  // Chris Johnson
-    };
+      final Agent[] agents = new Agent[]{
+        new Agent("7108"), // Sean Graham
+        new Agent("7501")  // Chris Johnson
+      };
 
-    final String fullName = json.get("fullName");
-    final Contact contact = new Contact();
-    String[] split = fullName.split("[ ]", 2);
-    contact.setFirstName(split[0]);
-    contact.setLastName(split[1]);
-    final Address address = new Address();
-    address.setPhone(extractPhone(json.get("phone")));
-    contact.setBilling(address);
-    contact.setShipping(address);
-    contact.setEmail(json.get("email"));
-    Locator.create("FacebookLead", contact);
+      final String fullName = json.get("fullName");
+      final Contact contact = new Contact();
+      String[] split = fullName.split("[ ]", 2);
+      contact.setFirstName(split[0]);
+      contact.setLastName(split[1]);
+      final Address address = new Address();
+      address.setPhone(extractPhone(json.get("phone")));
+      contact.setBilling(address);
+      contact.setShipping(address);
+      contact.setEmail(json.get("email"));
+      Locator.create("FacebookLead", contact);
 
-    final Site site = Locator.$1(Site.Q.withAbbreviation(json.get("site")));
-    final Agent agent = agents[random.nextInt(agents.length)];
-    final Currency amount = new Currency(json.getDouble("amount"));
+      final Site site = Locator.$1(Site.Q.withAbbreviation(json.get("site")));
+      final Agent agent = agents[random.nextInt(agents.length)];
+      final Currency amount = new Currency(json.getDouble("amount"));
 
-    final Opportunity opp = new Opportunity();
-    opp.setAssignedTo(agent);
-    opp.setSource(SaleSource.FACEBOOK);
-    opp.setAmount(amount);
-    opp.setStage(SalesStage.HOT);
-    opp.setContact(contact);
-    opp.setPurchasingFor(Relation.SELF);
-    opp.setSite(site);
-    opp.setCreated(json.getDateTime("date"));
-    opp.setEstimatedClose(new DateMidnight());
-    Locator.create("FacebookLead", opp);
-    final JsonMap result = new JsonMap()
-      .$("contact", contact.getId())
-      .$("agent", agent.getSlackName())
-      .$("opp", opp.getId());
-    System.out.println("Responded: " + Json.F.pretty.$(result));
-    respond(response, result);
+      final Opportunity opp = new Opportunity();
+      opp.setAssignedTo(agent);
+      opp.setSource(SaleSource.FACEBOOK);
+      opp.setAmount(amount);
+      opp.setStage(SalesStage.HOT);
+      opp.setContact(contact);
+      opp.setPurchasingFor(Relation.SELF);
+      opp.setSite(site);
+      opp.setCreated(json.getDateTime("date"));
+      opp.setEstimatedClose(new DateMidnight());
+      Locator.create("FacebookLead", opp);
+      final JsonMap result = new JsonMap()
+        .$("contact", contact.getId())
+        .$("agent", agent.getSlackName())
+        .$("opp", opp.getId());
+      System.out.println("Responded: " + Json.F.pretty.$(result));
+      respond(response, result);
+    } catch (Exception e) {
+      log.error(e);
+    }
   }
 }
