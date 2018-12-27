@@ -100,6 +100,7 @@ public class FacebookLead
       opp.setAmount(amount);
       opp.setStage(SalesStage.HOT);
       opp.setContact(contact);
+      opp.setProductLine(productLine);
       opp.setPurchasingFor(Relation.SELF);
       opp.setSite(site);
       opp.setCreated(date);
