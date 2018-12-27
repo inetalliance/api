@@ -46,17 +46,12 @@ public class FacebookLead
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
     throws Exception {
-//    final Slack slack = Slack.getInstance();
-//    slack.send(slackHook, Payload.builder()
-//      .username("erik")
-//      .text("Whatsup")
-//      .build());
     response.getWriter().println("Use POST, dummy.");
   }
 
   private static String extractPhone(final String value) {
     final Matcher matcher = phonePattern.matcher(value);
-    return matcher.matches() ? null : matcher.group(1);
+    return matcher.matches() ? matcher.group(1) : null;
   }
 
   @Override
