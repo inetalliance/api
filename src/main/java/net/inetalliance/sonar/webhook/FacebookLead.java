@@ -55,8 +55,7 @@ public class FacebookLead
   }
 
   @Override
-  protected void post(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
+  protected void post(final HttpServletRequest request, final HttpServletResponse response) {
     try {
       final JsonMap json = JsonMap.parse(request.getInputStream());
       System.out.println("Received: " + Json.F.pretty.$(json));
@@ -108,7 +107,7 @@ public class FacebookLead
         .$("opp", opp.getId());
       System.out.println("Responded: " + Json.F.pretty.$(result));
       respond(response, result);
-    } catch (Exception e) {
+    } catch (Throwable e) {
       log.error(e);
     }
   }
