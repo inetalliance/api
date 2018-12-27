@@ -99,7 +99,7 @@ public class FacebookLead
       opp.setPurchasingFor(Relation.SELF);
       opp.setSite(site);
       opp.setCreated(date);
-      opp.setReminder(date.plusMinutes(15));
+      opp.setReminder(date);
       opp.setEstimatedClose(new DateMidnight());
       Locator.create("FacebookLead", opp);
       final JsonMap result = new JsonMap()
