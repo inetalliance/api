@@ -17,6 +17,7 @@ import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
+import org.joda.time.DateTime;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -89,6 +90,8 @@ public class FacebookLead
       System.out.println(6);
       final Currency amount = new Currency(json.getDouble("amount"));
       System.out.println(7);
+      final String fullDate = json.get("date");
+      final DateTime date = Json.F.Parse.dateTime.$(fullDate.split("[+]", 2)[0]);
 
       final Opportunity opp = new Opportunity();
       opp.setAssignedTo(agent);
@@ -98,7 +101,7 @@ public class FacebookLead
       opp.setContact(contact);
       opp.setPurchasingFor(Relation.SELF);
       opp.setSite(site);
-      opp.setCreated(json.getDateTime("date"));
+      opp.setCreated(date);
       opp.setEstimatedClose(new DateMidnight());
       System.out.println(8);
       Locator.create("FacebookLead", opp);
