@@ -61,6 +61,7 @@ public class FacebookLead
       final JsonMap json = JsonMap.parse(request.getInputStream());
       System.out.println("Received: " + Json.F.pretty.$(json));
 
+      System.out.println(1);
       final Agent[] agents = new Agent[]{
         new Agent("7108"), // Sean Graham
         new Agent("7501")  // Chris Johnson
@@ -71,16 +72,22 @@ public class FacebookLead
       String[] split = fullName.split("[ ]", 2);
       contact.setFirstName(split[0]);
       contact.setLastName(split[1]);
+      System.out.println(2);
       final Address address = new Address();
       address.setPhone(extractPhone(json.get("phone")));
       contact.setBilling(address);
       contact.setShipping(address);
       contact.setEmail(json.get("email"));
+      System.out.println(3);
       Locator.create("FacebookLead", contact);
+      System.out.println(4);
 
       final Site site = Locator.$1(Site.Q.withAbbreviation(json.get("site")));
+      System.out.println(5);
       final Agent agent = agents[random.nextInt(agents.length)];
+      System.out.println(6);
       final Currency amount = new Currency(json.getDouble("amount"));
+      System.out.println(7);
 
       final Opportunity opp = new Opportunity();
       opp.setAssignedTo(agent);
@@ -92,7 +99,9 @@ public class FacebookLead
       opp.setSite(site);
       opp.setCreated(json.getDateTime("date"));
       opp.setEstimatedClose(new DateMidnight());
+      System.out.println(8);
       Locator.create("FacebookLead", opp);
+      System.out.println(9);
       final JsonMap result = new JsonMap()
         .$("contact", contact.getId())
         .$("agent", agent.getSlackName())
