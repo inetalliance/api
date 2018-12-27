@@ -56,7 +56,7 @@ public class FacebookLead
   protected void post(final HttpServletRequest request, final HttpServletResponse response)
     throws Exception {
     final JsonMap json = JsonMap.parse(request.getInputStream());
-    System.out.println(Json.F.pretty.$(json));
+    System.out.println("Received: " + Json.F.pretty.$(json));
 
     final Agent[] agents = new Agent[]{
       new Agent("7108"), // Sean Graham
@@ -90,10 +90,11 @@ public class FacebookLead
     opp.setCreated(json.getDateTime("date"));
     opp.setEstimatedClose(new DateMidnight());
     Locator.create("FacebookLead", opp);
-    respond(response, new JsonMap()
+    final JsonMap result = new JsonMap()
       .$("contact", contact.getId())
       .$("agent", agent.getSlackName())
-      .$("opp", opp.getId())
-    );
+      .$("opp", opp.getId());
+    System.out.println("Responded: " + Json.F.pretty.$(result));
+    respond(response, result);
   }
 }
