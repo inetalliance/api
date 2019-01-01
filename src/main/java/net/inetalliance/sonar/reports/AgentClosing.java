@@ -149,6 +149,6 @@ public class AgentClosing
 
   @Override
   protected Query<Agent> allRows(final Agent loggedIn) {
-    return loggedIn.getViewableAgentsQuery();
+    return loggedIn.getViewableAgentsQuery(false);
   }
 }

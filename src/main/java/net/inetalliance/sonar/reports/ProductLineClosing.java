@@ -187,7 +187,7 @@ public class ProductLineClosing
 
   @Override
   protected Query<Agent> allRows(final Agent loggedIn) {
-    return loggedIn.getViewableAgentsQuery();
+    return loggedIn.getViewableAgentsQuery(false);
   }
 
   @Override
