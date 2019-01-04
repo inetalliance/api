@@ -7,6 +7,7 @@ import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.MethodNotAllowedException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.potion.Locator;
+import net.inetalliance.types.json.JsonList;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
@@ -54,7 +55,7 @@ public class TextHistory
       if (opportunity == null) {
         throw new NotFoundException();
       }
-      respond(response, Avochato.getInstance().searchContacts(opportunity));
+      respond(response, JsonList.empty); // Avochato.getInstance().searchContacts(opportunity));
     } else {
       throw new BadRequestException("Request should match %s",
         new Object[]{this.pattern.pattern()});
