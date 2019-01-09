@@ -12,8 +12,7 @@ import net.inetalliance.angular.list.Listable;
 import net.inetalliance.beejax.messages.Category;
 import net.inetalliance.beejax.messages.Product;
 import net.inetalliance.beejax.messages.ProductChain;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.types.str.StringFun;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
@@ -25,38 +24,38 @@ import org.joda.time.Interval;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.Collections;
-import java.util.HashSet;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Function;
 
-import static com.callgrove.obj.Opportunity.Q.*;
+import static com.callgrove.obj.Opportunity.*;
+import static java.util.stream.Collectors.toMap;
+import static java.util.stream.Collectors.toSet;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.sonar.reports.CachedGroupingRangeReport.getInterval;
 import static net.inetalliance.sonar.reports.Revenue.CellType.*;
-import static net.inetalliance.sonar.reports.Revenue.getCategoryLookup;
 
 @WebServlet("/api/revenueDetail")
 public class RevenueDetail
-		extends AngularServlet {
-	private static final F1<String, Agent> agentLookup = Info.$(Agent.class).lookup;
-	private static final F1<String, ProductLine> productLineLookup = Info.$(ProductLine.class).lookup;
-	private static final F1<String, Site> siteLookup = Info.$(Site.class).lookup;
+	extends AngularServlet {
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
+		throws Exception {
 		final String mode = request.getParameter("mode");
 		if (mode == null) {
 			throw new BadRequestException("Missing 'mode' parameter");
 		}
-		final SaleSource source = StringFun.empty.$(mode) || "all".equals(mode) ?
-				null : StringFun.camelCaseToEnum(SaleSource.class).$(mode);
+		final SaleSource source = StringFun.isEmpty(mode) || "all".equals(mode) ?
+			null : StringFun.camelCaseToEnum(SaleSource.class).apply(mode);
 		final Interval interval = getInterval(request);
-		final ProductLine productLine = productLineLookup.$(request.getParameter("p"));
+		final Info<ProductLine> productLineInfo = Info.$(ProductLine.class);
+		final ProductLine productLine = productLineInfo.lookup(request.getParameter("p"));
 		final String[] tagParams = request.getParameterValues("tags");
-		final Set<Category> categories = new HashSet<>(getCategoryLookup(tagParams).copy(tagParams));
-		final Map<Integer, Query<Opportunity>> categoryQueries = Revenue.getCategoryQueries(categories);
+		final Set<Category> categories =
+			Arrays.stream(tagParams).map(t -> Revenue.getCategory(tagParams, Integer.valueOf(t))).collect(toSet());
+		final Map<Integer, Query<? super Opportunity>> categoryQueries = Revenue.getCategoryQueries(categories);
 
 		Query<Opportunity> query = soldInInterval(interval).and(withSaleSource(source));
 
@@ -65,14 +64,16 @@ public class RevenueDetail
 			query = query.and(categoryQueries.get(Integer.parseInt(categoryParam)));
 		}
 
-		final Agent agent = agentLookup.$(request.getParameter("agent"));
+		final Info<Agent> agentInfo = Info.$(Agent.class);
+		final Agent agent = agentInfo.lookup(request.getParameter("agent"));
 		if (agent != null) {
-			query = query.and(Opportunity.Q.withAgent(agent));
+			query = query.and(Opportunity.withAgent(agent));
 		}
 
-		final Site site = siteLookup.$(request.getParameter("site"));
+		final Info<Site> siteInfo = Info.$(Site.class);
+		final Site site = siteInfo.lookup(request.getParameter("site"));
 		if (site != null) {
-			query = query.and(Opportunity.Q.withSite(site));
+			query = query.and(Opportunity.withSite(site));
 		}
 
 		if (productLine != null) {
@@ -83,63 +84,53 @@ public class RevenueDetail
 			}
 			if (cellType == NOT_MATCHING) {
 				query = query
-						.and(hasBeejaxProduct)
-						.and(Query.or(Opportunity.class, categoryQueries.values()).negate());
+					.and(hasBeejaxProduct)
+					.and(Query.or(Opportunity.class, categoryQueries.values()).negate());
 			}
 		}
 		final Set<Opportunity> results = $$(query);
 
 		final Set<ProductChain> chains =
-				productChain.copyTo(hasBeejaxProduct.filter(results), new HashSet<>(results.size()));
-		final Set<Product> products = chains.isEmpty() ?
-				Collections.emptySet()
-				: Callgrove.beejax.lookupProducts(chains);
-		final Map<Integer, Product> productsById = F1.map(products, productId);
+			results.stream().filter(hasBeejaxProduct).map(RevenueDetail::productChain).collect(toSet());
 
-		final F1<Opportunity, Json> toJson = new F1<Opportunity, Json>() {
-			@Override
-			public Json $(final Opportunity opportunity) {
-				final Product product = productsById.get(opportunity.getBeejaxProductId());
-				final JsonMap json = new JsonMap()
-						.$("id", opportunity.id)
-						.$("contact", opportunity.getContactName())
-						.$("amount", opportunity.getAmount().doubleValue())
-						.$("date", opportunity.getSaleDate())
-						.$("product", product == null ? null : new JsonMap()
-								.$("name", product.name)
-								.$("imageUrl", product.imageUrl)
-								.$("rootUrl", product.rootUrl)
-								.$("adminUrl", product.adminUrl)
-								.$("baseUrl", product.baseUrl));
-				if (site == null) {
-					json.$("site", opportunity.getSiteAbbreviation());
-				}
-				if (agent == null) {
-					json.$("agent", opportunity.getAssignedTo().getLastNameFirstInitial());
-				}
-				if (productLine == null) {
-					json.$("productLine", opportunity.getProductLine().getName());
-				}
-				return json;
+		final Set<Product> products = chains.isEmpty() ?
+			Set.of()
+			: Callgrove.beejax.lookupProducts(chains);
+		final Map<Integer, Product> productsById = products.stream().collect(toMap(p -> p.id, Function.identity()));
+
+		final Function<Opportunity, Json> toJson = opportunity -> {
+			final Product product = productsById.get(opportunity.getBeejaxProductId());
+			final JsonMap json = new JsonMap()
+				.$("id", opportunity.id)
+				.$("contact", opportunity.getContactName())
+				.$("amount", opportunity.getAmount().doubleValue())
+				.$("date", opportunity.getSaleDate())
+				.$("product", product == null ? null : new JsonMap()
+					.$("name", product.name)
+					.$("imageUrl", product.imageUrl)
+					.$("rootUrl", product.rootUrl)
+					.$("adminUrl", product.adminUrl)
+					.$("baseUrl", product.baseUrl));
+			if (site == null) {
+				json.$("site", opportunity.getSiteAbbreviation());
 			}
+			if (agent == null) {
+				json.$("agent", opportunity.getAssignedTo().getLastNameFirstInitial());
+			}
+			if (productLine == null) {
+				json.$("productLine", opportunity.getProductLine().getName());
+			}
+			return json;
 		};
-		respond(response, Listable.Impl.formatResult(toJson.map(results)).$("hasProducts", !chains.isEmpty()));
+		respond(response, Listable.formatResult(results.stream().map(toJson).collect(toSet())).$("hasProducts",
+			!chains.isEmpty()));
 	}
 
-	private static F1<Opportunity, ProductChain> productChain = new F1<Opportunity, ProductChain>() {
-		@Override
-		public ProductChain $(final Opportunity opportunity) {
-			final ProductChain chain = new ProductChain();
-			chain.site = Locator.$(opportunity.getSite()).getBeejaxId();
-			chain.id = opportunity.getBeejaxProductId();
-			return chain;
-		}
-	};
+	private static ProductChain productChain(final Opportunity opportunity) {
+		final ProductChain chain = new ProductChain();
+		chain.site = Locator.$(opportunity.getSite()).getBeejaxId();
+		chain.id = opportunity.getBeejaxProductId();
+		return chain;
+	}
 
-	private static F1<Product, Integer> productId = new F1<Product, Integer>() {
-		@Override
-		public Integer $(final Product product) {
-			return product.id;
-		}
-	};
 }

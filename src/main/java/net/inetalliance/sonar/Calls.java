@@ -1,5 +1,6 @@
 package net.inetalliance.sonar;
 
+import com.callgrove.obj.Queue;
 import com.callgrove.obj.*;
 import com.callgrove.types.CallerId;
 import com.callgrove.types.Resolution;
@@ -9,11 +10,7 @@ import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
 import net.inetalliance.cli.Cli;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.math.IntegerMath;
-import net.inetalliance.funky.functors.types.BooleanFun;
-import net.inetalliance.funky.functors.types.str.StringFun;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.DbCli;
 import net.inetalliance.potion.Locator;
@@ -29,11 +26,9 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Random;
-import java.util.Set;
+import java.util.*;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.callgrove.types.CallDirection.OUTBOUND;
 import static com.callgrove.types.CallDirection.QUEUE;
@@ -41,15 +36,15 @@ import static com.callgrove.types.Resolution.ANSWERED;
 import static java.lang.String.format;
 import static java.lang.System.currentTimeMillis;
 import static java.util.regex.Pattern.compile;
-import static net.inetalliance.funky.functors.types.str.StringFun.empty;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.potion.Locator.toJsonList;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
 @WebServlet("/api/call/*")
 public class Calls
-		extends ListableModel<Call> {
+	extends ListableModel<Call> {
 
 	private static final Pattern space = compile(" ");
 	private static final Random random;
@@ -166,74 +161,62 @@ public class Calls
 	}
 
 	@Override
-	public F1<Call, ? extends Json> toJson(final HttpServletRequest request) {
+	public Json toJson(final HttpServletRequest request, Call call) {
 		final boolean todo = request.getParameter("todo") != null;
 		final Agent agent = Startup.getAgent(request);
 		if (agent == null) {
 			throw new UnauthorizedException();
 		}
-		final F1<Call, ? extends Json> f1 = super.toJson(request);
-		return new F1<Call, Json>() {
-			@Override
-			public Json $(final Call call) {
-				final JsonMap map = (JsonMap) f1.$(call);
-				final ProductLine productLine = call.getQueue() == null ? null : call.getQueue().getProductLine();
-				final CallerId remoteCid = call.getRemoteCallerId();
-				map.put("remoteCallerId", new JsonMap()
-						.$("name", remoteCid == null ? null : remoteCid.getName())
-						.$("number", remoteCid == null || StringFun.empty.$(remoteCid.getNumber())
-								? "Unknown" : remoteCid.getNumber()));
-				if (!todo && (call.getDirection() == QUEUE || call.getDirection() == OUTBOUND)) {
-					final JsonList contacts = new JsonList();
-					map.put("contacts", contacts);
-					final String number = call.getCallerId().getNumber();
-					if (!empty.$(number)
-							&& !"anonymous".equalsIgnoreCase(number)
-							&& !"blocked".equalsIgnoreCase(number)
-							&& number.length() > 4) {
-						final Query<Contact> contactQuery = Contact.Q.withPhoneNumber(number);
-						forEach(contactQuery.orderBy("id", ASCENDING),
-								new P1<Contact>() {
-									@Override
-									public void $(final Contact contact) {
-										final JsonList leads = new JsonList();
-										contacts.add(new JsonMap()
-												.$("firstName", contact.getFirstName())
-												.$("lastName", contact.getLastName())
-												.$("id", contact.id)
-												.$("leads", leads));
-										final Set<Site> visibleSites = agent.getVisibleSites();
-										forEach((visibleSites.isEmpty()
-														? Query.all(Opportunity.class)
-														: Opportunity.Q.withSiteIn(visibleSites))
-														.and(Opportunity.Q.withContact(contact)).orderBy("created", ASCENDING),
-												new P1<Opportunity>() {
-													@Override
-													public void $(final Opportunity o) {
-														final Agent assignedTo = o.getAssignedTo();
-														leads.add(new JsonMap()
-																.$("id", o.id)
-																.$("stage", o.getStage())
-																.$("amount", o.getAmount())
-																.$("estimatedClose", o.getEstimatedClose())
-																.$("saleDate", o.getSaleDate())
-																.$("productLine", o.getProductLineName())
-																.$("created", o.getCreated())
-																.$("assignedTo", assignedTo == null ? "Nobody" : assignedTo.getLastNameFirstInitial()));
+		final JsonMap map = (JsonMap) super.toJson(request, call);
+		final ProductLine productLine = call.getQueue() == null ? null : call.getQueue().getProductLine();
+		final CallerId remoteCid = call.getRemoteCallerId();
+		map.put("remoteCallerId", new JsonMap()
+			.$("name", remoteCid == null ? null : remoteCid.getName())
+			.$("number", remoteCid == null || isEmpty(remoteCid.getNumber())
+				? "Unknown" : remoteCid.getNumber()));
+		if (!todo && (call.getDirection() == QUEUE || call.getDirection() == OUTBOUND)) {
+			final JsonList contacts = new JsonList();
+			map.put("contacts", contacts);
+			final String number = call.getCallerId().getNumber();
+			if (!isEmpty(number)
+				&& !"anonymous".equalsIgnoreCase(number)
+				&& !"blocked".equalsIgnoreCase(number)
+				&& number.length() > 4) {
+				final Query<Contact> contactQuery = Contact.withPhoneNumber(number);
+				forEach(contactQuery.orderBy("id", ASCENDING),
+					contact -> {
+						final JsonList leads = new JsonList();
+						contacts.add(new JsonMap()
+							.$("firstName", contact.getFirstName())
+							.$("lastName", contact.getLastName())
+							.$("id", contact.id)
+							.$("leads", leads));
+						final Set<Site> visibleSites = agent.getVisibleSites();
+						forEach((visibleSites.isEmpty()
+								? Query.all(Opportunity.class)
+								: Opportunity.withSiteIn(visibleSites))
+								.and(Opportunity.withContact(contact)).orderBy("created", ASCENDING),
+							o -> {
+								final Agent assignedTo = o.getAssignedTo();
+								leads.add(new JsonMap()
+									.$("id", o.id)
+									.$("stage", o.getStage())
+									.$("amount", o.getAmount())
+									.$("estimatedClose", o.getEstimatedClose())
+									.$("saleDate", o.getSaleDate())
+									.$("productLine", o.getProductLineName())
+									.$("created", o.getCreated())
+									.$("assignedTo", assignedTo == null ? "Nobody" : assignedTo.getLastNameFirstInitial()));
 
-													}
-												});
-									}
-								});
-					}
-				}
-				return map
-						.$("agent", call.getAgent() == null ? "None" : call.getAgent().getLastNameFirstInitial())
-						.$("site", call.getSite() == null ? "None" : call.getSite().getAbbreviation())
-						.$("productLine", productLine == null ? "None" : productLine.getAbbreviation());
-
+							});
+					});
 			}
-		};
+		}
+		return map
+			.$("agent", call.getAgent() == null ? "None" : call.getAgent().getLastNameFirstInitial())
+			.$("site", call.getSite() == null ? "None" : call.getSite().getAbbreviation())
+			.$("productLine", productLine == null ? "None" : productLine.getAbbreviation());
+
 	}
 
 	@Override
@@ -241,32 +224,33 @@ public class Calls
 		final boolean simulated = request.getParameter("simulated") != null;
 		final boolean todo = request.getParameter("todo") != null;
 		final Agent agent = Startup.getAgent(request);
-		if(agent == null) {
+		if (agent == null) {
 			throw new UnauthorizedException();
 		}
 		if (simulated && !(agent.isManager() || agent.isTeamLeader())) {
 			throw new ForbiddenException("%s tried to access call simulator", agent.getLastNameFirstInitial());
 		}
 		if (simulated) {
-			return Call.Q.simulated.and(Call.Q.withAgentIn(agent.getViewableAgents()));
+			return Call.simulated.and(Call.withAgentIn(agent.getViewableAgents()));
 		} else if (todo) {
-			return Call.Q.todo.and(Call.Q.withAgent(agent)).limit(25);
-		} else if (empty.$(request.getParameter("n"))) {
+			return Call.isTodo.and(Call.withAgent(agent)).limit(25);
+		} else if (isEmpty(request.getParameter("n"))) {
 			throw new BadRequestException("Sorry, but you can't ask for all the calls. There's like a bajillion of them.");
 		} else {
 
 			final String[] ss = request.getParameterValues("s");
 			Query<Call> withSite = ss == null || ss.length == 0 ? Query.all(Call.class)
-					: Call.Q.withSiteIdIn(IntegerMath.$.parse.copyTo(ss, new ArrayList<>(ss.length)));
+				: Call.withSiteIdIn(Arrays.stream(ss).map(Integer::valueOf).collect(toSet()));
+
 			final Range c = getParameter(request, Range.class, "c");
 			if (c != null) {
-				withSite = withSite.and(Call.Q.inInterval(c.toInterval()));
+				withSite = withSite.and(Call.inInterval(c.toInterval()));
 			}
-			return Call.Q.queue.and(Call.Q.withSiteIn(agent.getVisibleSites()))
-					.and(Startup.callQueryForProductLines(request, "pl"))
-					.and(withSite)
-					.and(request.getParameter("silent") == null ? Call.Q.notSilent : Query.all(Call.class))
-					.and(super.all(type, request)).orderBy("created", DESCENDING);
+			return Call.isQueue.and(Call.withSiteIn(agent.getVisibleSites()))
+				.and(Startup.callsWithProductLineParameter(request, "pl"))
+				.and(withSite)
+				.and(request.getParameter("silent") == null ? Call.isNotSilent : Query.all(Call.class))
+				.and(super.all(type, request)).orderBy("created", DESCENDING);
 		}
 	}
 
@@ -284,21 +268,15 @@ public class Calls
 	@Override
 	protected Json update(final Key<Call> key, final HttpServletRequest request, final HttpServletResponse response,
 	                      final Call call, final JsonMap data)
-			throws IOException {
+		throws IOException {
 		if (call.key.startsWith("sim-") && data.getEnum("resolution", Resolution.class) == ANSWERED) {
 
 			final Segment segment = call.getActiveSegment();
-			Locator.update(segment, "call-sim", new P1<Segment>() {
-				@Override
-				public void $(final Segment copy) {
-					copy.setEnded(new DateTime());
-				}
+			Locator.update(segment, "call-sim", copy -> {
+				copy.setEnded(new DateTime());
 			});
-			Locator.update(call, "call-sim", new P1<Call>() {
-				@Override
-				public void $(final Call arg) {
-					arg.setResolution(ANSWERED);
-				}
+			Locator.update(call, "call-sim", arg -> {
+				arg.setResolution(ANSWERED);
 			});
 			return JsonMap.singletonMap("success", true);
 		} else if (data.containsKey("todo")) {
@@ -315,9 +293,9 @@ public class Calls
 	@Override
 	public JsonMap create(final Key<Call> key, final HttpServletRequest request, final HttpServletResponse response,
 	                      final JsonMap data) {
-		if (BooleanFun.isTrue.$(data.getBoolean("simulated"))) {
+		if (Funky.isTrue(data.getBoolean("simulated"))) {
 			final Agent loggedIn = Startup.getAgent(request);
-			if(loggedIn == null) {
+			if (loggedIn == null) {
 				throw new UnauthorizedException();
 			}
 			if (!loggedIn.isManager() && !loggedIn.isTeamLeader()) {
@@ -326,7 +304,7 @@ public class Calls
 			final Agent agent = Locator.$(new Agent(data.get("agent")));
 			if (loggedIn.isTeamLeader() && !agent.getViewableAgents().contains(agent)) {
 				throw new ForbiddenException("%s tried to create a simulated call for a different manager's agent (%s)",
-						loggedIn.getLastNameFirstInitial(), agent.key);
+					loggedIn.getLastNameFirstInitial(), agent.key);
 			}
 			final Site site = Locator.$(new Site(data.getInteger("site")));
 			if (site == null) {
@@ -346,9 +324,9 @@ public class Calls
 			}
 			if (call.getQueue() == null) {
 				return new JsonMap()
-						.$("success", false)
-						.$("reason", format("could not find call queue for '%s' on %s", product.getName(),
-								site.getAbbreviation()));
+					.$("success", false)
+					.$("reason", format("could not find call queue for '%s' on %s", product.getName(),
+						site.getAbbreviation()));
 			}
 			call.setDirection(QUEUE);
 			call.setResolution(Resolution.ACTIVE);
@@ -369,8 +347,8 @@ public class Calls
 	@Override
 	protected Json toJson(final Key<Call> key, final Call call, final HttpServletRequest request) {
 		final JsonMap map = new JsonMap()
-				.$("key")
-				.$("direction");
+			.$("key")
+			.$("direction");
 		key.info.fill(call, map);
 		map.$("todo", call.isTodo());
 		switch (call.getDirection()) {
@@ -378,9 +356,9 @@ public class Calls
 			case QUEUE:
 				final Site site = call.getSite();
 				map.$("site", new JsonMap()
-						.$("name", site.getName())
-						.$("uri", site.getUri())
-						.$("id", site.id));
+					.$("name", site.getName())
+					.$("uri", site.getUri())
+					.$("id", site.id));
 				if (call.getQueue() != null) {
 					final JsonMap queue = new JsonMap();
 					queue.$("name", call.getQueue().getName());
@@ -402,51 +380,45 @@ public class Calls
 		final CallerId remoteCallerId = call.getRemoteCallerId();
 		if (remoteCallerId != null) {
 			final String number = remoteCallerId.getNumber();
-			final AreaCodeTime time = empty.$(number) ? null : AreaCodeTime.getAreaCodeTime(number);
+			final AreaCodeTime time = isEmpty(number) ? null : AreaCodeTime.getAreaCodeTime(number);
 			map.$("localTime", time == null ? null : time.getDateTimeZone().getOffset(currentTimeMillis()));
 			map.$("callerId", new JsonMap()
-					.$("name", remoteCallerId.getName())
-					.$("number", number));
+				.$("name", remoteCallerId.getName())
+				.$("number", number));
 			final JsonList contactMatches;
-			if (empty.$(number)) {
+			if (isEmpty(number)) {
 				contactMatches = new JsonList();
 			} else {
-				contactMatches = toJsonList(Contact.Q.withPhoneNumber(number.charAt(0) == '1' ? number.substring(1) : number),
-						new F1<Contact, Json>() {
-							@Override
-							public Json $(final Contact contact) {
-								final JsonMap contactMap = new JsonMap()
-										.$("firstName")
-										.$("lastName")
-										.$("id");
-								Info.$(contact).fill(contact, contactMap);
-								return contactMap;
-							}
-						}
-				);
+				contactMatches = Locator.$$(Contact.withPhoneNumber(number.charAt(0) == '1' ? number.substring(1) :
+					number)).stream().map(c -> {
+					final JsonMap contactMap = new JsonMap()
+						.$("firstName")
+						.$("lastName")
+						.$("id");
+					Info.$(c).fill(c, contactMap);
+					return contactMap;
+				}).collect(Collectors.toCollection(JsonList::new));
 			}
-			final String[] split = empty.$(remoteCallerId.getName())
-					? new String[]{""}
-					: space.split(remoteCallerId.getName(), 2);
+			final String[] split = isEmpty(remoteCallerId.getName())
+				? new String[]{""}
+				: space.split(remoteCallerId.getName(), 2);
 			contactMatches.add(new JsonMap()
-					.$("firstName", split.length == 1 ? null : split[0])
-					.$("lastName", split.length == 2 ? split[1] : split[0]));
+				.$("firstName", split.length == 1 ? null : split[0])
+				.$("lastName", split.length == 2 ? split[1] : split[0]));
 			map.$("contacts", contactMatches);
 		}
-		map.$("segments", toJsonList(Segment.Q.withCall(call).and(Segment.Q.answered), new F1<Segment, Json>() {
-			@Override
-			public Json $(final Segment segment) {
-				final JsonMap map = new JsonMap();
+		map.$("segments",
+			(JsonList) Locator.$$(Segment.withCall(call).and(Segment.isAnswered)).stream().map(segment -> {
+				final JsonMap j = new JsonMap();
 				final Agent agent = segment.getAgent();
 				if (agent != null) {
-					map.$("agent", format("%s %c", agent.getFirstName(), agent.getLastName().charAt(0)));
+					j.$("agent", format("%s %c", agent.getFirstName(), agent.getLastName().charAt(0)));
 				}
 				if (segment.getTalkTime() != null) {
-					map.$("talktime", CallHistory.periodFormatter.print(segment.getTalkTime().toPeriod()));
+					j.$("talktime", CallHistory.periodFormatter.print(segment.getTalkTime().toPeriod()));
 				}
-				return map;
-			}
-		}));
+				return j;
+			}).collect(Collectors.toCollection(JsonList::new)));
 
 		return map;
 	}
@@ -458,22 +430,19 @@ public class Calls
 				final ProgressMeter meter = new ProgressMeter(callerIds.size());
 				for (final CallerId callerId : callerIds) {
 					meter.increment(callerId.toString());
-					final Contact contact = Locator.$1(Contact.Q.withPhoneNumber(callerId.getNumber()));
+					final Contact contact = Locator.$1(Contact.withPhoneNumber(callerId.getNumber()));
 					if (contact != null) {
 						final String[] split = callerId.getName().split("[ ]", 2);
 						if (split[0].equals(contact.getLastName()) && split.length == 2 &&
-								split[1].equals(contact.getFirstName())) {
-							forEach(Opportunity.Q.withContact(contact).and(Opportunity.Q.sold.negate()),
-									new P1<Opportunity>() {
-										@Override
-										public void $(final Opportunity arg) {
-											try {
-												Locator.delete("call-sim", arg);
-											} catch (Throwable e) {
-												// don't care
-											}
-										}
-									});
+							split[1].equals(contact.getFirstName())) {
+							forEach(Opportunity.withContact(contact).and(Opportunity.isSold.negate()),
+								opp -> {
+									try {
+										Locator.delete("call-sim", opp);
+									} catch (Throwable e) {
+										// don't care
+									}
+								});
 							try {
 								Locator.delete("call-sim", contact);
 							} catch (Throwable t) {

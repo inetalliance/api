@@ -7,23 +7,26 @@ import net.inetalliance.angular.Key;
 import net.inetalliance.angular.TypeModel;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.types.str.StringFun;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.types.json.Json;
+import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.ScriptNode.Q.withLeft;
-import static com.callgrove.obj.ScriptNode.Q.withRight;
+import static com.callgrove.obj.ScriptNode.withLeft;
+import static com.callgrove.obj.ScriptNode.withRight;
+import static java.util.stream.Collectors.toCollection;
+import static java.util.stream.Collectors.toList;
+import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.potion.Locator.$1;
 import static net.inetalliance.potion.Locator.count;
 
@@ -31,15 +34,12 @@ import static net.inetalliance.potion.Locator.count;
 public class Script
   extends TypeModel<ScriptNode> {
 
-  private static final F1<ScriptNode, JsonMap> pathJson = new F1<ScriptNode, JsonMap>() {
-    @Override
-    public JsonMap $(final ScriptNode scriptNode) {
-      return new JsonMap()
-        .$("id", scriptNode.id)
-        .$("type", scriptNode.getType().getFormattedName())
-        .$("prompt", scriptNode.getPrompt());
-    }
-  };
+  private static JsonMap pathJson(final ScriptNode scriptNode) {
+    return new JsonMap()
+      .$("id", scriptNode.id)
+      .$("type", scriptNode.getType().getFormattedName())
+      .$("prompt", scriptNode.getPrompt());
+  }
 
   public Script() {
     super(ScriptNode.class, Pattern.compile("/api/script/?([^/]*)?"));
@@ -47,7 +47,7 @@ public class Script
 
   @Override
   protected Key<ScriptNode> getKey(final Matcher m) {
-    final String match = StringFun.utf8UrlDecode.$(m.group(1));
+    final String match = StringFun.utf8UrlDecode(m.group(1));
     final String[] tokens = match.split("\\+");
     return Key.$(ScriptNode.class, tokens[tokens.length - 1]);
   }
@@ -80,20 +80,17 @@ public class Script
     }
 
     // delete reference to the node, passing through to the child if the node only has one child.
-    Locator.update(parent, getRemoteUser(request), new P1<ScriptNode>() {
-      @Override
-      public void $(final ScriptNode copy) {
-        final ScriptNode newValue = node.isPassThrough() ? node.getLeft() : null;
-        if (isLeft) {
-          copy.setLeft(newValue);
-          // rotate right over to left if we've got one
-          if (parent.getRight() != null) {
-            copy.setLeft(parent.getRight());
-            copy.setRight(null);
-          }
-        } else {
-          copy.setRight(newValue);
+    Locator.update(parent, getRemoteUser(request), copy -> {
+      final ScriptNode newValue = node.isPassThrough() ? node.getLeft() : null;
+      if (isLeft) {
+        copy.setLeft(newValue);
+        // rotate right over to left if we've got one
+        if (parent.getRight() != null) {
+          copy.setLeft(parent.getRight());
+          copy.setRight(null);
         }
+      } else {
+        copy.setRight(newValue);
       }
     });
 
@@ -115,10 +112,11 @@ public class Script
     }
     ProductLine productLine = null;
     if ("get".equalsIgnoreCase(request.getMethod())) {
-      final String pathString = StringFun.utf8UrlDecode.$(matcher.group(1));
+      final String pathString = StringFun.utf8UrlDecode(matcher.group(1));
       if (pathString.length() > 0) {
-        Collection<ScriptNode> path = info.lookup.copy(pathString.split("\\+"));
-        final ScriptRoot root = $1(ScriptRoot.Q.withRoot(path.iterator().next()));
+        Collection<ScriptNode> path = Arrays.stream(pathString.split("\\+"))
+          .map(info::lookup).collect(toList());
+        final ScriptRoot root = $1(ScriptRoot.withRoot(path.iterator().next()));
         if (root == null) {
           throw new NotFoundException();
         }
@@ -126,21 +124,21 @@ public class Script
         json
           .$("productLine", new JsonMap().$("id", productLine.id).$("name", productLine.getName()))
           .$("root", root.getName())
-          .$("path", pathJson.map(path));
+          .$("path", (JsonList) path.stream().map(Script::pathJson).collect(toCollection(JsonList::new)));
       }
     }
 
     final ScriptNode left = node.getLeft();
     if (left != null) {
       json.$("leftType", left.getType());
-      if (!StringFun.empty.$(left.getPrompt())) {
+      if (isNotEmpty(left.getPrompt())) {
         json.$("leftPrompt", left.getPrompt());
       }
     }
     final ScriptNode right = node.getRight();
     if (right != null) {
       json.$("rightType", right.getType());
-      if (!StringFun.empty.$(right.getPrompt())) {
+      if (isNotEmpty(right.getPrompt())) {
         json.$("rightPrompt", right.getPrompt());
       }
     }
@@ -149,7 +147,8 @@ public class Script
     if (productLine != null && (left == null || right == null)) {
       final Collection<ScriptNode> allPossible = productLine.getRoot().getTree();
       allPossible.remove(node);
-      json.$("potentialChildren", pathJson.map(allPossible));
+      json.$("potentialChildren",
+        (JsonList) allPossible.stream().map(Script::pathJson).collect(toCollection(JsonList::new)));
     }
     return json;
   }
@@ -159,26 +158,20 @@ public class Script
                             final HttpServletResponse response) {
     final String productLineKey = request.getParameter("productLine");
     if (productLineKey != null) {
-      final ProductLine productLine = Info.$(ProductLine.class).lookup.$(productLineKey);
-      Locator.update(productLine, getRemoteUser(request), new P1<ProductLine>() {
-        @Override
-        public void $(final ProductLine copy) {
-          copy.setRoot(scriptNode);
-        }
+      final ProductLine productLine = Info.$(ProductLine.class).lookup(productLineKey);
+      Locator.update(productLine, getRemoteUser(request), copy -> {
+        copy.setRoot(scriptNode);
       });
     } else {
       final String parentId = request.getParameter("parent");
       final String branch = request.getParameter("branch");
       if (parentId != null && branch != null) {
-        final ScriptNode parent = Info.$(ScriptNode.class).lookup.$(parentId);
-        Locator.update(parent, getRemoteUser(request), new P1<ScriptNode>() {
-          @Override
-          public void $(final ScriptNode copy) {
-            if ("left".equalsIgnoreCase(branch)) {
-              copy.setLeft(scriptNode);
-            } else {
-              copy.setRight(scriptNode);
-            }
+        final ScriptNode parent = Info.$(ScriptNode.class).lookup(parentId);
+        Locator.update(parent, getRemoteUser(request), copy -> {
+          if ("left".equalsIgnoreCase(branch)) {
+            copy.setLeft(scriptNode);
+          } else {
+            copy.setRight(scriptNode);
           }
         });
       }

@@ -1,11 +1,8 @@
 package net.inetalliance.sonar;
 
-import com.callgrove.obj.Call;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.types.str.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.sonar.reports.CachedGroupingRangeReport;
 import net.inetalliance.types.json.Json;
@@ -20,12 +17,13 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.Call.Q.*;
+import static com.callgrove.obj.Call.*;
+import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.potion.Locator.forEach;
 import static net.inetalliance.sql.Aggregate.MIN;
 
-@WebServlet(urlPatterns={"/api/uniqueCid"})
+@WebServlet(urlPatterns = {"/api/uniqueCid"})
 public class UniqueCid extends AngularServlet {
 
 	public static final Pattern pattern = Pattern.compile("/api/uniqueCid");
@@ -38,10 +36,10 @@ public class UniqueCid extends AngularServlet {
 
 		JsonMap toJson() {
 			return new JsonMap()
-					.$("old", old)
-					.$("first", first)
-					.$("anon", anon)
-					.$("opps", opps);
+				.$("old", old)
+				.$("first", first)
+				.$("anon", anon)
+				.$("opps", opps);
 		}
 
 		void add(Info info) {
@@ -54,11 +52,11 @@ public class UniqueCid extends AngularServlet {
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
+		throws Exception {
 		final Interval interval = CachedGroupingRangeReport.getInterval(request);
 		final Site atc = new Site(10117);
-		final Map<String, DateTime> firstCall = $$(withSite(atc).and(queue), MIN, String.class,
-				"callerid_number", DateTime.class, "created");
+		final Map<String, DateTime> firstCall = $$(withSite(atc).and(isQueue), MIN, String.class,
+			"callerid_number", DateTime.class, "created");
 		final DateMidnight start = interval.getStart().toDateMidnight();
 		final DateMidnight end = interval.getEnd().toDateMidnight();
 		DateMidnight i = start;
@@ -67,7 +65,7 @@ public class UniqueCid extends AngularServlet {
 		while (i.isBefore(end)) {
 			final Info info = classify(i.toInterval(), atc, firstCall);
 			total.add(info);
-			json.put(Json.F.Format.date.$(i), info.toJson());
+			json.put(Json.dateFormat.print(i), info.toJson());
 			i = i.plusDays(1);
 		}
 		respond(response, new JsonMap().$("total", total.toJson()).$("days", json));
@@ -75,21 +73,18 @@ public class UniqueCid extends AngularServlet {
 
 	private Info classify(final Interval interval, final Site site, final Map<String, DateTime> firstCall) {
 		final Info i = new Info();
-		i.opps = Locator.count(Opportunity.Q.createdInInterval(interval).and(Opportunity.Q.withSite(site)));
+		i.opps = Locator.count(Opportunity.createdInInterval(interval).and(Opportunity.withSite(site)));
 
-		forEach(withSite(site).and(inInterval(interval)).and(queue), new P1<Call>() {
-			@Override
-			public void $(final Call call) {
-				final String number = call.getCallerId().getNumber();
-				if (StringFun.empty.$(number)) {
-					i.anon++;
+		forEach(withSite(site).and(inInterval(interval)).and(isQueue), call -> {
+			final String number = call.getCallerId().getNumber();
+			if (isEmpty(number)) {
+				i.anon++;
+			} else {
+				final DateTime first = firstCall.get(number);
+				if (first.equals(call.getCreated())) {
+					i.first++;
 				} else {
-					final DateTime first = firstCall.get(number);
-					if (first.equals(call.getCreated())) {
-						i.first++;
-					} else {
-						i.old++;
-					}
+					i.old++;
 				}
 			}
 		});

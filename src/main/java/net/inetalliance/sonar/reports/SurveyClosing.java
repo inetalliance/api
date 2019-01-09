@@ -6,9 +6,6 @@ import com.callgrove.types.SaleSource;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.types.str.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.info.Info;
@@ -25,11 +22,12 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import static com.callgrove.obj.Opportunity.Q.*;
+import static com.callgrove.obj.Opportunity.*;
 import static com.callgrove.types.SaleSource.PHONE_CALL;
 import static com.callgrove.types.SaleSource.SURVEY;
 import static java.util.Optional.ofNullable;
-import static net.inetalliance.funky.functors.types.str.StringFun.enumToCamelCase;
+import static net.inetalliance.funky.StringFun.enumToCamelCase;
+import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.sql.Aggregate.SUM;
@@ -40,16 +38,17 @@ public class SurveyClosing
 	extends CachedGroupingRangeReport<Agent, Site> {
 
 	private static final transient Log log = getInstance(SurveyClosing.class);
+	private final Info<Site> info;
 
-	private static final F1<String, Site> lookup = Info.$(Site.class).lookup;
 
 	public SurveyClosing() {
 		super("site", "productLine");
+		this.info = Info.$(Site.class);
 	}
 
 	@Override
-	protected F1<String, Site> getGroupLookup(final String[] params) {
-		return lookup;
+	protected Site getGroup(final String[] params, final String key) {
+		return info.lookup(key);
 	}
 
 	@Override
@@ -65,10 +64,10 @@ public class SurveyClosing
 			throw new UnauthorizedException();
 		}
 		final String productLineId = extras.get("productLine");
-		if (StringFun.empty.$(productLineId)) {
+		if (isEmpty(productLineId)) {
 			throw new BadRequestException("Must specify product line via ?productLine=");
 		}
-		final ProductLine productLine = $(new ProductLine(new Integer(productLineId)));
+		final ProductLine productLine = $(new ProductLine(Integer.valueOf(productLineId)));
 		if (productLine == null) {
 			throw new NotFoundException("Could not find product line with id %s", productLineId);
 		}
@@ -92,36 +91,35 @@ public class SurveyClosing
 
 		final Set<String> queuesForProductLine = ProductLineClosing.getQueues(loggedIn, productLine, sites);
 		final JsonList rows = new JsonList();
-		forEach(allRows(loggedIn), new P1<Agent>() {
-			@Override
-			public void $(final Agent agent) {
-				final Query<Opportunity> andAgent = base.and(Opportunity.Q.withAgent(agent));
-				final JsonMap row = new JsonMap().$("agent", agent.getLastNameFirstInitial());
-				final AtomicBoolean hasOpps = new AtomicBoolean(false);
-				EnumSet.of(SURVEY, PHONE_CALL).forEach(source ->
-				{
-					final Query<Opportunity> andSource = andAgent.and(withSaleSource(source));
-					final Query<Opportunity> andSoldInInterval = andSource.and(soldInInterval(interval));
-					final int count = count(andSource.and(createdInInterval(interval)));
-					if (count > 0) {
-						hasOpps.set(true);
-					}
-					row.$(enumToCamelCase.$(source),
-						new JsonMap()
-							.$("count", count)
-							.$("closes", count(andSoldInInterval))
-							.$("total", (ofNullable($$(andSoldInInterval, SUM, Currency.class, "amount"))
-								.orElse(ZERO)).doubleValue()));
-				});
-				row.$("calls", queuesForProductLine.isEmpty() ? 0 : count(Call.Q.inInterval(interval).and(Call.Q.queue).and(Call.Q.withQueueIn(queuesForProductLine))
-					.and(Call.Q.withBlame(agent))));
-
-				meter.increment(agent.getLastNameFirstInitial());
-				if (hasOpps.get()) {
-					rows.add(row);
+		forEach(allRows(loggedIn), agent -> {
+			final Query<Opportunity> andAgent = base.and(Opportunity.withAgent(agent));
+			final JsonMap row = new JsonMap().$("agent", agent.getLastNameFirstInitial());
+			final AtomicBoolean hasOpps = new AtomicBoolean(false);
+			EnumSet.of(SURVEY, PHONE_CALL).forEach(source ->
+			{
+				final Query<Opportunity> andSource = andAgent.and(withSaleSource(source));
+				final Query<Opportunity> andSoldInInterval = andSource.and(soldInInterval(interval));
+				final int count = count(andSource.and(createdInInterval(interval)));
+				if (count > 0) {
+					hasOpps.set(true);
 				}
-			}
+				row.$(enumToCamelCase(source),
+					new JsonMap()
+						.$("count", count)
+						.$("closes", count(andSoldInInterval))
+						.$("total", (ofNullable($$(andSoldInInterval, SUM, Currency.class, "amount"))
+							.orElse(ZERO)).doubleValue()));
+			});
+			row.$("calls", queuesForProductLine.isEmpty() ? 0 :
+				count(Call.inInterval(interval)
+					.and(Call.isQueue)
+					.and(Call.withQueueIn(queuesForProductLine))
+					.and(Call.withBlame(agent))));
 
+			meter.increment(agent.getLastNameFirstInitial());
+			if (hasOpps.get()) {
+				rows.add(row);
+			}
 		});
 		return new JsonMap().$("rows", rows);
 
@@ -129,7 +127,7 @@ public class SurveyClosing
 
 	@Override
 	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery().and(Agent.Q.sales);
+		return loggedIn.getViewableAgentsQuery().and(Agent.isSales);
 	}
 
 	@Override

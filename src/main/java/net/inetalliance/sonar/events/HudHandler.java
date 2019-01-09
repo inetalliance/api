@@ -4,7 +4,6 @@ import com.callgrove.DaemonThreadFactory;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.types.CallDirection;
-import net.inetalliance.funky.functors.P1;
 import net.inetalliance.log.Log;
 import net.inetalliance.sonar.Startup;
 import net.inetalliance.types.json.Json;
@@ -24,7 +23,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.Agent.Q.active;
+import static com.callgrove.obj.Agent.isActive;
 import static com.callgrove.types.CallDirection.*;
 import static java.util.concurrent.TimeUnit.MILLISECONDS;
 import static java.util.concurrent.TimeUnit.SECONDS;
@@ -36,12 +35,7 @@ public class HudHandler implements Runnable, MessageHandler {
 	private static final Map<String, HudStatus> status;
 
 	static {
-		status = new LazyMap<String, HudStatus>(new TreeMap<>()) {
-			@Override
-			public HudStatus create(final String key) {
-				return new HudStatus();
-			}
-		};
+		status = new LazyMap<>(new HashMap<>(), k -> new HudStatus());
 	}
 
 	private static final Pattern sip = Pattern.compile("SIP/(7[0-9][0-9][0-9]).*");
@@ -116,30 +110,27 @@ public class HudHandler implements Runnable, MessageHandler {
 
 	@Override
 	public void run() {
-		if(!isSpainDevServer) {
-      try {
-        linkedChannels.clear();
-        untouched.clear();
-        untouched.addAll(status.keySet());
-        updateAvailability();
-        updateSimulated();
-        updateChannels();
-        updateSubscribers();
-      } catch (final Throwable t) {
-        log.error(t);
-      }
+		if (!isSpainDevServer) {
+			try {
+				linkedChannels.clear();
+				untouched.clear();
+				untouched.addAll(status.keySet());
+				updateAvailability();
+				updateSimulated();
+				updateChannels();
+				updateSubscribers();
+			} catch (final Throwable t) {
+				log.error(t);
+			}
 		}
 	}
 
 	private void updateAvailability() {
-		forEach(active, new P1<Agent>() {
-			@Override
-			public void $(final Agent agent) {
-				HudStatus hudStatus = status.get(agent.key);
-				if(agent.isPaused() == hudStatus.available) {
-					hudStatus.available = !agent.isPaused();
-					untouched.remove(agent.key);
-				}
+		forEach(isActive, agent -> {
+			HudStatus hudStatus = status.get(agent.key);
+			if (agent.isPaused() == hudStatus.available) {
+				hudStatus.available = !agent.isPaused();
+				untouched.remove(agent.key);
 			}
 		});
 	}
@@ -210,15 +201,12 @@ public class HudHandler implements Runnable, MessageHandler {
 	}
 
 	private void updateSimulated() {
-		forEach(Call.Q.simulated.and(Call.Q.active), new P1<Call>() {
-			@Override
-			public void $(final Call call) {
-				final Agent agent = call.getActiveAgent();
-				final HudStatus agentStatus = status.get(agent.key);
-				agentStatus.direction = QUEUE;
-				agentStatus.callId = call.key;
-				untouched.remove(agent.key);
-			}
+		forEach(Call.simulated.and(Call.isActive), call -> {
+			final Agent agent = call.getActiveAgent();
+			final HudStatus agentStatus = status.get(agent.key);
+			agentStatus.direction = QUEUE;
+			agentStatus.callId = call.key;
+			untouched.remove(agent.key);
 		});
 	}
 
@@ -231,9 +219,9 @@ public class HudHandler implements Runnable, MessageHandler {
 			current.clear();
 			for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
 				current.put(entry.getKey(),
-						new JsonMap()
-								.$("direction",entry.getValue().direction)
-								.$("available",entry.getValue().available));
+					new JsonMap()
+						.$("direction", entry.getValue().direction)
+						.$("available", entry.getValue().available));
 			}
 
 			if (!this.hud.equals(current)) {
@@ -254,7 +242,7 @@ public class HudHandler implements Runnable, MessageHandler {
 			for (final Session subscriber : subscribers) {
 				service.submit(() -> {
 					try {
-						subscriber.getBasicRemote().sendText(Json.F.ugly.$(msg));
+						subscriber.getBasicRemote().sendText(Json.ugly(msg));
 					} catch (IOException e) {
 						toRemove.add(subscriber);
 					} finally {

@@ -1,10 +1,10 @@
 package net.inetalliance.sonar.events;
 
 import com.callgrove.obj.Agent;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.log.Log;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.struct.maps.LazyMap;
 import net.inetalliance.util.security.auth.impl.AuthorizedUser;
 
 import javax.servlet.http.HttpSession;
@@ -17,19 +17,13 @@ import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static net.inetalliance.funky.Funky.stream;
 import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.potion.Locator.$;
 
 @ServerEndpoint(value = "/events", configurator = Events.Configurator.class)
 public class Events extends Endpoint {
   private final static Lock lock = new ReentrantLock();
-  private static Map<String, Collection<Session>> sessions = new LazyMap<String, Collection<Session>>(new TreeMap<>()) {
-    @Override
-    public Collection<Session> create(final String key) {
-      return new ArrayList<>(1);
-    }
-  };
+  private static Map<String, Collection<Session>> sessions = new HashMap<>();
 
 
   @Override
@@ -37,7 +31,7 @@ public class Events extends Endpoint {
     final AuthorizedUser user = getUser(session);
     lock.lock();
     try {
-      sessions.get(user.getPhone()).remove(session);
+      sessions.getOrDefault(user.getPhone(), new ArrayList<>()).remove(session);
       log.trace("%s disconnected", user.getLastNameFirstInitial());
     } finally {
       lock.unlock();
@@ -49,7 +43,7 @@ public class Events extends Endpoint {
     AuthorizedUser user = getUser(session);
     lock.lock();
     try {
-      sessions.get(user.getPhone()).add(session);
+      sessions.getOrDefault(user.getPhone(), new ArrayList<>(1)).add(session);
     } finally {
       lock.unlock();
     }
@@ -78,7 +72,7 @@ public class Events extends Endpoint {
     if (msg != null) {
       try {
         if (session.isOpen()) {
-          session.getBasicRemote().sendText(Json.F.ugly.$(new JsonMap()
+          session.getBasicRemote().sendText(Json.ugly(new JsonMap()
               .$("type", type)
               .$("msg", msg)));
         }
@@ -95,7 +89,7 @@ public class Events extends Endpoint {
         // tell everyone
         sessions.values()
             .stream()
-            .flatMap(stream())
+            .flatMap(Funky::stream)
             .forEach(session -> send(session, type, msg));
       } else {
         // tell only the sockets for that agent

@@ -76,12 +76,12 @@ public class FacebookLead
       contact.setEmail(json.get("email"));
       Locator.create("FacebookLead", contact);
 
-      final Site site = $1(Site.Q.withAbbreviation(json.get("site")));
+      final Site site = $1(Site.withAbbreviation(json.get("site")));
       final Agent agent = agents[random.nextInt(agents.length)];
       final Currency amount = new Currency(json.getDouble("amount"));
       final String fullDate = json.get("date");
-      final DateTime date = Json.F.Parse.dateTime.$(fullDate.split("[+]", 2)[0]);
-      final ProductLine productLine = $1(ProductLine.Q.withNameLike(json.get("productLine")));
+      final DateTime date = Json.dateTimeFormat.parseDateTime(fullDate.split("[+]", 2)[0]);
+      final ProductLine productLine = $1(ProductLine.withNameLike(json.get("productLine")));
 
       if (productLine == null) {
         response.setStatus(HttpServletResponse.SC_BAD_REQUEST);

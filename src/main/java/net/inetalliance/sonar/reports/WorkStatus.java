@@ -2,12 +2,10 @@ package net.inetalliance.sonar.reports;
 
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.CallCenter;
-import com.callgrove.obj.Event;
 import com.callgrove.types.EventType;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
-import net.inetalliance.funky.functors.P1;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.cache.RedisJsonCache;
 import net.inetalliance.sonar.Startup;
@@ -25,12 +23,12 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.TreeMap;
 
-import static com.callgrove.obj.Agent.Q.withCallCenter;
-import static com.callgrove.obj.Event.Q.*;
+import static com.callgrove.obj.Agent.withCallCenter;
+import static com.callgrove.obj.Event.*;
 import static com.callgrove.types.EventType.*;
 import static java.lang.String.format;
 import static java.util.concurrent.TimeUnit.MINUTES;
-import static net.inetalliance.funky.functors.types.str.StringFun.empty;
+import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.potion.Locator.forEach;
 import static net.inetalliance.sonar.reports.CachedGroupingRangeReport.simple;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
@@ -83,11 +81,12 @@ public class WorkStatus extends AngularServlet {
 	@Override
 	protected void get(HttpServletRequest request, HttpServletResponse response) throws Exception {
 		final String date = request.getParameter("date");
-		if (empty.$(date)) {
+		if (isEmpty(date)) {
 			throw new BadRequestException("no date provided");
 		}
 		final DateMidnight day = simple.parseDateTime(date).toDateMidnight();
 		final Agent loggedIn = Startup.getAgent(request);
+		assert loggedIn != null;
 		final Map<String, State> state = new TreeMap<>();
 		if (loggedIn.isManager() || loggedIn.isTeamLeader()) {
 			final JsonMap json = new JsonMap();
@@ -98,67 +97,62 @@ public class WorkStatus extends AngularServlet {
 				if (cacheResult == null) {
 					log.debug("Generating data for %s", callCenter.getName());
 					final JsonMap callCenterJson = new JsonMap();
-					forEach(withCallCenter(callCenter).and(Agent.Q.sales).and(Agent.Q.active).orderBy("firstName", ASCENDING),
-							new P1<Agent>() {
-								@Override
-								public void $(final Agent agent) {
-									log.debug("Agent: %s", agent.getFirstNameLastInitial());
-									final EventType logonChange = agent.getLastLogonChange(day);
-									final EventType forwardChange = agent.getLastForwardChange(day);
-									final EventType registrationChange = agent.getLastRegistrationChange(day);
-									JsonList statusList = new JsonList();
-									callCenterJson.put(agent.key, new JsonMap()
-											.$("name", agent.getFirstNameLastInitial())
-											.$("status", statusList));
-									final State i = new State();
-									i.paused = logonChange == null || logonChange == LOGOFF;
-									i.forwarded = forwardChange != null && forwardChange == FORWARD;
-									i.registered = registrationChange == null || registrationChange == REGISTER;
-									i.date = day.toDateTime();
-									i.block = 0;
-									i.statusList = statusList;
-									state.put(agent.key, i);
-									forEach(inInterval(day.toInterval())
-													.and(withType(LOGON, LOGOFF, REGISTER, UNREGISTER, FORWARD, UNFORWARD)
-															.and(withAgent(agent))),
-											new P1<Event>() {
-												@Override
-												public void $(final Event event) {
-													final State s = state.get(event.getAgent().key);
-													if (s != null) {
-														int blockTime = (int) new Interval(s.date, event.getDate()).toDuration().getStandardMinutes();
-														s.total = s.total + blockTime;
-														s.block = blockTime;
-														if (!s.paused) {
-															s.queueTime += s.block;
-														}
-														s.statusList.add(s.toJson());
-														s.date = event.getDate();
-														switch (event.getEventType()) {
-															case LOGON:
-																s.paused = false;
-																break;
-															case LOGOFF:
-																s.paused = true;
-																break;
-															case FORWARD:
-																s.forwarded = true;
-																break;
-															case UNFORWARD:
-																s.forwarded = false;
-																break;
-															case UNREGISTER:
-																s.registered = false;
-																break;
-															case REGISTER:
-																s.registered = true;
-																break;
-														}
-													}
-												}
-											});
-								}
-							});
+					forEach(withCallCenter(callCenter).and(Agent.isSales).and(Agent.isActive).orderBy("firstName",
+						ASCENDING),
+						agent -> {
+							log.debug("Agent: %s", agent.getFirstNameLastInitial());
+							final EventType logonChange = agent.getLastLogonChange(day);
+							final EventType forwardChange = agent.getLastForwardChange(day);
+							final EventType registrationChange = agent.getLastRegistrationChange(day);
+							JsonList statusList = new JsonList();
+							callCenterJson.put(agent.key, new JsonMap()
+									.$("name", agent.getFirstNameLastInitial())
+									.$("status", statusList));
+							final State i = new State();
+							i.paused = logonChange == null || logonChange == LOGOFF;
+							i.forwarded = forwardChange == FORWARD;
+							i.registered = registrationChange == null || registrationChange == REGISTER;
+							i.date = day.toDateTime();
+							i.block = 0;
+							i.statusList = statusList;
+							state.put(agent.key, i);
+							forEach(inInterval(day.toInterval())
+											.and(withType(LOGON, LOGOFF, REGISTER, UNREGISTER, FORWARD, UNFORWARD)
+													.and(withAgent(agent))),
+								event -> {
+									final State s = state.get(event.getAgent().key);
+									if (s != null) {
+										int blockTime = (int) new Interval(s.date, event.getDate()).toDuration().getStandardMinutes();
+										s.total = s.total + blockTime;
+										s.block = blockTime;
+										if (!s.paused) {
+											s.queueTime += s.block;
+										}
+										s.statusList.add(s.toJson());
+										s.date = event.getDate();
+										switch (event.getEventType()) {
+											case LOGON:
+												s.paused = false;
+												break;
+											case LOGOFF:
+												s.paused = true;
+												break;
+											case FORWARD:
+												s.forwarded = true;
+												break;
+											case UNFORWARD:
+												s.forwarded = false;
+												break;
+											case UNREGISTER:
+												s.registered = false;
+												break;
+											case REGISTER:
+												s.registered = true;
+												break;
+										}
+									}
+								});
+						});
 					// add terminal block
 					for (State s : state.values()) {
 						s.block = 1440 - s.total;

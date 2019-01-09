@@ -1,21 +1,15 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.obj.*;
-import com.callgrove.types.Address;
 import com.callgrove.types.SalesStage;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.Predicate;
-import net.inetalliance.funky.functors.math.IntegerMath;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
-import net.inetalliance.potion.query.DelegatingQuery;
-import net.inetalliance.potion.query.Join;
-import net.inetalliance.potion.query.Query;
-import net.inetalliance.potion.query.Search;
+import net.inetalliance.potion.query.*;
 import net.inetalliance.sonar.events.ReminderHandler;
 import net.inetalliance.sql.*;
 import net.inetalliance.types.json.Json;
@@ -27,20 +21,22 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Set;
+import java.util.function.Function;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.Opportunity.Q.active;
-import static com.callgrove.obj.Opportunity.Q.withStages;
+import static com.callgrove.obj.Opportunity.*;
 import static com.callgrove.types.ContactType.DEALER;
 import static com.callgrove.types.SaleSource.ONLINE;
 import static java.lang.System.currentTimeMillis;
 import static java.util.EnumSet.of;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static java.util.regex.Pattern.compile;
-import static net.inetalliance.funky.functors.types.str.StringFun.empty;
+import static java.util.stream.Collectors.toList;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
@@ -51,47 +47,38 @@ public class Leads
 	private static final Pattern space = compile("[ @.]");
 	private static final Pattern spaces = compile("[ ]+");
 	private static final Pattern or = compile("( \\| )|( OR )", CASE_INSENSITIVE);
-	public static final F1<Opportunity, JsonMap> json;
 
-	static {
-		final Info<Opportunity> info = Info.$(Opportunity.class);
-		json = new F1<Opportunity, JsonMap>() {
-			@Override
-			public JsonMap $(final Opportunity o) {
-				final JsonMap json = info.toJson(o);
-				if (o.id != null) {
-					final Contact c = o.getContact();
-					json.put("extra", new JsonMap()
-						.$("contact", new JsonMap()
-							.$("name", c.getFullName())
-							.$("dealer", c.getContactType() == DEALER))
-						.$("productLine", new JsonMap()
-							.$("name", o.getProductLine().getName())
-							.$("uri", o.getSite().getWebpages().get(o.getProductLine())))
-						.$("assignedTo", new JsonMap()
-							.$("name", o.getSource() == ONLINE ? "Web Order" : o.getAssignedTo().getLastNameFirstInitial()))
-						.$("site", new JsonMap()
-							.$("name", o.getSite().getName())
-							.$("uri", o.getSite().getUri())));
-				}
-				final Contact contact = o.getContact();
-				final Address shipping = contact.getShipping();
-				final Address billing = contact.getBilling();
-				final String phone = Predicate.notNull.find(shipping == null ? null : shipping.getPhone(),
-					billing == null ? null : billing.getPhone(),
-					contact.getMobilePhone());
-				if (!empty.$(phone)) {
-					final AreaCodeTime time = AreaCodeTime.getAreaCodeTime(phone);
-					json.put("localTime", time == null ? null : time.getDateTimeZone().getOffset(currentTimeMillis()));
-				}
-				return json;
-			}
-		};
+	public static JsonMap json(Opportunity o) {
+		final JsonMap json = Info.$(o).toJson(o);
+		if (o.id != null) {
+			final Contact c = o.getContact();
+			json.put("extra", new JsonMap()
+				.$("contact", new JsonMap()
+					.$("name", c.getFullName())
+					.$("dealer", c.getContactType() == DEALER))
+				.$("productLine", new JsonMap()
+					.$("name", o.getProductLine().getName())
+					.$("uri", o.getSite().getWebpages().get(o.getProductLine())))
+				.$("assignedTo", new JsonMap()
+					.$("name", o.getSource() == ONLINE ? "Web Order" : o.getAssignedTo().getLastNameFirstInitial()))
+				.$("site", new JsonMap()
+					.$("name", o.getSite().getName())
+					.$("uri", o.getSite().getUri())));
+		}
+		final Contact contact = o.getContact();
+		final String phone = contact.getPhone();
+		if (isNotEmpty(phone)) {
+			final AreaCodeTime time = AreaCodeTime.getAreaCodeTime(phone);
+			json.put("localTime", time == null ? null : time.getDateTimeZone().getOffset(currentTimeMillis()));
+		}
+		return json;
+
 	}
+
 
 	@Override
 	protected Json toJson(final Key<Opportunity> key, final Opportunity opportunity, final HttpServletRequest request) {
-		return Leads.json.$(opportunity);
+		return Leads.json(opportunity);
 	}
 
 	public Leads() {
@@ -104,23 +91,15 @@ public class Leads
 	}
 
 	private static Query<Opportunity> buildSearchQuery(final Query<Opportunity> query, String searchQuery) {
-		searchQuery = searchQuery.replaceAll("[-()]","");
+		searchQuery = searchQuery.replaceAll("[-()]", "");
 		searchQuery = spaces.matcher(searchQuery).replaceAll(" ");
 		searchQuery = or.matcher(searchQuery).replaceAll("|");
 		final String[] terms = space.split(searchQuery);
-		return new DelegatingQuery<Opportunity>(
-			query.and(new Query<Opportunity>(Opportunity.class) {
-				@Override
-				public Where getWhere(final Namer namer, final String table) {
-					return new ColumnWhere(table, "contact", namer.name(Contact.class), "id");
-				}
-
-				@Override
-				public boolean $(final Opportunity arg) {
-					return true;
-				}
-			}).orderBy("combined_rank", DESCENDING, false).and(Search.$(Opportunity.class, terms).or(
-				new Join<>(Search.$(Contact.class, terms), Opportunity.class, F1.wrap(Opportunity::getContact))))) {
+		final SortedQuery<Opportunity> delegate = query.and(new Query<>(Opportunity.class, Funky.unsupported(),
+			(namer, table) -> new ColumnWhere(table, "contact", namer.name(Contact.class), "id"))).orderBy(
+			"combined_rank", DESCENDING, false).and(new Search<>(Opportunity.class, terms).or(
+			new Join<>(new Search<>(Contact.class, terms), Opportunity.class, Opportunity::getContact)));
+		return new DelegatingQuery<>(delegate, s -> 'S' + s, Function.identity(), b -> b) {
 			@Override
 			public Iterable<Object> build(final SqlBuilder sql, final Namer namer,
 			                              final DbVendor vendor, final String table) {
@@ -133,16 +112,12 @@ public class Leads
 				return super.build(sql, namer, vendor, table);
 			}
 
-			@Override
-			public String getQuerySource() {
-				return 'S' + super.getQuerySource();
-			}
 		};
 	}
 
 	@Override
-	public F1<Opportunity, ? extends Json> toJson(final HttpServletRequest request) {
-		return json;
+	public Json toJson(final HttpServletRequest request, final Opportunity o) {
+		return json(o);
 
 	}
 
@@ -152,7 +127,7 @@ public class Leads
 		if (ss != null && ss.length > 0) {
 			final JsonMap labels = new JsonMap();
 			for (final String s : ss) {
-				final Site site = Locator.$(new Site(new Integer(s)));
+				final Site site = Locator.$(new Site(Integer.valueOf(s)));
 				if (site == null) {
 					throw new NotFoundException("Could not find site with id %s", s);
 				}
@@ -164,7 +139,7 @@ public class Leads
 		if (pls != null && pls.length > 0) {
 			final JsonMap labels = new JsonMap();
 			for (final String pl : pls) {
-				final ProductLine productLine = Locator.$(new ProductLine(new Integer(pl)));
+				final ProductLine productLine = Locator.$(new ProductLine(Integer.valueOf(pl)));
 				if (productLine == null) {
 					throw new NotFoundException("Could not find product line with id %s", pl);
 				}
@@ -250,19 +225,19 @@ public class Leads
 			throw new ForbiddenException("%s tried to access review section", loggedIn.key);
 		}
 		Query<Opportunity> query = support
-			? active.negate().orderBy(sort.field, sort.direction)
+			? isActive.negate().orderBy(sort.field, sort.direction)
 			: review
-			? Query.all(Opportunity.class).orderBy(sort.field,sort.direction)
-			: Opportunity.Q.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
-		query = query.and(webhook ? Opportunity.Q.webhook : Opportunity.Q.noWebhook);
+			? Query.all(Opportunity.class).orderBy(sort.field, sort.direction)
+			: Opportunity.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
+		query = query.and(webhook ? Opportunity.hasWebhook : Opportunity.noWebhook);
 		final String[] pls = request.getParameterValues("pl");
 		if (pls != null && pls.length > 0) {
 			query = query
-				.and(Opportunity.Q.withProductLineIn(IntegerMath.$.parse.copyTo(pls, new ArrayList<>(pls.length))));
+				.and(withProductLineIdIn(Arrays.stream(pls).map(Integer::valueOf).collect(toList())));
 		}
 		final String[] ss = request.getParameterValues("s");
 		if (ss != null && ss.length > 0) {
-			query = query.and(Opportunity.Q.withSiteIdIn(IntegerMath.$.parse.copyTo(ss, new ArrayList<>(ss.length))));
+			query = query.and(withSiteIdIn(Arrays.stream(ss).map(Integer::valueOf).collect(toList())));
 		}
 		if (support || review) {
 			final SalesStage stage = getParameter(request, SalesStage.class, "stage");
@@ -272,33 +247,31 @@ public class Leads
 			final String[] as = request.getParameterValues("a");
 			if (as != null && as.length > 0) {
 				if (review && loggedIn.isTeamLeader()) {
-					final Set<String> viewableKeys = Agent.F.key.map(loggedIn.getViewableAgents());
-					for (final String a : as) {
-						if (!viewableKeys.contains(a)) {
-							throw new ForbiddenException("%s tried to look at non-subordinates: %s in %s", loggedIn.key, a, as);
-						}
-					}
+					Set<String> viewableKeys = loggedIn.getViewableAgents().stream().map(a -> a.key).collect(toSet());
+					Arrays.stream(as).filter(s -> !viewableKeys.contains(s)).findFirst().ifPresent(a -> {
+						throw new ForbiddenException("%s tried to look at non-subordinates: %s in %s", loggedIn.key, a, as);
+					});
 				}
-				query = query.and(Opportunity.Q.withAgentKeyIn(Arrays.asList(as)));
+				query = query.and(Opportunity.withAgentKeyIn(Arrays.asList(as)));
 			} else if (review) {
-				query = query.and(Opportunity.Q.withAgentIn(loggedIn.getViewableAgents()));
+				query = query.and(Opportunity.withAgentIn(loggedIn.getViewableAgents()));
 			}
 		}
 		final Range ec = getParameter(request, Range.class, "ec");
 		if (ec != null) {
-			query = query.and(Opportunity.Q.estimatedCloseInInterval(ec.toInterval()));
+			query = query.and(Opportunity.estimatedCloseInInterval(ec.toInterval()));
 		}
 		final Range sd = getParameter(request, Range.class, "sd");
 		if (sd != null) {
-			query = query.and(Opportunity.Q.soldInInterval(sd.toInterval()));
+			query = query.and(Opportunity.soldInInterval(sd.toInterval()));
 		}
 		final Range c = getParameter(request, Range.class, "c");
 		if (c != null) {
-			query = query.and(Opportunity.Q.createdInInterval(c.toInterval()));
+			query = query.and(Opportunity.createdInInterval(c.toInterval()));
 		}
 		final String q = request.getParameter("q");
-		if (empty.$(q)) {
-			return (support || review) ? query : query.and(active);
+		if (isEmpty(q)) {
+			return (support || review) ? query : query.and(isActive);
 		}
 		return buildSearchQuery(query, q);
 	}

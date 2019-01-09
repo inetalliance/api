@@ -19,7 +19,7 @@ public class SiteRevenue
 
 	@Override
 	protected Query<Site> allRows(final Agent loggedIn) {
-		return Site.Q.isActive;
+		return Site.isActive;
 	}
 
 	@Override
@@ -29,6 +29,6 @@ public class SiteRevenue
 
 	@Override
 	protected Query<Opportunity> oppsForRow(final Site row) {
-		return Opportunity.Q.withSite(row);
+		return Opportunity.withSite(row);
 	}
 }

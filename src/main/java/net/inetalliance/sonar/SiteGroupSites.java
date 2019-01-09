@@ -20,7 +20,7 @@ public class SiteGroupSites
 
 	@Override
 	public Query<SiteGroup> all(final Class<SiteGroup> type, final HttpServletRequest request) {
-		return Startup.getAgent(request).getVisibleSiteGroupsQuery().and(SiteGroup.Q.selectable).orderBy("name",
+		return Startup.getAgent(request).getVisibleSiteGroupsQuery().and(SiteGroup.isSelectable).orderBy("name",
 				ASCENDING);
 	}
 

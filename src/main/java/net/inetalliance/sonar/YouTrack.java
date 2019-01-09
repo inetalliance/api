@@ -18,7 +18,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
-import static net.inetalliance.log.Log.*;
+import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.types.json.Json.pretty;
 
 public class YouTrack {
 
@@ -76,7 +77,7 @@ public class YouTrack {
         youTrack.get("/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+227433");
         //%7D+Opportunity+ID" +
           //"%3A+" + 227433 );+ "&with=id&max=1024");
-      System.out.println(JsonMap.F.pretty.$(jsonMap));
+      System.out.println(pretty(jsonMap));
       youTrack.shutdown();
     }catch (Throwable t) {
       log.error(t);

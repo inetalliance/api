@@ -14,7 +14,7 @@ class SessionHandler implements javax.websocket.MessageHandler.Whole<String> {
 
 	private static MessageHandler getHandler(final String type) {
 		return handlers.computeIfAbsent(type, key -> (session, msg) -> {
-			log.warning("received message of unknown type %s: %s", key, Json.F.pretty.$(msg));
+			log.warning("received message of unknown type %s: %s", key, Json.pretty(msg));
 			return null;
 		});
 	}

@@ -1,7 +1,6 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.Callgrove;
-
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.ProductLine;
@@ -10,8 +9,7 @@ import net.inetalliance.angular.LocatorStartup;
 import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.beejax.messages.BeejaxMessageServer;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.P1;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.MessageServer;
@@ -40,59 +38,59 @@ import java.util.logging.Logger;
 
 import static java.util.Arrays.asList;
 import static java.util.Collections.synchronizedMap;
+import static java.util.stream.Collectors.toSet;
 import static net.inetalliance.angular.AngularServlet.getContextParameter;
 import static net.inetalliance.potion.Locator.$;
 import static net.inetalliance.potion.Locator.forEach;
 
 @WebListener
 public class Startup
-		extends LocatorStartup {
+	extends LocatorStartup {
 
 	private static final transient Log log = Log.getInstance(Startup.class);
 	public static DefaultAsteriskServer pbx;
 
-	public static final Map<Integer, Set<String>> productLineQueues;
+
+	public static final Map<Integer, Set<String>> productLineQueues =
+		synchronizedMap(new LazyMap<>(new HashMap<>(), i -> new HashSet<>()));
 	public static final boolean isSpainDevServer = System.getProperty("spainDevServer") != null;
 
-	private static final F1<Set<String>, Set<String>> queuesForProductLine = new F1<Set<String>, Set<String>>() {
-		@Override
-		public Set<String> $(final Set<String> productIds) {
-			final TreeSet<String> set = new TreeSet<>();
-			for (final String productId : productIds) {
-				set.addAll(productLineQueues.get(new Integer(productId)));
-			}
-			return set;
-		}
-	}.memoize();
 
-	public static Query<Call> callQueryForProductLines(final HttpServletRequest request, final String parameter) {
+	private static final Map<Set<String>, Set<String>> queuesForProductLine = new HashMap<>();
+
+	public static Query<Call> callsWithProductLineParameter(final HttpServletRequest request,
+	                                                        final String parameter) {
 		final String[] params = request.getParameterValues(parameter);
 		if (params == null || params.length == 0) {
 			return Query.all(Call.class);
 		}
 		final Set<String> paramSet = new HashSet<>(asList(params));
-		return callQueryForProductLines(paramSet);
+		return callsWithProductLineKeys(paramSet);
 
 	}
 
-	public static Query<Call> callQueryForProductLines(final Set<String> productLineIds) {
+	public static Query<Call> callsWithProductLines(final Set<ProductLine> productLines) {
+		return callsWithProductLineKeys(productLines.stream().map(p -> p.id.toString()).collect(toSet()));
+
+	}
+
+	public static Query<Call> callsWithProductLineKeys(final Set<String> productLineIds) {
 		if (productLineIds.isEmpty()) {
 			return Query.all(Call.class);
 		}
-		final Set<String> queues = queuesForProductLine.$(productLineIds);
+		final Set<String> queues =
+			queuesForProductLine.computeIfAbsent(productLineIds, ids -> ids.stream()
+				.map(Integer::valueOf)
+				.map(productLineQueues::get)
+				.flatMap(Funky::stream)
+				.collect(toSet()));
 		if (queues.isEmpty()) {
 			return Query.all(Call.class);
 		}
-		return Call.Q.withQueueIn(queues);
+		return Call.withQueueIn(queues);
 	}
 
 	static {
-		productLineQueues = synchronizedMap(new LazyMap<Integer, Set<String>>(new TreeMap<>()) {
-			@Override
-			public Set<String> create(final Integer integer) {
-				return new TreeSet<>();
-			}
-		});
 	}
 
 	public static Agent getAgent(HttpServletRequest request) {
@@ -139,28 +137,25 @@ public class Startup
 			Logger.getLogger("org.asteriskjava.util.internal.Slf4JLogger").setLevel(Level.OFF);
 
 			log.info("Starting up Asterisk Manager");
-			if(!isSpainDevServer) {
-        pbx.initialize();
+			if (!isSpainDevServer) {
+				pbx.initialize();
 			}
 		} catch (URISyntaxException e) {
 			log.error("could not parse asterisk parameter as uri: %s", asteriskParam);
 		}
 		try {
 			Callgrove.beejax =
-					MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
+				MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
 
 		} catch (Throwable t) {
 			log.error(t);
 			throw new RuntimeException(t);
 		}
 		log.info("Loading Product Line -> Queue map");
-		forEach(Query.all(Queue.class), new P1<Queue>() {
-			@Override
-			public void $(final Queue queue) {
-				final ProductLine productLine = queue.getProductLine();
-				if (productLine != null) {
-					productLineQueues.get(productLine.id).add(queue.key);
-				}
+		forEach(Query.all(Queue.class), queue -> {
+			final ProductLine productLine = queue.getProductLine();
+			if (productLine != null) {
+				productLineQueues.get(productLine.id).add(queue.key);
 			}
 		});
 		Events.init();
@@ -228,7 +223,7 @@ public class Startup
 					set.add(t);
 				}
 			} catch (final NoSuchMethodException | InvocationTargetException | InstantiationException |
-					IllegalAccessException e1) {
+				IllegalAccessException e1) {
 				throw new RuntimeException(e1);
 			}
 		}

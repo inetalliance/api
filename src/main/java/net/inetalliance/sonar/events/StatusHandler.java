@@ -4,44 +4,29 @@ import com.callgrove.jobs.Hud;
 import com.callgrove.obj.Agent;
 import net.inetalliance.cron.CronJob;
 import net.inetalliance.cron.CronStatus;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.comparison.EqualTo;
 import net.inetalliance.log.Log;
+import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.LazyMap;
 
 import javax.websocket.Session;
+import java.util.HashMap;
 import java.util.Map;
-import java.util.TreeMap;
+import java.util.Objects;
 
 import static java.util.Collections.synchronizedMap;
 import static java.util.concurrent.TimeUnit.SECONDS;
 import static net.inetalliance.cron.Cron.interval;
-import static net.inetalliance.potion.Locator.update;
 
 public class StatusHandler implements MessageHandler {
 	private static final Map<String, Boolean> paused =
-			synchronizedMap(new LazyMap<String, Boolean>(new TreeMap<>()) {
-				@Override
-				public Boolean create(final String key) {
-					return false;
-				}
-			});
+		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
 	private static final Map<String, Boolean> forwarded =
-			synchronizedMap(new LazyMap<String, Boolean>(new TreeMap<>()) {
-				@Override
-				public Boolean create(final String key) {
-					return false;
-				}
-			});
+		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
+
 	private static final Map<String, Boolean> registered =
-			synchronizedMap(new LazyMap<String, Boolean>(new TreeMap<>()) {
-				@Override
-				public Boolean create(final String key) {
-					return false;
-				}
-			});
-	private static final Map<String, String> calls = synchronizedMap(new TreeMap<String, String>());
+		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
+	private static final Map<String, String> calls = synchronizedMap(new HashMap<>());
 
 	public StatusHandler() {
 		super();
@@ -53,7 +38,7 @@ public class StatusHandler implements MessageHandler {
 
 			@Override
 			public void exec(final CronStatus status)
-					throws Throwable {
+				throws Throwable {
 				final JsonMap map = new JsonMap();
 				for (final String agent : Events.getActiveAgents()) {
 					getStatus(agent, map, false);
@@ -103,7 +88,7 @@ public class StatusHandler implements MessageHandler {
 		final HudStatus hudStatus = HudHandler.getStatus(agent);
 		final String currentCall = hudStatus.callId;
 		final String cachedCall = calls.get(agent);
-		if (full || !EqualTo.$(currentCall).$(cachedCall)) {
+		if (full || !Objects.equals(currentCall, cachedCall)) {
 			map.put("callId", currentCall);
 			calls.put(agent, currentCall);
 		}
@@ -131,33 +116,27 @@ public class StatusHandler implements MessageHandler {
 		final JsonMap hud = Hud.currentStatus.getMap(agent.key);
 		switch (Action.valueOf(map.get("action").toUpperCase())) {
 			case PAUSE:
-				update(agent, agent.key, new P1<Agent>() {
-					@Override
-					public void $(final Agent copy) {
-						copy.setPaused(!copy.isPaused());
-					}
+				Locator.update(agent, agent.key, copy -> {
+					copy.setPaused(!copy.isPaused());
 				});
 				paused.put(agent.key, agent.isPaused());
 				if (hud != null) {
 					hud.put("paused", agent.isPaused());
 					Hud.currentStatus.set(agent.key, hud);
 					log.info("%s changed %s to paused: %s",
-							agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isPaused());
+						agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isPaused());
 				}
 				return new JsonMap().$("paused", agent.isPaused());
 			case FORWARD:
-				update(agent, agent.key, new P1<Agent>() {
-					@Override
-					public void $(final Agent copy) {
-						copy.setForwarded(!copy.isForwarded());
-					}
+				Locator.update(agent, agent.key, copy -> {
+					copy.setForwarded(!copy.isForwarded());
 				});
 				forwarded.put(agent.key, agent.isForwarded());
 				if (hud != null) {
 					hud.put("forwarded", agent.isForwarded());
 					Hud.currentStatus.set(agent.key, hud);
 					log.info("%s changed %s to forwarded: %s",
-							agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isForwarded());
+						agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isForwarded());
 				}
 				return new JsonMap().$("forwarded", agent.isForwarded());
 		}

@@ -1,12 +1,15 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.obj.CallCenter;
+import net.inetalliance.angular.list.Listable;
+import net.inetalliance.funky.Funky;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
-import static net.inetalliance.angular.list.Listable.Impl.formatResult;
 
 @WebServlet("/api/callCenter/*")
 public class CallCenters extends ListableModel<CallCenter> {
@@ -16,10 +19,12 @@ public class CallCenters extends ListableModel<CallCenter> {
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
+		throws Exception {
 		if ("TRUE".equalsIgnoreCase(request.getParameter("visible"))) {
-			respond(response, formatResult(toJson(request).copy(CallCenter.Q.withSalesAgent.filter(Startup.getAgent(request)
-					.getViewableCallCenters()))));
+			respond(response, Listable.formatResult(
+				Funky.stream(Optional.ofNullable(Startup.getAgent(request)).orElseThrow().getViewableCallCenters())
+					.filter(CallCenter.withSalesAgent)
+					.map(c -> toJson(request, c)).collect(Collectors.toList())));
 		}
 		super.get(request, response);
 	}

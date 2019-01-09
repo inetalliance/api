@@ -4,7 +4,6 @@ import com.callgrove.Callgrove;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.list.Listable;
-import net.inetalliance.funky.functors.F1;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 
@@ -16,23 +15,19 @@ import java.util.Set;
 
 @WebServlet("/api/categoryLookup")
 public class CategoryLookup
-		extends AngularServlet {
+	extends AngularServlet {
 
 
-	public static final F1<net.inetalliance.beejax.messages.Category, JsonMap> json =
-			new F1<net.inetalliance.beejax.messages.Category, JsonMap>() {
-				@Override
-				public JsonMap $(final net.inetalliance.beejax.messages.Category category) {
-					return new JsonMap()
-							.$("id", category.id)
-							.$("name", category.name)
-							.$("products", category.products);
-				}
-			};
+	public static final JsonMap json(final net.inetalliance.beejax.messages.Category category) {
+		return new JsonMap()
+			.$("id", category.id)
+			.$("name", category.name)
+			.$("products", category.products);
+	}
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
+		throws Exception {
 		final String[] keys = request.getParameterValues("id");
 		if (keys.length == 0) {
 			throw new BadRequestException("No ids specified");
@@ -43,6 +38,7 @@ public class CategoryLookup
 				ids.add(Integer.parseInt(key));
 			}
 		}
-		respond(response, Listable.Impl.formatResult(new JsonList(json.map(Callgrove.beejax.categoryLookup(ids)))));
+		respond(response, Listable.formatResult(JsonList.collect(Callgrove.beejax.categoryLookup(ids),
+			CategoryLookup::json)));
 	}
 }

@@ -4,12 +4,10 @@ import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.Contact;
 import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.Opportunity.Q;
 import com.callgrove.types.SalesStage;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.funky.functors.P1;
-import net.inetalliance.funky.functors.math.Stats;
-import net.inetalliance.funky.functors.math.StatsCalculator;
+import net.inetalliance.funky.math.Calculator;
+import net.inetalliance.funky.math.Stats;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.Currency;
@@ -23,10 +21,10 @@ import org.joda.time.DateTime;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeMap;
 
 import static com.callgrove.types.CallDirection.OUTBOUND;
 import static java.util.stream.Collectors.toCollection;
@@ -44,16 +42,16 @@ public class WebHookStats
 		int n;
 		int attempted;
 		int contacted;
-		StatsCalculator<Currency> sales;
-		StatsCalculator<Long> talkTime;
-		StatsCalculator<Long> delay;
-		StatsCalculator<Long> contactDelay;
+		Calculator<Currency> sales;
+		Calculator<Long> talkTime;
+		Calculator<Long> delay;
+		Calculator<Long> contactDelay;
 
 		public Statistics() {
-			talkTime = StatsCalculator.$(Long.class);
-			delay = StatsCalculator.$(Long.class);
-			contactDelay = StatsCalculator.$(Long.class);
-			sales = StatsCalculator.$(Currency.class);
+			talkTime = Calculator.newLong();
+			delay = Calculator.newLong();
+			contactDelay = Calculator.newLong();
+			sales = new Calculator<>(Currency.MATH);
 		}
 
 		int getCalls() {
@@ -91,93 +89,83 @@ public class WebHookStats
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
 			throws Exception {
-		final Query<Opportunity> webhook = Q.webhook;
+		final Query<Opportunity> webhook = Opportunity.hasWebhook;
 		final JsonMap json = new JsonMap();
 		final DateMidnight today = new DateMidnight();
-		json.put("new", count(webhook.and(Q.createdAfter(today))));
+		json.put("new", count(webhook.and(Opportunity.createdAfter(today))));
 		json.put("total", count(webhook));
-		json.put("sold", count(webhook.and(Q.sold)));
+		json.put("sold", count(webhook.and(Opportunity.isSold)));
 		final Set<Integer> unattempted = new HashSet<>();
 		final Set<Integer> uncontacted = new HashSet<>();
 
-		final Map<String, Statistics> stats = new LazyMap<String, Statistics>(new TreeMap<>()) {
-			@Override
-			public Statistics create(final String s) {
-				return new Statistics();
-			}
-		};
+		final Map<String, Statistics> stats = new LazyMap<String, Statistics>(new HashMap<>(), s->new Statistics());
+
 		final Statistics todayStats = new Statistics();
-		forEach(webhook, new P1<Opportunity>() {
-			@Override
-			public void $(final Opportunity opportunity) {
-				final Statistics agent = stats.get(opportunity.getAssignedTo().key);
-				agent.n++;
-				if (opportunity.getStage() == SalesStage.SOLD) {
-					agent.sales.$(opportunity.getAmount());
-				}
-				final Statistics callStats = new Statistics();
-				final DateMidnight created = opportunity.getCreated().toDateMidnight();
-				final boolean isToday = opportunity.getCreated().isAfter(today);
+		forEach(webhook, opportunity -> {
+			final Statistics agent = stats.get(opportunity.getAssignedTo().key);
+			agent.n++;
+			if (opportunity.getStage() == SalesStage.SOLD) {
+				agent.sales.accept(opportunity.getAmount());
+			}
+			final Statistics callStats = new Statistics();
+			final DateMidnight created = opportunity.getCreated().toDateMidnight();
+			final boolean isToday = opportunity.getCreated().isAfter(today);
+			if (isToday) {
+				todayStats.n++;
+			}
+			forEach(Call.withContact(opportunity.getContact()).and(Call.isAfter(created)).orderBy("created", ASCENDING),
+				call -> {
+					if (agent.delay.k == 0) {
+						agent.delay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
+					}
+					if (call.getDirection() == OUTBOUND) {
+						callStats.outboundCalls++;
+					} else {
+						callStats.queueCalls++;
+					}
+					final long talkTime = call.getTalkTime();
+					if (talkTime > 60000) {
+						callStats.contacted++;
+						callStats.talkTime.accept(talkTime);
+						if (agent.contactDelay.k == 0) {
+							agent.contactDelay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
+						}
+					}
+				});
+			agent.queueCalls += callStats.queueCalls;
+			agent.outboundCalls += callStats.outboundCalls;
+			if (callStats.contacted > 0) {
+				agent.contacted++;
 				if (isToday) {
-					todayStats.n++;
+					todayStats.contacted++;
 				}
-				forEach(Call.Q.withContact(opportunity.getContact()).and(Call.Q.after(created)).orderBy("created", ASCENDING),
-						new P1<Call>() {
-							@Override
-							public void $(final Call call) {
-								if (agent.delay.k == 0) {
-									agent.delay.$(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
-								}
-								if (call.getDirection() == OUTBOUND) {
-									callStats.outboundCalls++;
-								} else {
-									callStats.queueCalls++;
-								}
-								final long talkTime = call.getTalkTime();
-								if (talkTime > 60000) {
-									callStats.contacted++;
-									callStats.talkTime.$(talkTime);
-									if (agent.contactDelay.k == 0) {
-										agent.contactDelay.$(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
-									}
-								}
-							}
-						});
-				agent.queueCalls += callStats.queueCalls;
-				agent.outboundCalls += callStats.outboundCalls;
-				if (callStats.contacted > 0) {
-					agent.contacted++;
-					if (isToday) {
-						todayStats.contacted++;
-					}
-				} else {
-					uncontacted.add(opportunity.id);
+			} else {
+				uncontacted.add(opportunity.id);
+			}
+			if (callStats.getCalls() > 0) {
+				agent.attempted++;
+				if (isToday) {
+					todayStats.attempted++;
 				}
-				if (callStats.getCalls() > 0) {
-					agent.attempted++;
-					if (isToday) {
-						todayStats.attempted++;
-					}
-				} else {
-					unattempted.add(opportunity.id);
+			} else {
+				unattempted.add(opportunity.id);
+			}
+			if (callStats.talkTime.k > 0) {
+				agent.talkTime.add(callStats.talkTime.getStats());
+				if (isToday) {
+					todayStats.talkTime.add(callStats.talkTime.getStats());
 				}
-				if (callStats.talkTime.k > 0) {
-					agent.talkTime.add(callStats.talkTime.getStats());
-					if (isToday) {
-						todayStats.talkTime.add(callStats.talkTime.getStats());
-					}
+			}
+			if (callStats.delay.k > 0) {
+				agent.delay.add(callStats.delay.getStats());
+				if (isToday) {
+					todayStats.delay.add(callStats.delay.getStats());
 				}
-				if (callStats.delay.k > 0) {
-					agent.delay.add(callStats.delay.getStats());
-					if (isToday) {
-						todayStats.delay.add(callStats.delay.getStats());
-					}
-				}
-				if (callStats.contactDelay.k > 0) {
-					agent.contactDelay.add(callStats.contactDelay.getStats());
-					if (isToday) {
-						todayStats.contactDelay.add(callStats.contactDelay.getStats());
-					}
+			}
+			if (callStats.contactDelay.k > 0) {
+				agent.contactDelay.add(callStats.contactDelay.getStats());
+				if (isToday) {
+					todayStats.contactDelay.add(callStats.contactDelay.getStats());
 				}
 			}
 		});

@@ -18,7 +18,7 @@ public class AgentRevenue
 
 	@Override
 	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery().and(Agent.Q.sales.and(Agent.Q.locked.negate()));
+		return loggedIn.getViewableAgentsQuery().and(Agent.isSales.and(Agent.isLocked.negate()));
 	}
 
 	@Override
@@ -28,6 +28,6 @@ public class AgentRevenue
 
 	@Override
 	protected Query<Opportunity> oppsForRow(final Agent row) {
-		return Opportunity.Q.withAgent(row);
+		return Opportunity.withAgent(row);
 	}
 }

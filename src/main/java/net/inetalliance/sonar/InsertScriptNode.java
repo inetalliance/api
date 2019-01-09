@@ -5,8 +5,6 @@ import com.callgrove.obj.ScriptNode;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.funky.functors.F1;
-import net.inetalliance.funky.functors.P1;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.types.json.JsonMap;
@@ -17,21 +15,22 @@ import javax.servlet.http.HttpServletResponse;
 
 @WebServlet("/api/insertScript")
 public class InsertScriptNode
-		extends AngularServlet {
+	extends AngularServlet {
 
-	private final F1<String, ScriptNode> lookup;
+
+	private final Info<ScriptNode> info;
 
 	public InsertScriptNode() {
-		lookup = Info.$(ScriptNode.class).lookup;
+		info = Info.$(ScriptNode.class);
 	}
 
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
-		final ScriptNode from = lookup.$(request.getParameter("from"));
+		throws Exception {
+		final ScriptNode from = info.lookup(request.getParameter("from"));
 		if (from == null) {
 			throw new NotFoundException();
 		}
-		final ScriptNode next = lookup.$(request.getParameter("next"));
+		final ScriptNode next = info.lookup(request.getParameter("next"));
 		if (next == null) {
 			throw new NotFoundException();
 		}
@@ -57,14 +56,11 @@ public class InsertScriptNode
 		}
 		Locator.create(request.getRemoteUser(), node);
 
-		Locator.update(from, request.getRemoteUser(), new P1<ScriptNode>() {
-			@Override
-			public void $(final ScriptNode copy) {
-				if (wasRight) {
-					copy.setRight(node);
-				} else {
-					copy.setLeft(node);
-				}
+		Locator.update(from, request.getRemoteUser(), copy -> {
+			if (wasRight) {
+				copy.setRight(node);
+			} else {
+				copy.setLeft(node);
 			}
 		});
 

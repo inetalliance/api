@@ -7,7 +7,6 @@ import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.funky.functors.P1;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.obj.AddressPo;
@@ -32,9 +31,9 @@ import static com.callgrove.types.CallDirection.OUTBOUND;
 import static com.callgrove.types.Resolution.*;
 import static com.callgrove.types.SaleSource.PHONE_CALL;
 import static java.lang.String.format;
-import static net.inetalliance.funky.functors.types.str.StringFun.empty;
+import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.potion.Locator.create;
-import static net.inetalliance.potion.Locator.update;
 import static net.inetalliance.sonar.Startup.pbx;
 import static org.asteriskjava.live.ChannelState.HUNGUP;
 
@@ -56,19 +55,19 @@ public class Dial
 			throw new ForbiddenException();
 		}
 		String number = request.getParameter("number");
-		if (empty.$(number)) {
+		if (isEmpty(number)) {
 			throw new BadRequestException("Expecting parameter \"number\"");
 		}
 		// strip () and - from number
 		number = number.replaceAll("[-()]", "");
 		final String lead = request.getParameter("lead");
 		final String loggedInNumber = loggedIn.isForwarded() ? loggedIn.getMobile() : loggedIn.key;
-		if (empty.$(lead)) {
+		if (isEmpty(lead)) {
 			if (number.length() != 4) {
 				throw new BadRequestException("Number should be 4");  // why? -erik (2013-jul-2)
 			}
 			final String callId = request.getParameter("callId");
-			if (empty.$(callId)) {
+			if (isEmpty(callId)) {
 				final String dial = format("%s/%s", "SIP", loggedInNumber);
 				if (pbx == null) {
 					log.info("Not originating call from %s to extension %s because pbx is not configured", dial, number);
@@ -100,16 +99,13 @@ public class Dial
 			}
 		} else {
 			try {
-				final Opportunity opp = Locator.$(new Opportunity(new Integer(lead)));
+				final Opportunity opp = Locator.$(new Opportunity(Integer.valueOf(lead)));
 				if (opp == null) {
 					throw new NotFoundException();
 				} else {
 					if (opp.getReminder() != null) {
-						Locator.update(opp, loggedIn.key, new P1<Opportunity>() {
-							@Override
-							public void $(final Opportunity copy) {
-								copy.setReminder(null);
-							}
+						Locator.update(opp, loggedIn.key, copy -> {
+							copy.setReminder(null);
 						});
 					}
 					final Site site = opp.getSite();
@@ -126,7 +122,7 @@ public class Dial
 							}
 						}
 					}
-					final String effectivePhone = effectiveQueue != null && !empty.$(effectiveQueue.getTollfree())
+					final String effectivePhone = effectiveQueue != null && isNotEmpty(effectiveQueue.getTollfree())
 						? effectiveQueue.getTollfree() : site.getTollfree();
 					final CallerId callerId = new CallerId(loggedIn.getLastNameFirstInitial(),
 						effectivePhone.charAt(0) == '1' ? effectivePhone.substring(1) :
@@ -181,7 +177,7 @@ public class Dial
 					log.debug("[%d] agent (cid) -> %s", id, printAgent(call.getAgent()));
 				}
 				if (call.getAgent() == null) {
-					call.setAgent(Locator.$1(Agent.Q.withLastName(call.getCallerId().getName().split(",")[0])));
+					call.setAgent(Locator.$1(Agent.withLastName(call.getCallerId().getName().split(",")[0])));
 					log.debug("[%d] agent (name) -> %s", id, printAgent(call.getAgent()));
 				}
 				call.setSite(site);
@@ -218,14 +214,11 @@ public class Dial
 								log.debug("[%d:%s] agent (segment) -> %s", id, call.key, printAgent(segment.getAgent()));
 								segment.setCallerId(new com.callgrove.types.CallerId("", number));
 								create("dial", segment);
-								update(call, "dial", new P1<Call>() {
-									@Override
-									public void $(final Call call) {
-										final Agent agent = segment.getAgent();
-										if (agent != null) {
-											call.setAgent(agent);
-											log.debug("[%d:%s] agent (dial) -> %s", id, call.key, printAgent(call.getAgent()));
-										}
+								Locator.update(call, "dial", call1 -> {
+									final Agent copy = segment.getAgent();
+									if (copy != null) {
+										call1.setAgent(copy);
+										log.debug("[%d:%s] agent (dial) -> %s", id, call1.key, printAgent(call1.getAgent()));
 									}
 								});
 								break;
@@ -234,21 +227,18 @@ public class Dial
 								final AsteriskChannel source = (AsteriskChannel) evt.getSource();
 								if (HUNGUP.equals(evt.getNewValue()) && !source.getName().endsWith("<ZOMBIE>")) {
 									log.debug("[%d:%s] hung up normally", id, call.key);
-									update(call, "dial", new P1<Call>() {
-										@Override
-										public void $(final Call call) {
-											if (!resolved.contains(call.getResolution())) {
-												// look and see if we just came from VoiceMail (history-1 = hangup, history-2 = previous app)
-												final List<ExtensionHistoryEntry> history = source.getExtensionHistory();
-												if (history.size() > 2 && "macro-vm".equals(
-													history.get(history.size() - 2).getExtension().getContext())) {
-													call.setResolution(VOICEMAIL);
-												} else {
-													call.setResolution(ANSWERED);
-												}
+									Locator.update(call, "dial", copy -> {
+										if (!resolved.contains(copy.getResolution())) {
+											// look and see if we just came from VoiceMail (history-1 = hangup, history-2 = previous app)
+											final List<ExtensionHistoryEntry> history = source.getExtensionHistory();
+											if (history.size() > 2 && "macro-vm".equals(
+												history.get(history.size() - 2).getExtension().getContext())) {
+												copy.setResolution(VOICEMAIL);
+											} else {
+												copy.setResolution(ANSWERED);
 											}
-											call.setDuration(new Duration(call.getCreated(), new DateTime()));
 										}
+										copy.setDuration(new Duration(copy.getCreated(), new DateTime()));
 									});
 								}
 								break;
@@ -266,16 +256,13 @@ public class Dial
 									segment.setCallerId(new com.callgrove.types.CallerId(meta.agent.getLastNameFirstInitial(), meta.agent.key));
 									create("dial", segment);
 									meta.agent = segment.getAgent();
-									update(call, "dial", new P1<Call>() {
-										@Override
-										public void $(final Call call) {
-											final Agent agent = segment.getAgent();
-											if (agent != null) {
-												call.setAgent(agent);
-												log.debug("[%d:%s] agent (xfer call) -> %s", id, call.key, printAgent(call.getAgent()));
-											}
-											call.setResolution(ACTIVE);
+									Locator.update(call, "dial", copy -> {
+										final Agent agent1 = segment.getAgent();
+										if (agent1 != null) {
+											copy.setAgent(agent1);
+											log.debug("[%d:%s] agent (xfer call) -> %s", id, copy.key, printAgent(copy.getAgent()));
 										}
+										copy.setResolution(ACTIVE);
 									});
 								}
 								break;
@@ -290,21 +277,15 @@ public class Dial
 									if (segment == null) {
 										log.error("[%d:%s] could not find segment object %s", id, call.key, oldValue.getId());
 									} else {
-										update(segment, "dial", new P1<Segment>() {
-											@Override
-											public void $(final Segment segment) {
-												segment.setEnded(new DateTime());
-											}
+										Locator.update(segment, "dial", copy -> {
+											copy.setEnded(new DateTime());
 										});
-										update(call, "dial", new P1<Call>() {
-											@Override
-											public void $(final Call call) {
-												if (meta.agent != null) {
-													call.setAgent(meta.agent);
-													log.debug("[%d:%s] agent (link) -> %s", id, call.key, printAgent(call.getAgent()));
-												}
-												call.setDuration(new Duration(call.getCreated(), new DateTime()));
+										Locator.update(call, "dial", copy -> {
+											if (meta.agent != null) {
+												copy.setAgent(meta.agent);
+												log.debug("[%d:%s] agent (link) -> %s", id, copy.key, printAgent(copy.getAgent()));
 											}
+											copy.setDuration(new Duration(copy.getCreated(), new DateTime()));
 										});
 									}
 								} else { // linking to new channel
@@ -312,11 +293,8 @@ public class Dial
 									if (segment == null) {
 										log.error("[%d:%s] could not find segment object %s", id, call.key, newValue.getId());
 									} else {
-										update(segment, "dial", new P1<Segment>() {
-											@Override
-											public void $(final Segment segment) {
-												segment.setAnswered(new DateTime());
-											}
+										Locator.update(segment, "dial", copy -> {
+											copy.setAnswered(new DateTime());
 										});
 									}
 								}
