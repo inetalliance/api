@@ -14,7 +14,6 @@ import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.cache.RedisJsonCache;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.events.ProgressHandler;
-import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.util.security.auth.Authorized;
 import org.joda.time.DateMidnight;
@@ -28,7 +27,6 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.PrintWriter;
 import java.util.*;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
@@ -192,7 +190,7 @@ public abstract class CachedGroupingRangeReport<R, G>
 						? EnumSet.noneOf(SaleSource.class)
 						: Arrays
 						.stream(mode)
-						.map(StringFun.camelCaseToEnum(SaleSource.class))
+						.map(s->StringFun.camelCaseToEnum(SaleSource.class,s))
 						.collect(Collectors.toCollection(() -> EnumSet.noneOf(SaleSource.class)));
 				final EnumSet<ContactType> contactTypes =
 					contactTypesParam == null || contactTypesParam.length == 0 ||
@@ -200,22 +198,19 @@ public abstract class CachedGroupingRangeReport<R, G>
 						? EnumSet.noneOf(ContactType.class)
 						: Arrays
 						.stream(contactTypesParam)
-						.map(StringFun.camelCaseToEnum(ContactType.class))
+						.map(s->StringFun.camelCaseToEnum(ContactType.class,s))
 						.collect(Collectors.toCollection(() -> EnumSet.noneOf(ContactType.class)));
 				ProgressHandler.$.start(authorized.getPhone(), response,
 					getJobSize(loggedIn, groupParams.length),
-					new Function<ProgressMeter, Json>() {
-						@Override
-						public Json apply(final ProgressMeter meter) {
-							final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
-								groups, extras);
-							if (end.isAfter(new DateMidnight())) {
-								log.debug("Not caching report %s because end is after midnight today", q);
-							} else {
-								cache.set(q, map);
-							}
-							return map;
+					meter -> {
+						final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
+							groups, extras);
+						if (end.isAfter(new DateMidnight())) {
+							log.debug("Not caching report %s because end is after midnight today", q);
+						} else {
+							cache.set(q, map);
 						}
+						return map;
 					});
 			}
 		} else {

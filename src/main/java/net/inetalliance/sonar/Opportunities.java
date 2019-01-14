@@ -87,7 +87,7 @@ public class Opportunities
 		}
 		final String contactId = request.getParameter("contact");
 		if (isNotEmpty(contactId)) {
-			final Contact contact = Locator.$(new Contact(new Integer(contactId)));
+			final Contact contact = Locator.$(new Contact(Integer.valueOf(contactId)));
 			if (contact == null) {
 				throw new NotFoundException("Could not find contact with id %s", contactId);
 			}

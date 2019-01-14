@@ -45,7 +45,7 @@ public class FollowUpEmailPerformance
 		}
 		final String sourceParam = request.getParameter("source");
 		final SaleSource source = isEmpty(sourceParam) || "all".equals(sourceParam) ?
-			null : StringFun.camelCaseToEnum(SaleSource.class).apply(sourceParam);
+			null : StringFun.camelCaseToEnum(SaleSource.class,sourceParam);
 
 		Query<Opportunity> oppQuery = Opportunity.withSite(site).and(Opportunity.withProductLine(productLine));
 		if (source != null) {

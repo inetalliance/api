@@ -58,7 +58,7 @@ public class DailySales
 		final Set<Agent> agents = Startup.locateParameterValues(request, "agent", Agent.class);
 		final String mode = request.getParameter("mode");
 		final SaleSource saleSource = isEmpty(mode) || "all".equals(mode)
-			? null : StringFun.camelCaseToEnum(SaleSource.class).apply(mode);
+			? null : StringFun.camelCaseToEnum(SaleSource.class,mode);
 		final Interval interval = CachedGroupingRangeReport.getInterval(request);
 		final String cacheKey = String.format("l:%s,s:%s,p:%s,a:%s,m:%s,i:%s/%s",
 			loggedIn.key,

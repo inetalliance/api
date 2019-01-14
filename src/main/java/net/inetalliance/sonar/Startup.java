@@ -216,7 +216,7 @@ public class Startup
 			try {
 				final Constructor<T> constructor = type.getConstructor(Integer.class);
 				for (final String key : params) {
-					final T t = Locator.$(constructor.newInstance(new Integer(key)));
+					final T t = Locator.$(constructor.newInstance(Integer.valueOf(key)));
 					if (t == null) {
 						throw new NotFoundException("Could not find %s[%s]", type.getSimpleName(), key);
 					}

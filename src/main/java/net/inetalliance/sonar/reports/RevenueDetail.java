@@ -48,7 +48,7 @@ public class RevenueDetail
 			throw new BadRequestException("Missing 'mode' parameter");
 		}
 		final SaleSource source = StringFun.isEmpty(mode) || "all".equals(mode) ?
-			null : StringFun.camelCaseToEnum(SaleSource.class).apply(mode);
+			null : StringFun.camelCaseToEnum(SaleSource.class,mode);
 		final Interval interval = getInterval(request);
 		final Info<ProductLine> productLineInfo = Info.$(ProductLine.class);
 		final ProductLine productLine = productLineInfo.lookup(request.getParameter("p"));
