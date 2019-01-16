@@ -91,7 +91,7 @@ public class FacebookLead
 
       final Opportunity opp = new Opportunity();
       opp.setAssignedTo(agent);
-      opp.setSource(SaleSource.FACEBOOK);
+      opp.setSource(SaleSource.SOCIAL);
       opp.setAmount(amount);
       opp.setStage(SalesStage.HOT);
       opp.setContact(contact);
