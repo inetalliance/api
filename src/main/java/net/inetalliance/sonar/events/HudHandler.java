@@ -23,14 +23,14 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.Agent.isActive;
+import static com.callgrove.obj.Agent.*;
 import static com.callgrove.types.CallDirection.*;
-import static java.util.concurrent.TimeUnit.MILLISECONDS;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sonar.Startup.isSpainDevServer;
+import static java.util.concurrent.TimeUnit.*;
+import static net.inetalliance.potion.Locator.*;
 
-public class HudHandler implements Runnable, MessageHandler {
+public class HudHandler
+	implements Runnable,
+	           MessageHandler {
 
 	private static final Map<String, HudStatus> status;
 
@@ -107,10 +107,9 @@ public class HudHandler implements Runnable, MessageHandler {
 
 	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 
-
 	@Override
 	public void run() {
-		if (!isSpainDevServer) {
+		if (Startup.pbx != null) {
 			try {
 				linkedChannels.clear();
 				untouched.clear();

@@ -10,6 +10,7 @@ import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.beejax.messages.BeejaxMessageServer;
 import net.inetalliance.funky.Funky;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.MessageServer;
@@ -36,12 +37,11 @@ import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import static java.util.Arrays.asList;
-import static java.util.Collections.synchronizedMap;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.angular.AngularServlet.getContextParameter;
-import static net.inetalliance.potion.Locator.$;
-import static net.inetalliance.potion.Locator.forEach;
+import static java.util.Arrays.*;
+import static java.util.Collections.*;
+import static java.util.stream.Collectors.*;
+import static net.inetalliance.angular.AngularServlet.*;
+import static net.inetalliance.potion.Locator.*;
 
 @WebListener
 public class Startup
@@ -50,16 +50,13 @@ public class Startup
 	private static final transient Log log = Log.getInstance(Startup.class);
 	public static DefaultAsteriskServer pbx;
 
-
 	public static final Map<Integer, Set<String>> productLineQueues =
 		synchronizedMap(new LazyMap<>(new HashMap<>(), i -> new HashSet<>()));
-	public static final boolean isSpainDevServer = System.getProperty("spainDevServer") != null;
-
 
 	private static final Map<Set<String>, Set<String>> queuesForProductLine = new HashMap<>();
 
-	public static Query<Call> callsWithProductLineParameter(final HttpServletRequest request,
-	                                                        final String parameter) {
+	static Query<Call> callsWithProductLineParameter(final HttpServletRequest request,
+		final String parameter) {
 		final String[] params = request.getParameterValues(parameter);
 		if (params == null || params.length == 0) {
 			return Query.all(Call.class);
@@ -69,12 +66,12 @@ public class Startup
 
 	}
 
-	public static Query<Call> callsWithProductLines(final Set<ProductLine> productLines) {
+	static Query<Call> callsWithProductLines(final Set<ProductLine> productLines) {
 		return callsWithProductLineKeys(productLines.stream().map(p -> p.id.toString()).collect(toSet()));
 
 	}
 
-	public static Query<Call> callsWithProductLineKeys(final Set<String> productLineIds) {
+	private static Query<Call> callsWithProductLineKeys(final Set<String> productLineIds) {
 		if (productLineIds.isEmpty()) {
 			return Query.all(Call.class);
 		}
@@ -119,29 +116,29 @@ public class Startup
 		super.contextInitialized(sce);
 		final ServletContext context = sce.getServletContext();
 		final String asteriskParam = getContextParameter(context, "asterisk");
-		try {
-			final URI asterisk = new URI(asteriskParam);
-			final Credentials credentials = NetUtil.getCredentials(asterisk);
-			int port = asterisk.getPort();
-			if (port == -1) {
-				port = 5038; // use default manager port if not specified
-			}
+		if (StringFun.isNotEmpty(asteriskParam)) {
+			try {
+				final URI asterisk = new URI(asteriskParam);
+				final Credentials credentials = NetUtil.getCredentials(asterisk);
+				int port = asterisk.getPort();
+				if (port == -1) {
+					port = 5038; // use default manager port if not specified
+				}
 
-			log.info("Connecting to Asterisk");
-			pbx = new DefaultAsteriskServer(asterisk.getHost(), port, credentials.user, credentials.password);
-			pbx.setSkipQueues(true);
-			Logger.getLogger("org.asteriskjava").setLevel(Level.SEVERE);
-			Logger.getLogger("org.asteriskjava.manager.internal.ManagerConnectionImpl").setLevel(Level.OFF);
-			Logger.getLogger("org.asteriskjava.live.internal.ChannelManager").setLevel(Level.OFF);
-			Logger.getLogger("org.asteriskjava.live.internal.AsteriskServerImpl").setLevel(Level.OFF);
-			Logger.getLogger("org.asteriskjava.util.internal.Slf4JLogger").setLevel(Level.OFF);
+				log.info("Connecting to Asterisk");
+				pbx = new DefaultAsteriskServer(asterisk.getHost(), port, credentials.user, credentials.password);
+				pbx.setSkipQueues(true);
+				Logger.getLogger("org.asteriskjava").setLevel(Level.SEVERE);
+				Logger.getLogger("org.asteriskjava.manager.internal.ManagerConnectionImpl").setLevel(Level.OFF);
+				Logger.getLogger("org.asteriskjava.live.internal.ChannelManager").setLevel(Level.OFF);
+				Logger.getLogger("org.asteriskjava.live.internal.AsteriskServerImpl").setLevel(Level.OFF);
+				Logger.getLogger("org.asteriskjava.util.internal.Slf4JLogger").setLevel(Level.OFF);
 
-			log.info("Starting up Asterisk Manager");
-			if (!isSpainDevServer) {
+				log.info("Starting up Asterisk Manager");
 				pbx.initialize();
+			} catch (URISyntaxException e) {
+				log.error("could not parse asterisk parameter as uri: %s", asteriskParam);
 			}
-		} catch (URISyntaxException e) {
-			log.error("could not parse asterisk parameter as uri: %s", asteriskParam);
 		}
 		try {
 			Callgrove.beejax =
@@ -192,8 +189,8 @@ public class Startup
 		}
 	}
 
-	public static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param,
-	                                               final Class<T> type) {
+	static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param,
+		final Class<T> type) {
 		final String[] params = request.getParameterValues(param);
 		if (params == null || params.length == 0) {
 			return Collections.emptySet();
