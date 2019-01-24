@@ -21,11 +21,6 @@
         <param-value>http://callgrove:ijBy8ngTZEo3WFMLFDZgxnu@192.168.96.6:5038</param-value>
     </context-param>
     <context-param>
-        <description>dev asterisk uri</description>
-        <param-name>dev-asterisk</param-name>
-        <param-value></param-value>
-    </context-param>
-    <context-param>
         <description>auth uri</description>
         <param-name>authenticator</param-name>
         <param-value>http://amberjack/auth</param-value>

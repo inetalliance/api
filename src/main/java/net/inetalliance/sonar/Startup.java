@@ -116,7 +116,7 @@ public class Startup
 		super.contextInitialized(sce);
 		final ServletContext context = sce.getServletContext();
 		final String asteriskParam = getContextParameter(context, "asterisk");
-		if (StringFun.isNotEmpty(asteriskParam)) {
+		if (StringFun.isNotEmpty(asteriskParam) && System.getProperty("noAsterisk") == null) {
 			try {
 				final URI asterisk = new URI(asteriskParam);
 				final Credentials credentials = NetUtil.getCredentials(asterisk);
