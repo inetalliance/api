@@ -1,6 +1,7 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.obj.*;
+import com.callgrove.types.SaleSource;
 import com.callgrove.types.SalesStage;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.exception.ForbiddenException;
@@ -22,23 +23,21 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.EnumSet;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import static com.callgrove.obj.Opportunity.*;
-import static com.callgrove.types.ContactType.DEALER;
-import static com.callgrove.types.SaleSource.ONLINE;
-import static java.lang.System.currentTimeMillis;
-import static java.util.EnumSet.of;
-import static java.util.regex.Pattern.CASE_INSENSITIVE;
-import static java.util.regex.Pattern.compile;
-import static java.util.stream.Collectors.toList;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
-import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
+import static com.callgrove.types.ContactType.*;
+import static com.callgrove.types.SaleSource.*;
+import static java.lang.System.*;
+import static java.util.EnumSet.*;
+import static java.util.regex.Pattern.*;
+import static java.util.stream.Collectors.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.sql.OrderBy.Direction.*;
 
 @WebServlet("/api/lead/*")
 public class Leads
@@ -75,9 +74,9 @@ public class Leads
 
 	}
 
-
 	@Override
-	protected Json toJson(final Key<Opportunity> key, final Opportunity opportunity, final HttpServletRequest request) {
+	protected Json toJson(final Key<Opportunity> key, final Opportunity opportunity,
+		final HttpServletRequest request) {
 		return Leads.json(opportunity);
 	}
 
@@ -102,7 +101,7 @@ public class Leads
 		return new DelegatingQuery<>(delegate, s -> 'S' + s, Function.identity(), b -> b) {
 			@Override
 			public Iterable<Object> build(final SqlBuilder sql, final Namer namer,
-			                              final DbVendor vendor, final String table) {
+				final DbVendor vendor, final String table) {
 				if (sql.aggregateFields.length == 0) {
 					sql.addColumn(null,
 						"ts_rank(Opportunity.document,Opportunity_query) + ts_rank(Contact.document," +
@@ -118,7 +117,6 @@ public class Leads
 	@Override
 	public Json toJson(final HttpServletRequest request, final Opportunity o) {
 		return json(o);
-
 	}
 
 	static JsonMap getFilters(final HttpServletRequest request) {
@@ -134,6 +132,15 @@ public class Leads
 				labels.put(s, site.getAbbreviation());
 			}
 			filters.put("s", labels);
+		}
+		final String[] sources = request.getParameterValues("src");
+		if (sources != null && sources.length > 0) {
+			final JsonMap labels = new JsonMap();
+			for (final String sourceKey : sources) {
+				final SaleSource source = SaleSource.valueOf(sourceKey);
+				labels.put(sourceKey, source.getLocalizedName().toString());
+			}
+			filters.put("src", labels);
 		}
 		final String[] pls = request.getParameterValues("pl");
 		if (pls != null && pls.length > 0) {
@@ -173,8 +180,8 @@ public class Leads
 
 	@Override
 	protected Json update(final Key<Opportunity> key, final HttpServletRequest request,
-	                      final HttpServletResponse response,
-	                      final Opportunity opportunity, final JsonMap data)
+		final HttpServletResponse response,
+		final Opportunity opportunity, final JsonMap data)
 		throws IOException {
 		try {
 			return super.update(key, request, response, opportunity, data);
@@ -210,7 +217,6 @@ public class Leads
 		}
 	}
 
-
 	@Override
 	public Query<Opportunity> all(final Class<Opportunity> type, final HttpServletRequest request) {
 		final boolean support = request.getParameter("support") != null;
@@ -227,8 +233,8 @@ public class Leads
 		Query<Opportunity> query = support
 			? isActive.negate().orderBy(sort.field, sort.direction)
 			: review
-			? Query.all(Opportunity.class).orderBy(sort.field, sort.direction)
-			: Opportunity.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
+				? Query.all(Opportunity.class).orderBy(sort.field, sort.direction)
+				: Opportunity.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
 		query = query.and(webhook ? Opportunity.hasWebhook : Opportunity.noWebhook);
 		final String[] pls = request.getParameterValues("pl");
 		if (pls != null && pls.length > 0) {
@@ -239,11 +245,22 @@ public class Leads
 		if (ss != null && ss.length > 0) {
 			query = query.and(withSiteIdIn(Arrays.stream(ss).map(Integer::valueOf).collect(toList())));
 		}
+		final String[] sources = request.getParameterValues("src");
+		if (sources != null && sources.length > 0) {
+			query =
+				query.and(Opportunity.withSources(
+					Arrays
+						.stream(sources)
+						.map(SaleSource::valueOf)
+						.collect(Collectors.toCollection(() -> EnumSet.noneOf(SaleSource.class)))));
+		}
+
 		if (support || review) {
 			final SalesStage stage = getParameter(request, SalesStage.class, "stage");
 			if (stage != null) {
 				query = query.and(withStages(of(stage)));
 			}
+
 			final String[] as = request.getParameterValues("a");
 			if (as != null && as.length > 0) {
 				if (review && loggedIn.isTeamLeader()) {
