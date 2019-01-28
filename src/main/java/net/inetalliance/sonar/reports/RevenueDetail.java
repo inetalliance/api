@@ -12,6 +12,7 @@ import net.inetalliance.angular.list.Listable;
 import net.inetalliance.beejax.messages.Category;
 import net.inetalliance.beejax.messages.Product;
 import net.inetalliance.beejax.messages.ProductChain;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
@@ -30,10 +31,9 @@ import java.util.Set;
 import java.util.function.Function;
 
 import static com.callgrove.obj.Opportunity.*;
-import static java.util.stream.Collectors.toMap;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.sonar.reports.CachedGroupingRangeReport.getInterval;
+import static java.util.stream.Collectors.*;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sonar.reports.CachedGroupingRangeReport.*;
 import static net.inetalliance.sonar.reports.Revenue.CellType.*;
 
 @WebServlet("/api/revenueDetail")
@@ -96,7 +96,7 @@ public class RevenueDetail
 		final Set<Product> products = chains.isEmpty() ?
 			Set.of()
 			: Callgrove.beejax.lookupProducts(chains);
-		final Map<Integer, Product> productsById = products.stream().collect(toMap(p -> p.id, Function.identity()));
+		final Map<Integer, Product> productsById = products.stream().collect(Funky.toMap(p -> p.id, Function.identity()));
 
 		final Function<Opportunity, Json> toJson = opportunity -> {
 			final Product product = productsById.get(opportunity.getBeejaxProductId());

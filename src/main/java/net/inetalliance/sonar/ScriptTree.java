@@ -6,6 +6,7 @@ import com.callgrove.obj.ScriptRoot;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
@@ -17,8 +18,7 @@ import java.util.Collection;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import static java.util.stream.Collectors.toMap;
-import static net.inetalliance.potion.Locator.count;
+import static net.inetalliance.potion.Locator.*;
 
 @WebServlet("/api/script-tree/*")
 public class ScriptTree
@@ -58,7 +58,7 @@ public class ScriptTree
 				throw new BadRequestException("Node %s is not a root of a %s script", rootNode.id, productLine.getName());
 			}
 			final Collection<ScriptNode> nodes = rootNode.getTree();
-			final JsonMap json = new JsonMap(nodes.stream().collect(toMap(n->n.id.toString(), ScriptTree::toJson)));
+			final JsonMap json = new JsonMap(nodes.stream().collect(Funky.toMap(n->n.id.toString(), ScriptTree::toJson)));
 			json.put("root", rootNode.id);
 			respond(response, json);
 		} else {

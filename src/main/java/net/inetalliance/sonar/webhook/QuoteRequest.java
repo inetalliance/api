@@ -5,6 +5,7 @@ import com.callgrove.types.Address;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.dispatch.Dispatchable;
 import net.inetalliance.angular.exception.BadRequestException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
@@ -15,15 +16,14 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import static com.callgrove.obj.Webhook.withApiKey;
-import static com.callgrove.types.ContactType.CUSTOMER;
-import static com.callgrove.types.SaleSource.THIRD_PARTY_ONLINE;
-import static com.callgrove.types.SalesStage.HOT;
-import static java.util.stream.Collectors.toMap;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
+import static com.callgrove.obj.Webhook.*;
+import static com.callgrove.types.ContactType.*;
+import static com.callgrove.types.SaleSource.*;
+import static com.callgrove.types.SalesStage.*;
+import static net.inetalliance.funky.StringFun.*;
 import static net.inetalliance.potion.Locator.*;
-import static net.inetalliance.potion.obj.AddressPo.unformatPhoneNumber;
-import static net.inetalliance.types.geopolitical.us.State.fromAbbreviation;
+import static net.inetalliance.potion.obj.AddressPo.*;
+import static net.inetalliance.types.geopolitical.us.State.*;
 
 @WebServlet("/hook/opportunity")
 public class QuoteRequest
@@ -45,7 +45,7 @@ public class QuoteRequest
 		Map<String, String> params = request.getParameterMap()
 			.entrySet()
 			.stream()
-			.collect(toMap(Map.Entry::getKey, e -> e.getValue()[0]));
+			.collect(Funky.toMap(Map.Entry::getKey, e -> e.getValue()[0]));
 
 
 		if ($1(Opportunity.withWebhook(webhook, params.get("leadKey"))) != null) {
