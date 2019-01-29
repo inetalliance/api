@@ -23,12 +23,11 @@ import javax.servlet.annotation.WebServlet;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 
-import static com.callgrove.obj.Call.isOutbound;
-import static com.callgrove.obj.Call.isQueue;
+import static com.callgrove.obj.Call.*;
 import static com.callgrove.obj.Opportunity.*;
-import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.log.Log.*;
 import static net.inetalliance.potion.Locator.*;
-import static net.inetalliance.sql.Aggregate.SUM;
+import static net.inetalliance.sql.Aggregate.*;
 
 @WebServlet({"/api/productLineClosing", "/reporting/reports/productLineClosing"})
 public class ProductLineClosing
@@ -36,7 +35,6 @@ public class ProductLineClosing
 
 	private static final transient Log log = getInstance(ProductLineClosing.class);
 	private final Info<Site> info;
-
 
 	public ProductLineClosing() {
 		super("site", "productLine");
@@ -49,7 +47,7 @@ public class ProductLineClosing
 	}
 
 	static Set<String> getQueues(final Agent loggedIn, final ProductLine productLine,
-	                             final Collection<Site> sites) {
+		final Collection<Site> sites) {
 		final Set<String> allForProductLine = Startup.productLineQueues.get(productLine.id);
 		final Set<String> queues = new HashSet<>(allForProductLine);
 		retainVisible(loggedIn, sites, queues);
@@ -74,11 +72,11 @@ public class ProductLineClosing
 
 	@Override
 	protected JsonMap generate(final EnumSet<SaleSource> sources,
-	                           final EnumSet<ContactType> contactTypes,
-	                           final Agent loggedIn, final ProgressMeter meter,
-	                           final DateMidnight start, final DateMidnight end,
-	                           final Set<Site> sites,
-	                           final Map<String, String> extras) {
+		final EnumSet<ContactType> contactTypes,
+		final Agent loggedIn, final ProgressMeter meter,
+		final DateMidnight start, final DateMidnight end,
+		final Set<Site> sites,
+		final Map<String, String> extras) {
 		if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
 			log.warning("%s tried to access closing report data",
 				loggedIn == null ? "Nobody?" : loggedIn.key);
@@ -129,8 +127,8 @@ public class ProductLineClosing
 			agentTotal.setCloses(count(agentOppQuery));
 			agentTotal.setSales($$(agentOppQuery, SUM, Currency.class, "amount"));
 			if (agentTotal.getCloses() > 0 || agentTotal.getQueueCalls() > 0) {
-				callCenterTotals.getOrDefault(agent.getCallCenter().id, new DailyPerformance()).add(agentTotal);
-				callCenterCount.getOrDefault(agent.getCallCenter().id, new AtomicInteger(0)).incrementAndGet();
+				callCenterTotals.computeIfAbsent(agent.getCallCenter().id, k -> new DailyPerformance()).add(agentTotal);
+				callCenterCount.computeIfAbsent(agent.getCallCenter().id, k -> new AtomicInteger(0)).incrementAndGet();
 				totalAgents.incrementAndGet();
 				totalCalls.addAndGet(agentTotal.getQueueCalls());
 				rows.add(info.toJson(agentTotal)
@@ -140,10 +138,11 @@ public class ProductLineClosing
 
 		});
 		for (final CallCenter callCenter : loggedIn.getViewableCallCenters()) {
-			final DailyPerformance callCenterTotal = callCenterTotals.get(callCenter.id);
+			final DailyPerformance callCenterTotal = callCenterTotals.computeIfAbsent(callCenter.id,
+				k -> new DailyPerformance());
 			if (callCenterTotal.getCloses() > 0 && callCenterTotal.getQueueCalls() > 0) {
 				rows.add(info.toJson(callCenterTotal)
-					.$("callCenter", callCenterCount.getOrDefault(callCenter.id,new AtomicInteger(0)).get())
+					.$("callCenter", callCenterCount.getOrDefault(callCenter.id, new AtomicInteger(0)).get())
 					.$("label", callCenter.getName()));
 			}
 		}
