@@ -1,5 +1,6 @@
 package net.inetalliance.sonar;
 
+import com.callgrove.Callgrove;
 import com.callgrove.obj.*;
 import com.callgrove.types.SaleSource;
 import net.inetalliance.angular.AngularServlet;
@@ -13,7 +14,6 @@ import net.inetalliance.potion.cache.RedisJsonCache;
 import net.inetalliance.potion.obj.IdPo;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.events.ProgressHandler;
-import net.inetalliance.sonar.reports.CachedGroupingRangeReport;
 import net.inetalliance.sql.Aggregate;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.JsonFloat;
@@ -33,11 +33,11 @@ import java.io.PrintWriter;
 import java.util.*;
 
 import static com.callgrove.obj.Opportunity.*;
-import static java.util.stream.Collectors.toList;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.types.json.Json.jsDateFormat;
-import static net.inetalliance.types.www.ContentType.JSON;
+import static java.util.stream.Collectors.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.log.Log.*;
+import static net.inetalliance.types.json.Json.*;
+import static net.inetalliance.types.www.ContentType.*;
 
 /**
  * this responds with filtered sales data in a json list by day that is compatible with the google charts api
@@ -54,12 +54,13 @@ public class DailySales
 		final Agent loggedIn = Startup.getAgent(request);
 		assert loggedIn != null;
 		final Set<Site> sites = Startup.locateParameterValues(request, "site", Site.class);
-		final Set<ProductLine> productLines = Startup.locateParameterValues(request, "productLine", ProductLine.class);
+		final Set<ProductLine> productLines = Startup.locateParameterValues(request, "productLine",
+			ProductLine.class);
 		final Set<Agent> agents = Startup.locateParameterValues(request, "agent", Agent.class);
 		final String mode = request.getParameter("mode");
 		final SaleSource saleSource = isEmpty(mode) || "all".equals(mode)
-			? null : StringFun.camelCaseToEnum(SaleSource.class,mode);
-		final Interval interval = CachedGroupingRangeReport.getInterval(request);
+			? null : StringFun.camelCaseToEnum(SaleSource.class, mode);
+		final Interval interval = Callgrove.getInterval(request);
 		final String cacheKey = String.format("l:%s,s:%s,p:%s,a:%s,m:%s,i:%s/%s",
 			loggedIn.key,
 			IdPo.mapId(sites),
@@ -86,7 +87,8 @@ public class DailySales
 					// this shouldn't really happen. they'd have to be sneakily changing the json URI outside of the UI
 					final Set<Site> forbidden = new HashSet<>(sites);
 					forbidden.removeAll(visible);
-					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden, visible);
+					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden,
+						visible);
 					throw new ForbiddenException();
 				}
 			}
@@ -113,7 +115,8 @@ public class DailySales
 				if (!visible.containsAll(agents)) {
 					final Set<Agent> forbidden = new HashSet<>(agents);
 					agents.removeAll(visible);
-					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden, visible);
+					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden,
+						visible);
 					throw new ForbiddenException();
 				}
 			}

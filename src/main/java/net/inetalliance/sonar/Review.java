@@ -24,20 +24,22 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.*;
 import java.util.stream.Collectors;
 
+import static com.callgrove.Callgrove.*;
+import static com.callgrove.obj.Call.isActive;
+import static com.callgrove.obj.Call.withAgentIn;
 import static com.callgrove.obj.Call.*;
-import static com.callgrove.obj.Opportunity.createdBefore;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.log.Log.getInstance;
+import static com.callgrove.obj.Opportunity.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.log.Log.*;
 import static net.inetalliance.potion.Locator.*;
-import static net.inetalliance.sonar.reports.CachedGroupingRangeReport.simple;
 
 @WebServlet("/api/review")
 public class Review
-		extends AngularServlet {
+	extends AngularServlet {
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
+		throws Exception {
 		final Agent loggedIn = Startup.getAgent(request);
 		assert loggedIn != null;
 		final String callCenterParam = request.getParameter("callCenter");
@@ -56,66 +58,66 @@ public class Review
 			}
 			if (!loggedIn.isManager() && !callCenter.equals(loggedIn.getManaged())) {
 				throw new ForbiddenException("%s tried to access call center %s", loggedIn.getLastNameFirstInitial(),
-						callCenter.getName());
+					callCenter.getName());
 			}
 		}
 
 		final Set<Agent> viewableAgents = callCenter == null
-				? Collections.singleton(loggedIn)
-				: $$(Agent.isActive.and(Agent.withCallCenter(callCenter)));
+			? Collections.singleton(loggedIn)
+			: $$(Agent.isActive.and(Agent.withCallCenter(callCenter)));
 		if (viewableAgents.isEmpty()) {
 			throw new BadRequestException("%s does not have any viewable agents", loggedIn.getLastNameFirstInitial());
 		}
 		final String dayParam = request.getParameter("date");
 		try {
 			final DateMidnight day = isEmpty(dayParam)
-					? new DateMidnight()
-					: simple.parseDateTime(dayParam).toDateMidnight();
+				? new DateMidnight()
+				: simple.parseDateTime(dayParam).toDateMidnight();
 			final Query<Call> q = isQueue.and(isActive.negate()).and(inInterval(day.toInterval())).and(withAgentIn
-					(viewableAgents));
+				(viewableAgents));
 			final Collection<Json> json = new ArrayList<>(count(q));
 			forEach(q, call -> {
 				final JsonMap map = new JsonMap()
-						.$("key")
-						.$("created")
-						.$("resolution")
-						.$("notes")
-						.$("todo")
-						.$("dumped")
-						.$("reviewed")
-						.$("silent");
+					.$("key")
+					.$("created")
+					.$("resolution")
+					.$("notes")
+					.$("todo")
+					.$("dumped")
+					.$("reviewed")
+					.$("silent");
 				Info.$(Call.class).fill(call, map);
 				final CallerId callerId = call.getCallerId();
 				final Site site = call.getSite();
 				final Agent agent = call.getAgent();
 				map.$("callerId",
-						new JsonMap()
-								.$("name", callerId == null ? "Unknown" : callerId.getName())
-								.$("number", callerId == null ? "" : callerId.getNumber()))
-						.$("site", site == null ? null : new JsonMap()
-								.$("abbreviation", site.getAbbreviation().toString()))
-						.$("agent", agent == null ? null : new JsonMap()
-								.$("name", agent.getFirstNameLastInitial())
-								.$("key", agent.key))
-						.$("queue", call.getQueue().getName())
-						.$("productLine", call.getQueue().getProductLine().getName())
-						.$("duration", new Duration(call.getDuration().toDurationMillis()).getAbbreviation(true));
+					new JsonMap()
+						.$("name", callerId == null ? "Unknown" : callerId.getName())
+						.$("number", callerId == null ? "" : callerId.getNumber()))
+					.$("site", site == null ? null : new JsonMap()
+						.$("abbreviation", site.getAbbreviation().toString()))
+					.$("agent", agent == null ? null : new JsonMap()
+						.$("name", agent.getFirstNameLastInitial())
+						.$("key", agent.key))
+					.$("queue", call.getQueue().getName())
+					.$("productLine", call.getQueue().getProductLine().getName())
+					.$("duration", new Duration(call.getDuration().toDurationMillis()).getAbbreviation(true));
 				final Agent blame = call.getBlame();
 				map.$("blame", blame == null ? null : new JsonMap()
-						.$("name", blame.getFirstNameLastInitial())
-						.$("key", blame.key));
+					.$("name", blame.getFirstNameLastInitial())
+					.$("key", blame.key));
 
 				final Query<Contact> cQ = Contact.withPhoneNumber(call.getRemoteCallerId().getNumber());
 				final JsonList contacts = new JsonList(count(cQ));
 				final Map<Agent, Collection<Opportunity>> opps = new HashMap<>();
 				forEach(cQ, contact -> {
 					final JsonMap map1 = new JsonMap()
-							.$("id", contact.id)
-							.$("name", contact.getFullName())
-							.$("selected", contact.equals(call.getContact()));
+						.$("id", contact.id)
+						.$("name", contact.getFullName())
+						.$("selected", contact.equals(call.getContact()));
 					contacts.add(map1);
 					forEach(Opportunity.withContact(contact).and(createdBefore(call.getCreated().plusHours(1))),
-						o -> opps.computeIfAbsent(o.getAssignedTo(),a-> new ArrayList<>()).add(o));
+						o -> opps.computeIfAbsent(o.getAssignedTo(), a -> new ArrayList<>()).add(o));
 				});
 				map.$("contacts", contacts);
 				final SortedQuery<Segment> sQ = Segment.withCall(call);
@@ -124,23 +126,23 @@ public class Review
 				forEach(sQ, segment -> {
 					final Agent agent1 = segment.getAgent();
 					final JsonMap sMap = new JsonMap()
-							.$("created", segment.getCreated())
-							.$("answered", segment.getAnswered())
-							.$("ended", segment.getEnded())
-							.$("talktime", segment.getAnswered() == null ? null : new Duration(segment.getTalkTime()
-									.toDurationMillis()).getAbbreviation(true))
-							.$("agent", agent1 == null ? null : new JsonMap()
-									.$("name", agent1.getFirstNameLastInitial())
-									.$("key", agent1.key));
+						.$("created", segment.getCreated())
+						.$("answered", segment.getAnswered())
+						.$("ended", segment.getEnded())
+						.$("talktime", segment.getAnswered() == null ? null : new Duration(segment.getTalkTime()
+							.toDurationMillis()).getAbbreviation(true))
+						.$("agent", agent1 == null ? null : new JsonMap()
+							.$("name", agent1.getFirstNameLastInitial())
+							.$("key", agent1.key));
 					if (agent1 != null) {
 						final JsonList oList = opps.get(agent1).stream().map(o -> new JsonMap()
-								.$("id", o.id)
-								.$("notes", o.getNotes())
-								.$("stage", o.getStage())
-								.$("productLine", o.getProductLineName())
-								.$("estimatedClose", o.getEstimatedClose())
-								.$("existing", o.getCreated().isBefore(call.getCreated()))
-								.$("reminder", o.getReminder())).collect(Collectors.toCollection(JsonList::new));
+							.$("id", o.id)
+							.$("notes", o.getNotes())
+							.$("stage", o.getStage())
+							.$("productLine", o.getProductLineName())
+							.$("estimatedClose", o.getEstimatedClose())
+							.$("existing", o.getCreated().isBefore(call.getCreated()))
+							.$("reminder", o.getReminder())).collect(Collectors.toCollection(JsonList::new));
 						sMap.$("opportunities", oList);
 					}
 					segments.add(sMap);

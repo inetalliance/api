@@ -4,7 +4,6 @@ import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.potion.Locator;
-import net.inetalliance.sonar.reports.CachedGroupingRangeReport;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
@@ -17,22 +16,23 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import static com.callgrove.Callgrove.*;
 import static com.callgrove.obj.Call.*;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.Aggregate.MIN;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.Aggregate.*;
 
 @WebServlet(urlPatterns = {"/api/uniqueCid"})
-public class UniqueCid extends AngularServlet {
+public class UniqueCid
+	extends AngularServlet {
 
 	public static final Pattern pattern = Pattern.compile("/api/uniqueCid");
 
 	private static class Info {
-		int old;
-		int first;
-		int anon;
-		int opps;
+		private int old;
+		private int first;
+		private int anon;
+		private int opps;
 
 		JsonMap toJson() {
 			return new JsonMap()
@@ -53,7 +53,7 @@ public class UniqueCid extends AngularServlet {
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
 		throws Exception {
-		final Interval interval = CachedGroupingRangeReport.getInterval(request);
+		final Interval interval = getInterval(request);
 		final Site atc = new Site(10117);
 		final Map<String, DateTime> firstCall = $$(withSite(atc).and(isQueue), MIN, String.class,
 			"callerid_number", DateTime.class, "created");
