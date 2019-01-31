@@ -13,9 +13,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.Aggregate.SUM;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.Aggregate.*;
 
 @WebServlet("/reporting/reports/sitePerformance")
 public class SitePerformance
@@ -30,13 +29,11 @@ public class SitePerformance
 		info = Info.$(Site.class);
 	}
 
-	// Begin Dispatchable methods
 	@Override
 	public Pattern getPattern() {
 		return pattern;
 	}
 
-	// End Dispatchable methods
 	@Override
 	protected void addExtra(final JsonMap json, final Map<String, Interval> intervals, final Set<Site> sites) {
 		final JsonMap unassigned = new JsonMap();
@@ -66,7 +63,7 @@ public class SitePerformance
 		forEach(Query.all(Queue.class), queue -> {
 			final ProductLine productLine = queue.getProductLine();
 			if (productLine != null) {
-				rowQueues.get(productLine.id).add(queue.key);
+				rowQueues.computeIfAbsent(productLine.id, k -> new HashSet<>()).add(queue.key);
 			}
 		});
 
