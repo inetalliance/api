@@ -2,6 +2,7 @@ package net.inetalliance.sonar.events;
 
 import com.callgrove.jobs.Hud;
 import com.callgrove.obj.Agent;
+import net.inetalliance.angular.events.Events;
 import net.inetalliance.cron.CronJob;
 import net.inetalliance.cron.CronStatus;
 import net.inetalliance.log.Log;
@@ -112,7 +113,7 @@ public class StatusHandler implements MessageHandler {
 
 	@Override
 	public JsonMap onMessage(final Session session, final JsonMap map) {
-		final Agent agent = Events.getAgent(session);
+		final Agent agent = SessionHandler.getAgent(session);
 		final JsonMap hud = Hud.currentStatus.getMap(agent.key);
 		switch (Action.valueOf(map.get("action").toUpperCase())) {
 			case PAUSE:

@@ -39,7 +39,7 @@ public class ListableModel<T>
 
 	public static class Named<T extends net.inetalliance.types.Named>
 		extends ListableModel<T> {
-		Named(final Class<T> type) {
+		protected Named(final Class<T> type) {
 			super(type);
 		}
 

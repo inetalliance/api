@@ -5,13 +5,14 @@ import net.inetalliance.types.json.JsonMap;
 
 import javax.websocket.Session;
 
-import static net.inetalliance.util.shell.Shell.log;
+import static net.inetalliance.util.shell.Shell.*;
 
-public class PingHandler implements MessageHandler{
+public class PingHandler
+	implements MessageHandler {
 	@Override
 	public JsonMap onMessage(final Session session, final JsonMap msg) {
-		if(log.isTraceEnabled()) {
-			Agent agent = Events.getAgent(session);
+		if (log.isTraceEnabled()) {
+			Agent agent = SessionHandler.getAgent(session);
 			log.trace("%s pinged us", agent.getLastNameFirstInitial());
 		}
 		return null;

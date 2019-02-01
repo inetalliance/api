@@ -1,15 +1,19 @@
 package net.inetalliance.sonar.events;
 
+import com.callgrove.obj.Agent;
+import net.inetalliance.angular.events.Events;
+import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 
 import javax.websocket.Session;
 import java.util.concurrent.ConcurrentHashMap;
 
-import static net.inetalliance.sonar.events.Events.send;
-import static net.inetalliance.util.shell.Shell.log;
+import static net.inetalliance.angular.events.Events.*;
+import static net.inetalliance.util.shell.Shell.*;
 
-class SessionHandler implements javax.websocket.MessageHandler.Whole<String> {
+public class SessionHandler
+	implements javax.websocket.MessageHandler.Whole<String> {
 	private static final ConcurrentHashMap<String, MessageHandler> handlers = new ConcurrentHashMap<>();
 
 	private static MessageHandler getHandler(final String type) {
@@ -19,12 +23,15 @@ class SessionHandler implements javax.websocket.MessageHandler.Whole<String> {
 		});
 	}
 
-
 	private final Session session;
 
-	SessionHandler(final Session session) {
+	public SessionHandler(final Session session) {
 		this.session = session;
 		handlers.forEach((type, handler) -> send(session, type, handler.onConnect(session)));
+	}
+
+	static Agent getAgent(final Session session) {
+		return Locator.$(new Agent(Events.getUser(session).getPhone()));
 	}
 
 	@Override
@@ -36,9 +43,9 @@ class SessionHandler implements javax.websocket.MessageHandler.Whole<String> {
 	}
 
 	public static void init() {
+		Events.init();
 		handlers.put("hud", new HudHandler());
 		handlers.put("status", new StatusHandler());
-		handlers.put("progress", new ProgressHandler());
 		handlers.put("reminder", new ReminderHandler());
 		handlers.put("ping", new PingHandler());
 
@@ -46,5 +53,6 @@ class SessionHandler implements javax.websocket.MessageHandler.Whole<String> {
 
 	public static void destroy() {
 		handlers.values().forEach(MessageHandler::destroy);
+		Events.destroy();
 	}
 }

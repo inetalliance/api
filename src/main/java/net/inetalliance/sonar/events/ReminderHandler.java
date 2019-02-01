@@ -5,6 +5,7 @@ import com.callgrove.obj.Opportunity;
 import com.callgrove.types.Address;
 import com.callgrove.types.SubContact;
 import net.inetalliance.angular.DaemonThreadFactory;
+import net.inetalliance.angular.events.Events;
 import net.inetalliance.log.Log;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
@@ -20,14 +21,15 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 
-import static com.callgrove.obj.Opportunity.needsReminding;
-import static com.callgrove.obj.Opportunity.withAgentKeyIn;
-import static java.util.Collections.singleton;
-import static java.util.concurrent.TimeUnit.MINUTES;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
-import static net.inetalliance.potion.Locator.forEach;
+import static com.callgrove.obj.Opportunity.*;
+import static java.util.Collections.*;
+import static java.util.concurrent.TimeUnit.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.potion.Locator.*;
 
-public class ReminderHandler implements MessageHandler, Runnable {
+public class ReminderHandler
+	implements MessageHandler,
+	           Runnable {
 	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 	private final Map<String, JsonList> msgs;
 	private final Lock lock;
@@ -49,7 +51,6 @@ public class ReminderHandler implements MessageHandler, Runnable {
 		broadcast(agent);
 		return null;
 	}
-
 
 	@Override
 	public JsonMap onMessage(final Session session, final JsonMap msg) {
@@ -73,7 +74,6 @@ public class ReminderHandler implements MessageHandler, Runnable {
 	public void destroy() {
 		scheduler.shutdownNow();
 	}
-
 
 	private static JsonMap label(final String label, final String phone) {
 		return new JsonMap()

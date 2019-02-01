@@ -13,4 +13,5 @@ public interface MessageHandler {
 	}
 
 	default void destroy() { }
+
 }
