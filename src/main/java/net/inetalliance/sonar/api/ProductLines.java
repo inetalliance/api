@@ -5,7 +5,7 @@ import net.inetalliance.sonar.ListableModel;
 
 import javax.servlet.annotation.WebServlet;
 
-@WebServlet({"/api/productLine/*", "/reporting/productLine/*"})
+@WebServlet("/api/productLine/*")
 public class ProductLines
 	extends ListableModel.Named<ProductLine> {
 	public ProductLines() {

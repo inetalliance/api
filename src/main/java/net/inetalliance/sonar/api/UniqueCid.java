@@ -22,7 +22,7 @@ import static net.inetalliance.funky.StringFun.*;
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.sql.Aggregate.*;
 
-@WebServlet(urlPatterns = {"/api/uniqueCid"})
+@WebServlet("/api/uniqueCid")
 public class UniqueCid
 	extends AngularServlet {
 

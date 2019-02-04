@@ -24,7 +24,7 @@ import static com.callgrove.obj.WizardAnswer.withQuestion;
 import static java.util.stream.Collectors.toList;
 import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
-@WebServlet(urlPatterns = {"/api/wizardAnswer/*", "/api/wizardAnswer/*/question/*"})
+@WebServlet("/api/wizardAnswer/*")
 public class WizardAnswer
 	extends AngularServlet {
 	private static final Pattern pattern = Pattern.compile("/api/wizardAnswer/(\\d+)(?:/question/(\\d+))?");

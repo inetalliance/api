@@ -11,7 +11,7 @@ import java.util.Collection;
 
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
-@WebServlet({"/api/siteGroup/site", "/reporting/siteGroup/site"})
+@WebServlet("/api/siteGroup/site")
 public class SiteGroupSites
 	extends SelectMembers<SiteGroup, Site> {
 	public SiteGroupSites() {

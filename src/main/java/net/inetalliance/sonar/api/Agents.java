@@ -13,7 +13,7 @@ import javax.servlet.http.HttpServletRequest;
 
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
-@WebServlet({"/api/agent/*", "/reporting/agent/*"})
+@WebServlet("/api/agent/*")
 public class Agents
 	extends ListableModel<Agent>
 	implements Dispatchable {

@@ -31,7 +31,7 @@ import static java.util.stream.Collectors.toCollection;
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
-@WebServlet(urlPatterns = "/api/webHookStats")
+@WebServlet("/api/webHookStats")
 public class WebHookStats
 		extends AngularServlet {
 
