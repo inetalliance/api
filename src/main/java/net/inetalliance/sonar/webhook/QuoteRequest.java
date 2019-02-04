@@ -3,7 +3,6 @@ package net.inetalliance.sonar.webhook;
 import com.callgrove.obj.*;
 import com.callgrove.types.Address;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.dispatch.Dispatchable;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.funky.Funky;
 import net.inetalliance.types.json.JsonMap;
@@ -27,10 +26,8 @@ import static net.inetalliance.types.geopolitical.us.State.*;
 
 @WebServlet("/hook/opportunity")
 public class QuoteRequest
-	extends AngularServlet
-	implements Dispatchable {
+	extends AngularServlet {
 
-	@Override
 	public Pattern getPattern() {
 		return Pattern.compile("/hook/quoteRequest");
 	}
@@ -39,14 +36,13 @@ public class QuoteRequest
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
 		throws Exception {
 
-		final Webhook webhook = $1(withApiKey("53d3befd1d210670d99efc615091ad2f")); // magic key for quote request
-
+		@SuppressWarnings("SpellCheckingInspection") final Webhook webhook = $1(
+			withApiKey("53d3befd1d210670d99efc615091ad2f")); // magic key for quote request
 
 		Map<String, String> params = request.getParameterMap()
 			.entrySet()
 			.stream()
 			.collect(Funky.toMap(Map.Entry::getKey, e -> e.getValue()[0]));
-
 
 		if ($1(Opportunity.withWebhook(webhook, params.get("leadKey"))) != null) {
 			throw new BadRequestException("Already created opportunity for lead key %s", params.get("leadKey"));
@@ -87,7 +83,6 @@ public class QuoteRequest
 		o.setNotes(params.get("notes"));
 		create(webhook.getName(), o);
 
-
 		final JsonMap json = new JsonMap();
 		json.put("contact", c.id);
 		json.put("opportunity", o.id);
@@ -98,6 +93,5 @@ public class QuoteRequest
 	private Agent getAgent() {
 		return $(new Agent("7000"));
 	}
-
 
 }

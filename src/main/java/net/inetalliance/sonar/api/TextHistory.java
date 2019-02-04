@@ -2,7 +2,6 @@ package net.inetalliance.sonar.api;
 
 import com.callgrove.obj.Opportunity;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.dispatch.Dispatchable;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.MethodNotAllowedException;
 import net.inetalliance.angular.exception.NotFoundException;
@@ -17,48 +16,42 @@ import java.util.regex.Pattern;
 
 @WebServlet("/api/textHistory/*")
 public class TextHistory
-  extends AngularServlet
-  implements Dispatchable {
-  private static final Pattern pattern = Pattern.compile("/api/textHistory/([0-9]+)");
+	extends AngularServlet {
+	private static final Pattern pattern = Pattern.compile("/api/textHistory/([0-9]+)");
 
-  @Override
-  protected void post(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    throw new MethodNotAllowedException();
-  }
+	@Override
+	protected void post(final HttpServletRequest request, final HttpServletResponse response) {
+		throw new MethodNotAllowedException();
+	}
 
-  @Override
-  protected void delete(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    throw new MethodNotAllowedException();
-  }
+	@Override
+	protected void delete(final HttpServletRequest request, final HttpServletResponse response) {
+		throw new MethodNotAllowedException();
+	}
 
-  @Override
-  protected void put(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    throw new MethodNotAllowedException();
-  }
+	@Override
+	protected void put(final HttpServletRequest request, final HttpServletResponse response) {
+		throw new MethodNotAllowedException();
+	}
 
-  @Override
-  public Pattern getPattern() {
-    return pattern;
-  }
+	public Pattern getPattern() {
+		return pattern;
+	}
 
-  @Override
-  protected void get(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    final String query = request.getParameter("q");
-    Matcher matcher = pattern.matcher(request.getRequestURI());
-    if (matcher.matches()) {
-      final int opportunityId = Integer.parseInt(matcher.group(1));
-      final Opportunity opportunity = Locator.$(new Opportunity(opportunityId));
-      if (opportunity == null) {
-        throw new NotFoundException();
-      }
-      respond(response, Avochato.getInstance().searchContacts(opportunity));
-    } else {
-      throw new BadRequestException("Request should match %s",
-        new Object[]{this.pattern.pattern()});
-    }
-  }
+	@Override
+	protected void get(final HttpServletRequest request, final HttpServletResponse response)
+		throws Exception {
+		Matcher matcher = pattern.matcher(request.getRequestURI());
+		if (matcher.matches()) {
+			final int opportunityId = Integer.parseInt(matcher.group(1));
+			final Opportunity opportunity = Locator.$(new Opportunity(opportunityId));
+			if (opportunity == null) {
+				throw new NotFoundException();
+			}
+			respond(response, Avochato.getInstance().searchContacts(opportunity));
+		} else {
+			throw new BadRequestException("Request should match %s",
+				pattern.pattern());
+		}
+	}
 }

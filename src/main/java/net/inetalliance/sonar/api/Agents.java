@@ -1,22 +1,19 @@
 package net.inetalliance.sonar.api;
 
 import com.callgrove.obj.Agent;
-import net.inetalliance.angular.dispatch.Dispatchable;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
-import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.Json;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
+import static net.inetalliance.sql.OrderBy.Direction.*;
 
 @WebServlet("/api/agent/*")
 public class Agents
-	extends ListableModel<Agent>
-	implements Dispatchable {
+	extends ListableModel<Agent> {
 
 	private final Info<Agent> info;
 

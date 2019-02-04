@@ -1,7 +1,6 @@
 package net.inetalliance.sonar.api;
 
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.dispatch.Dispatchable;
 import net.inetalliance.angular.list.Listable;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.obj.IdPo;
@@ -17,7 +16,7 @@ import java.util.regex.Pattern;
 
 public abstract class SelectMembers<G extends IdPo & Named, M extends Named>
 	extends AngularServlet
-	implements Dispatchable, Listable<G> {
+	implements Listable<G> {
 	private final Pattern pattern;
 	private final Class<G> groupType;
 
@@ -25,12 +24,11 @@ public abstract class SelectMembers<G extends IdPo & Named, M extends Named>
 		return StringFun.camel(c.getSimpleName());
 	}
 
-	public SelectMembers(final Class<G> groupType, final Class<M> memberType) {
+	SelectMembers(final Class<G> groupType, final Class<M> memberType) {
 		this.groupType = groupType;
 		this.pattern = Pattern.compile(String.format("/api/%s/%s", name(groupType), name(memberType)));
 	}
 
-	@Override
 	public Pattern getPattern() {
 		return pattern;
 	}

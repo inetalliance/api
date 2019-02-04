@@ -22,7 +22,6 @@ import javax.servlet.http.HttpServletResponse;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-@WebServlet("/api/productLine/*")
 public class ScriptRoot
 	extends TypeModel<com.callgrove.obj.ScriptRoot>
 	implements Listable<com.callgrove.obj.ScriptRoot> {
@@ -40,7 +39,7 @@ public class ScriptRoot
 
 	private static final Pattern pattern = Pattern.compile("/api/productLine/(\\d+)/scriptRoot/?(\\d+)?");
 
-	public ScriptRoot() {
+	ScriptRoot() {
 		super(com.callgrove.obj.ScriptRoot.class, pattern);
 		this.productLineInfo = Info.$(ProductLine.class);
 	}
