@@ -1,26 +1,24 @@
 package net.inetalliance.sonar.api;
 
 import com.callgrove.Callgrove;
+import com.callgrove.elastix.CallRouter;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.ProductLine;
-import com.callgrove.obj.Queue;
 import net.inetalliance.angular.LocatorStartup;
 import net.inetalliance.angular.auth.Auth;
+import net.inetalliance.angular.events.Events;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.beejax.messages.BeejaxMessageServer;
+import net.inetalliance.cron.Cron;
 import net.inetalliance.funky.Funky;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.MessageServer;
 import net.inetalliance.potion.query.Query;
-import net.inetalliance.angular.events.Events;
 import net.inetalliance.sonar.events.SessionHandler;
-import net.inetalliance.types.Credentials;
-import net.inetalliance.types.struct.maps.LazyMap;
 import net.inetalliance.types.util.LocalizedMessages;
-import net.inetalliance.types.util.NetUtil;
 import net.inetalliance.util.security.auth.Authenticator;
 import net.inetalliance.util.security.auth.Authorized;
 import org.asteriskjava.live.DefaultAsteriskServer;
@@ -34,12 +32,10 @@ import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URL;
+import java.sql.SQLException;
 import java.util.*;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 
 import static java.util.Arrays.*;
-import static java.util.Collections.*;
 import static java.util.stream.Collectors.*;
 import static net.inetalliance.angular.AngularServlet.*;
 import static net.inetalliance.potion.Locator.*;
@@ -51,14 +47,12 @@ public class Startup
 	private static final transient Log log = Log.getInstance(Startup.class);
 	public static DefaultAsteriskServer pbx;
 
-	public static final Map<Integer, Set<String>> productLineQueues =
-		synchronizedMap(new LazyMap<>(new HashMap<>(), i -> new HashSet<>()));
+	public static Map<Integer, Set<String>> productLineQueues;
 
 	private static final Map<Set<String>, Set<String>> queuesForProductLine = new HashMap<>();
 
-	static Query<Call> callsWithProductLineParameter(final HttpServletRequest request,
-		final String parameter) {
-		final String[] params = request.getParameterValues(parameter);
+	static Query<Call> callsWithProductLineParameter(final HttpServletRequest request) {
+		final String[] params = request.getParameterValues("pl");
 		if (params == null || params.length == 0) {
 			return Query.all(Call.class);
 		}
@@ -109,56 +103,50 @@ public class Startup
 
 	@Override
 	public void contextInitialized(final ServletContextEvent sce) {
-		try {
-			Class.forName("org.postgresql.Driver");
-		} catch (ClassNotFoundException e) {
-			throw new RuntimeException(e);
-		}
 		super.contextInitialized(sce);
-		final ServletContext context = sce.getServletContext();
-		final String asteriskParam = getContextParameter(context, "asterisk");
-		if (StringFun.isNotEmpty(asteriskParam) && System.getProperty("noAsterisk") == null) {
-			try {
-				final URI asterisk = new URI(asteriskParam);
-				final Credentials credentials = NetUtil.getCredentials(asterisk);
-				int port = asterisk.getPort();
-				if (port == -1) {
-					port = 5038; // use default manager port if not specified
+		new Thread(() -> {
+			final ServletContext context = sce.getServletContext();
+			final String asteriskParam = getContextParameter(context, "asterisk");
+			if (StringFun.isNotEmpty(asteriskParam) && System.getProperty("noAsterisk") == null) {
+				try {
+					final URI asterisk = new URI(asteriskParam);
+					log.info("Connecting to Asterisk");
+					pbx = CallRouter.init(asterisk);
+					log.info("Starting up Asterisk Manager");
+					pbx.initialize();
+				} catch (URISyntaxException e) {
+					log.error("could not parse asterisk parameter as uri: %s", asteriskParam);
 				}
-
-				log.info("Connecting to Asterisk");
-				pbx = new DefaultAsteriskServer(asterisk.getHost(), port, credentials.user, credentials.password);
-				pbx.setSkipQueues(true);
-				Logger.getLogger("org.asteriskjava").setLevel(Level.SEVERE);
-				Logger.getLogger("org.asteriskjava.manager.internal.ManagerConnectionImpl").setLevel(Level.OFF);
-				Logger.getLogger("org.asteriskjava.live.internal.ChannelManager").setLevel(Level.OFF);
-				Logger.getLogger("org.asteriskjava.live.internal.AsteriskServerImpl").setLevel(Level.OFF);
-				Logger.getLogger("org.asteriskjava.util.internal.Slf4JLogger").setLevel(Level.OFF);
-
-				log.info("Starting up Asterisk Manager");
-				pbx.initialize();
-			} catch (URISyntaxException e) {
-				log.error("could not parse asterisk parameter as uri: %s", asteriskParam);
 			}
-		}
-		SessionHandler.init();
-		Events.handler = SessionHandler::new;
-		try {
-			Callgrove.beejax =
-				MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
+			SessionHandler.init();
+			Events.handler = SessionHandler::new;
+			try {
+				Callgrove.beejax =
+					MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
 
-		} catch (Throwable t) {
-			log.error(t);
-			throw new RuntimeException(t);
-		}
-		log.info("Loading Product Line -> Queue map");
-		forEach(Query.all(Queue.class), queue -> {
-			final ProductLine productLine = queue.getProductLine();
-			if (productLine != null) {
-				productLineQueues.get(productLine.id).add(queue.key);
+			} catch (Throwable t) {
+				log.error(t);
+				throw new RuntimeException(t);
 			}
-		});
-		log.info("Context Initialized");
+			log.info("Loading Product Line -> Queue map");
+			productLineQueues = Locator.execute(
+				"SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM " +
+					"queueProductLine where queueProductLine.queue=q.queue)",
+				rs -> {
+					var map = new HashMap<Integer, Set<String>>();
+					try {
+						while (rs.next()) {
+							map.computeIfAbsent(rs.getInt(2), p -> new HashSet<>()).add(rs.getString(1));
+						}
+					} catch (SQLException e) {
+						throw new RuntimeException(e);
+					}
+					return map;
+				});
+
+			log.info("Context Initialized");
+
+		}).start();
 
 	}
 
@@ -189,6 +177,7 @@ public class Startup
 		if (pbx != null) {
 			pbx.shutdown();
 		}
+		Cron.shutdown();
 	}
 
 	static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param,

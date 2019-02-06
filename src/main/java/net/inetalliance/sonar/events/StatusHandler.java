@@ -38,8 +38,7 @@ public class StatusHandler implements MessageHandler {
 			}
 
 			@Override
-			public void exec(final CronStatus status)
-				throws Throwable {
+			public void exec(final CronStatus status) {
 				final JsonMap map = new JsonMap();
 				for (final String agent : Events.getActiveAgents()) {
 					getStatus(agent, map, false);

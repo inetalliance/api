@@ -248,7 +248,7 @@ public class Calls
 				withSite = withSite.and(Call.inInterval(c.toInterval()));
 			}
 			return Call.isQueue.and(Call.withSiteIn(agent.getVisibleSites()))
-				.and(Startup.callsWithProductLineParameter(request, "pl"))
+				.and(Startup.callsWithProductLineParameter(request))
 				.and(withSite)
 				.and(request.getParameter("silent") == null ? Call.isNotSilent : Query.all(Call.class))
 				.and(super.all(type, request)).orderBy("created", DESCENDING);
