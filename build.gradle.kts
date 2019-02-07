@@ -1,4 +1,3 @@
-
 description = "CG2 Sonar"
 plugins {
     war
@@ -13,5 +12,4 @@ dependencies {
     compileOnly("javax.websocket:javax.websocket-api:1.1")
     runtime("org.postgresql:postgresql:42.2.5")
 }
-
 apply(from = "cargo.gradle")
