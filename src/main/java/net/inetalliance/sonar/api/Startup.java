@@ -177,7 +177,6 @@ public class Startup
 		if (pbx != null) {
 			pbx.shutdown();
 		}
-		Cron.shutdown();
 	}
 
 	static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param,
