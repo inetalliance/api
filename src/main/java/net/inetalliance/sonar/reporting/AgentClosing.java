@@ -91,7 +91,7 @@ public class AgentClosing
 
 			final AtomicInteger n = new AtomicInteger(0);
 			final Set<String> productLineQueues = new HashSet<>(queues);
-			productLineQueues.retainAll(Startup.productLineQueues.get(productLine.id));
+			productLineQueues.retainAll(Startup.productLineQueues.getOrDefault(productLine.id, Set.of()));
 			final Query<Call> productLineCallQuery = productLineQueues.isEmpty()
 				? Query.none(Call.class)
 				: callQuery.and(Call.withQueueIn(productLineQueues));
