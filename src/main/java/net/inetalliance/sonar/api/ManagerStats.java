@@ -48,6 +48,10 @@ public class ManagerStats
 			manager.getManagedCallCenters(Auth.getAuthorized(request)).forEach(
 				c -> viewable.addAll(Locator.$$(Agent.withCallCenter(c))));
 
+			if(viewable.isEmpty()) {
+				viewable.addAll(manager.getViewableAgents());
+			}
+
 			var theQuery = Opportunity.withAgentIn(viewable).and(
 				Opportunity.withSources(EnumSet.of(SaleSource.PHONE_CALL, SaleSource.MANUAL)));
 
