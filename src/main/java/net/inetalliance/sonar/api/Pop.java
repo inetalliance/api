@@ -138,6 +138,7 @@ public class Pop
 		}
 
 		final CallerId remoteCallerId = call.getRemoteCallerId();
+		map.$("direction",call.getDirection());
 		map.$("source", call.getSource());
 		if (remoteCallerId != null) {
 			map.$("phone", remoteCallerId.getNumber());
