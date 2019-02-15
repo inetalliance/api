@@ -98,6 +98,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 		final Map<String, Integer> silentCalls = new HashMap<>();
 		final Map<String, Integer> totalVisits = new HashMap<>();
 		final Map<String, Currency> totalRevenue = new HashMap<>();
+    final Map<String, Integer> totalOpps = new HashMap<>();
 		final Query<Opportunity> groupSales = oppsWithGroup(groups).and(Opportunity.isSold);
 		Query<Opportunity> oppQuery = Opportunity.withSources(sources)
 			.and(Opportunity.withContactTypes(contactTypes));
@@ -138,6 +139,8 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 			row.$("visits", visits);
 			final JsonMap revenue = new JsonMap();
 			row.$("revenue", revenue);
+      final JsonMap opps = new JsonMap();
+      row.$("opps", opps);
 			addExtra(row, intervals, r, groups);
 			for (final Map.Entry<String, Interval> entry : intervals.entrySet()) {
 				final String key = entry.getKey();
@@ -155,14 +158,16 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 					key,
 					$$(and, SUM, Currency.class, "amount"),
 					Currency.MATH);
+        update(totalOpps, opps, key, count(and), NumberMath.INTEGER);
 			}
 			meter.increment();
 		});
 		final JsonMap totals = new JsonMap();
-		addTotals(totals, "calls", totalCalls);
+    addTotals(totals, "calls", totalCalls);
 		addTotals(totals, "silent", silentCalls);
 		addTotals(totals, "visits", totalVisits);
 		addTotals(totals, "revenue", totalRevenue);
+    addTotals(totals, "opps", totalOpps);
 		final JsonMap json = new JsonMap()
 			.$("rows", list)
 			.$("total", totals)
