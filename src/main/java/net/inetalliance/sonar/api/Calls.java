@@ -16,8 +16,8 @@ import net.inetalliance.potion.DbCli;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
-import net.inetalliance.sonar.api.Leads.Range;
 import net.inetalliance.sonar.ListableModel;
+import net.inetalliance.sonar.api.Leads.Range;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
@@ -31,17 +31,15 @@ import java.util.*;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.callgrove.types.CallDirection.OUTBOUND;
-import static com.callgrove.types.CallDirection.QUEUE;
-import static com.callgrove.types.Resolution.ANSWERED;
-import static java.lang.String.format;
-import static java.lang.System.currentTimeMillis;
-import static java.util.regex.Pattern.compile;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
-import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
+import static com.callgrove.types.CallDirection.*;
+import static com.callgrove.types.Resolution.*;
+import static java.lang.String.*;
+import static java.lang.System.*;
+import static java.util.regex.Pattern.*;
+import static java.util.stream.Collectors.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.OrderBy.Direction.*;
 
 @WebServlet("/api/call/*")
 public class Calls
@@ -213,6 +211,12 @@ public class Calls
 					});
 			}
 		}
+		final Contact contact = call.getContact();
+		if (contact != null) {
+			map.$("contact", new JsonMap()
+				.$("firstName", contact.getFirstName())
+				.$("lastName", contact.getLastName()));
+		}
 		return map
 			.$("agent", call.getAgent() == null ? "None" : call.getAgent().getLastNameFirstInitial())
 			.$("site", call.getSite() == null ? "None" : call.getSite().getAbbreviation())
@@ -236,7 +240,8 @@ public class Calls
 		} else if (todo) {
 			return Call.isTodo.and(Call.withAgent(agent)).limit(25);
 		} else if (isEmpty(request.getParameter("n"))) {
-			throw new BadRequestException("Sorry, but you can't ask for all the calls. There's like a bajillion of them.");
+			throw new BadRequestException(
+				"Sorry, but you can't ask for all the calls. There's like a bajillion of them.");
 		} else {
 
 			final String[] ss = request.getParameterValues("s");
@@ -268,7 +273,7 @@ public class Calls
 
 	@Override
 	protected Json update(final Key<Call> key, final HttpServletRequest request, final HttpServletResponse response,
-	                      final Call call, final JsonMap data)
+		final Call call, final JsonMap data)
 		throws IOException {
 		if (call.key.startsWith("sim-") && data.getEnum("resolution", Resolution.class) == ANSWERED) {
 
@@ -293,7 +298,7 @@ public class Calls
 
 	@Override
 	public JsonMap create(final Key<Call> key, final HttpServletRequest request, final HttpServletResponse response,
-	                      final JsonMap data) {
+		final JsonMap data) {
 		if (Funky.isTrue(data.getBoolean("simulated"))) {
 			final Agent loggedIn = Startup.getAgent(request);
 			if (loggedIn == null) {
@@ -455,6 +460,5 @@ public class Calls
 			}
 		}, args);
 	}
-
 
 }

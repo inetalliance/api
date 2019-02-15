@@ -5,6 +5,7 @@ import com.callgrove.obj.Agent;
 import net.inetalliance.angular.events.Events;
 import net.inetalliance.cron.CronJob;
 import net.inetalliance.cron.CronStatus;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.JsonMap;
@@ -15,11 +16,12 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
-import static java.util.Collections.synchronizedMap;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static net.inetalliance.cron.Cron.interval;
+import static java.util.Collections.*;
+import static java.util.concurrent.TimeUnit.*;
+import static net.inetalliance.cron.Cron.*;
 
-public class StatusHandler implements MessageHandler {
+public class StatusHandler
+	implements MessageHandler {
 	private static final Map<String, Boolean> paused =
 		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
 	private static final Map<String, Boolean> forwarded =
@@ -43,6 +45,10 @@ public class StatusHandler implements MessageHandler {
 				for (final String agent : Events.getActiveAgents()) {
 					getStatus(agent, map, false);
 					if (!map.isEmpty()) {
+						if (map.containsKey("callId")) {
+							Events.sendToLatest("pop", agent,
+								new JsonMap().$("callId", map.get("callId")));
+						}
 						Events.broadcast("status", agent, map);
 					}
 					map.clear();
@@ -52,8 +58,8 @@ public class StatusHandler implements MessageHandler {
 	}
 
 	private static void check(final String property, final String agent, final JsonMap current,
-	                          final Map<String, Boolean> cache, final boolean defaultValue, final JsonMap changes,
-	                          final boolean full) {
+		final Map<String, Boolean> cache, final boolean defaultValue, final JsonMap changes,
+		final boolean full) {
 		final boolean currentValue = get(current, property, defaultValue);
 		final boolean cachedValue = cache.get(agent);
 		final boolean changed = currentValue != cachedValue;
@@ -96,7 +102,6 @@ public class StatusHandler implements MessageHandler {
 		return map.isEmpty() ? null : map;
 	}
 
-
 	@Override
 	public void destroy() {
 		calls.clear();
@@ -107,7 +112,12 @@ public class StatusHandler implements MessageHandler {
 
 	@Override
 	public JsonMap onConnect(final Session session) {
-		return getStatus(Events.getUser(session).getPhone(), true);
+		final JsonMap status = getStatus(Events.getUser(session).getPhone(), true);
+		final String callId = status.get("callId");
+		if (StringFun.isNotEmpty(callId) && Events.isFirst(session)) {
+			Events.send(session, "pop", new JsonMap().$("callId", callId));
+		}
+		return status;
 	}
 
 	@Override

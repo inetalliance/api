@@ -135,7 +135,7 @@ public class Review
 							.$("name", agent1.getFirstNameLastInitial())
 							.$("key", agent1.key));
 					if (agent1 != null) {
-						final JsonList oList = opps.get(agent1).stream().map(o -> new JsonMap()
+						final JsonList oList = opps.getOrDefault(agent1,Set.of()).stream().map(o -> new JsonMap()
 							.$("id", o.id)
 							.$("notes", o.getNotes())
 							.$("stage", o.getStage())

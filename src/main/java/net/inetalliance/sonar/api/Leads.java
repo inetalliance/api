@@ -58,11 +58,13 @@ public class Leads
 					.$("dealer", c.getContactType() == DEALER))
 				.$("productLine", new JsonMap()
 					.$("name", o.getProductLine().getName())
+					.$("abbreviation", o.getProductLine().getAbbreviation())
 					.$("uri", o.getSite().getWebpages().get(o.getProductLine())))
 				.$("assignedTo", new JsonMap()
 					.$("name", o.getSource() == ONLINE ? "Web Order" : o.getAssignedTo().getLastNameFirstInitial()))
 				.$("site", new JsonMap()
 					.$("name", o.getSite().getName())
+					.$("abbreviation", o.getSite().getAbbreviation())
 					.$("uri", o.getSite().getUri())));
 		}
 		final Contact contact = o.getContact();
