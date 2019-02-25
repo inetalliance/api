@@ -387,6 +387,7 @@ public class Calls
 		if (remoteCallerId != null) {
 			final String number = remoteCallerId.getNumber();
 			final AreaCodeTime time = isEmpty(number) ? null : AreaCodeTime.getAreaCodeTime(number);
+      map.$("created", call.getCreated());
 			map.$("localTime", time == null ? null : time.getDateTimeZone().getOffset(currentTimeMillis()));
 			map.$("callerId", new JsonMap()
 				.$("name", remoteCallerId.getName())
