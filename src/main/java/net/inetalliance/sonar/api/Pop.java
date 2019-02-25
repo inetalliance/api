@@ -89,7 +89,7 @@ public class Pop
 			final JsonList list = new JsonList(1);
 			contacts.add(new JsonMap()
 				.$("id", contact.id)
-				.$("name", contact.getLastNameFirstInitial())
+				.$("name", contact.getFullName())
 				.$("leads", list));
 			Locator.forEach(Opportunity.withContact(contact).and(Opportunity.withSiteIdIn(relatedSites(call.getSite().id))),
 				opp -> {
@@ -107,7 +107,7 @@ public class Pop
 						.$("script", root == null ? null : root.id))
 					.$("agent", new JsonMap()
 						.$("key", opp.getAssignedTo().key)
-						.$("name", opp.getAssignedTo().getLastNameFirstInitial()))
+						.$("name", opp.getAssignedTo().getFirstNameLastInitial()))
 					.$("site", new JsonMap()
 						.$("id", opp.getSite().id)
 						.$("name", opp.getSite().getName())));
