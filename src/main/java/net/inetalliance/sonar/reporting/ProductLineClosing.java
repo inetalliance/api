@@ -38,7 +38,7 @@ public class ProductLineClosing
 	private final Info<Site> info;
 
 	public ProductLineClosing() {
-		super("site", "productLine");
+		super("site", "productLine", "uniqueCid");
 		info = Info.$(Site.class);
 	}
 
