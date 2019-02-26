@@ -42,7 +42,7 @@ public class AgentClosing
 	private final Info<Site> info;
 
 	public AgentClosing() {
-		super("site", "agent");
+		super("site", "agent", "uniqueCid");
 		info = Info.$(Site.class);
 	}
 
@@ -72,6 +72,8 @@ public class AgentClosing
 			throw new NotFoundException("Could not find agent with key %s", agentKey);
 		}
 
+		boolean uniqueCid = Boolean.valueOf(extras.getOrDefault("uniqueCid", "false"));
+
 		final Interval interval = getReportingInterval(start, end);
 
 		final Set<String> queues = Locator.$A(Queue.class).stream().map(q -> q.key).collect(toSet());
@@ -96,13 +98,23 @@ public class AgentClosing
 				? Query.none(Call.class)
 				: callQuery.and(Call.withQueueIn(productLineQueues));
 			final DailyPerformance productLineTotal = new DailyPerformance();
-			productLineTotal.setQueueCalls(count(productLineCallQuery
+			final Query<Call> queueQuery = productLineCallQuery
 				.and(isQueue)
-				.and(Call.withSourceIn(sources))
-				.and(Call.withBlame(agent))));
-			productLineTotal.setOutboundCalls(count(productLineCallQuery
+				.and(withSourceIn(sources))
+				.and(withBlame(agent));
+			productLineTotal.setQueueCalls(uniqueCid ? countDistinct(queueQuery, "callerId_number") :
+				count(queueQuery));
+
+			final Query<Call> outboundQuery = productLineCallQuery
 				.and(isOutbound)
-				.and(Call.withAgent(agent))));
+				.and(Call.withAgent(agent));
+			if (uniqueCid) {
+				productLineTotal.setOutboundCalls(
+					countDistinct(outboundQuery.join(Segment.class, "call"), "segment.callerId_number"));
+
+			} else {
+				productLineTotal.setOutboundCalls(count(outboundQuery));
+			}
 			productLineTotal.setDumps(count(productLineCallQuery.and(isQueue).and(Call.isDumped).and(
 				Call.withBlame(agent))));
 			final Query<Opportunity> agentOppQuery = oppQuery.and(

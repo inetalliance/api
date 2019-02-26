@@ -91,6 +91,7 @@ public class ProductLineClosing
 		if (productLine == null) {
 			throw new NotFoundException("Could not find product line with id %s", productLineId);
 		}
+		boolean uniqueCid = Boolean.valueOf(extras.getOrDefault("uniqueCid", "false"));
 
 		final Interval interval = getReportingInterval(start, end);
 
@@ -120,8 +121,14 @@ public class ProductLineClosing
 			if (!sources.isEmpty()) {
 				queueCallCountQuery = queueCallCountQuery.and(Call.withSourceIn(sources));
 			}
-			agentTotal.setQueueCalls(count(queueCallCountQuery));
-			agentTotal.setOutboundCalls(count(callQuery.and(Call.withAgent(agent).and(isOutbound))));
+			agentTotal.setQueueCalls(uniqueCid ? countDistinct(queueCallCountQuery,"callerId_number"):count(queueCallCountQuery));
+			final Query<Call> outboundQuery = callQuery.and(Call.withAgent(agent).and(isOutbound));
+			if(uniqueCid) {
+				agentTotal.setOutboundCalls(countDistinct(outboundQuery.join(Segment.class,"call"),"segment.callerid_number"));
+
+			} else {
+				agentTotal.setOutboundCalls(count(outboundQuery));
+			}
 			agentTotal.setDumps(count(agentCallQuery.and(isQueue).and(Call.isDumped)));
 			final Query<Opportunity> agentOppQuery = oppQuery.and(Opportunity.withAgent(agent)).and
 				(withAmountGreaterThan(productLine.getLowestReasonableAmount()));
