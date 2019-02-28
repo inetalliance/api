@@ -52,7 +52,7 @@ public class ManagerStats
 		}
 
 		var theQuery = Opportunity.withAgentIn(viewable).and(
-			Opportunity.withSources(EnumSet.of(SaleSource.PHONE_CALL, SaleSource.MANUAL)));
+			Opportunity.withSources(EnumSet.of(SaleSource.ONLINE)).negate());
 
 		Map<String, JsonList> agentIntervalData = new HashMap<>();
 		intervals.forEach((intervalLabel, interval) -> {
