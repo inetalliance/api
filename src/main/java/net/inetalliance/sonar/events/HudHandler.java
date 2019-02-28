@@ -114,14 +114,14 @@ public class HudHandler
 				linkedChannels.clear();
 				untouched.clear();
 				untouched.addAll(status.keySet());
-				updateAvailability();
-				updateSimulated();
 				updateChannels();
 				updateSubscribers();
 			} catch (final Throwable t) {
 				log.error(t);
 			}
 		}
+		updateAvailability();
+		updateSimulated();
 	}
 
 	private void updateAvailability() {
