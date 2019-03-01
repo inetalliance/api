@@ -27,15 +27,14 @@ import static net.inetalliance.potion.Locator.$$;
 
 @WebServlet("/api/recipient")
 public class RecipientCompletion
-	extends AngularServlet {
+		extends AngularServlet {
 	private static final Pattern atSign = Pattern.compile("@");
 
 	private static JsonMap contactToJson(final Contact contact) {
-		return new JsonMap()
-			.$("id", contact.id)
-			.$("type", "contact")
-			.$("email", contact.getEmail())
-			.$("name", contact.getFullName());
+		return new JsonMap().$("id", contact.id)
+		                    .$("type", "contact")
+		                    .$("email", contact.getEmail())
+		                    .$("name", contact.getFullName());
 	}
 
 	private static String agentEmailWithDomain(final Agent agent, final String domain) {
@@ -48,17 +47,15 @@ public class RecipientCompletion
 	}
 
 	private static JsonMap agentToJson(final Site site, final Agent agent) {
-		return new JsonMap()
-			.$("id", agent.key)
-			.$("type", "agent")
-			.$("email", agentEmailWithDomain(agent, site == null ? null : site.getDomain()))
-			.$("name", agent.getFullName());
+		return new JsonMap().$("id", agent.key)
+		                    .$("type", "agent")
+		                    .$("email", agentEmailWithDomain(agent, site == null ? null : site.getDomain()))
+		                    .$("name", agent.getFullName());
 	}
-
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Authorized authorized = Auth.getAuthorized(request);
 		if (authorized == null) {
 			throw new UnauthorizedException("Not logged in");
@@ -79,25 +76,19 @@ public class RecipientCompletion
 		}
 
 		final Agent agent = new Agent(Auth.getAuthorized(request).getPhone());
-//    final Agent agent = new Agent("7211"); // Timmy Z
+		//    final Agent agent = new Agent("7211"); // Timmy Z
 
 		// FIND CONTACTS
-		final Query<Contact> contactMatches =
-			Contact.withNameLike(search + "%")
-				.or(Contact.withEmailLike(search + "%"));
-		Query<Contact> contactQuery = Contact.hasEmail
-			.and(Contact.inOppsWithAgent(agent)
-				.and(contactMatches)
-				.and(Contact.notAgentEmail));
+		final Query<Contact> contactMatches = Contact.withNameLike(search + "%").or(Contact.withEmailLike(search + "%"));
+		Query<Contact> contactQuery =
+				Contact.hasEmail.and(Contact.inOppsWithAgent(agent).and(contactMatches).and(Contact.notAgentEmail));
 		if (site != null) {
 			contactQuery = contactQuery.and(Contact.withOppsOn(singleton(site)));
 		}
 		final Collection<Contact> contacts = $$(contactQuery);
 
 		// FIND AGENTS
-		final Collection<Agent> agents =
-			$$(Agent.withNameLike(search + "%")
-				.or(Agent.withEmailLike(search + "%")));
+		final Collection<Agent> agents = $$(Agent.withNameLike(search + "%").or(Agent.withEmailLike(search + "%")));
 
 		final JsonList results = JsonList.collect(contacts, RecipientCompletion::contactToJson);
 		agents.stream().map(a -> agentToJson(site, a)).forEach(results::add);

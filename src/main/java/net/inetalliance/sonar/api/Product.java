@@ -25,41 +25,39 @@ import static net.inetalliance.funky.StringFun.isEmpty;
 
 @WebServlet("/api/product/*")
 public class Product
-	extends AngularServlet {
+		extends AngularServlet {
 
 	public static JsonMap json(final net.inetalliance.beejax.messages.Product product) {
-		return new JsonMap()
-			.$("id", product.id)
-			.$("name", product.name)
-			.$("oemCode", product.oemCode)
-			.$("adminUrl", product.adminUrl)
-			.$("rootUrl", product.rootUrl)
-			.$("baseUrl", product.baseUrl)
-			.$("thumbnailUrl", product.thumbnailUrl)
-			.$("imageUrl", product.imageUrl)
-			.$("manufacturer", product.manufacturer)
-			.$("productLine", product.productLine)
-			.$("msrp", product.msrp)
-			.$("price", product.price)
-			.$("minCouponPrice", product.minCouponPrice)
-			.$("coupons", JsonList.collect(product.coupons, Product::couponJson))
-			.$("tags", Json.Factory.$(product.tags));
+		return new JsonMap().$("id", product.id)
+		                    .$("name", product.name)
+		                    .$("oemCode", product.oemCode)
+		                    .$("adminUrl", product.adminUrl)
+		                    .$("rootUrl", product.rootUrl)
+		                    .$("baseUrl", product.baseUrl)
+		                    .$("thumbnailUrl", product.thumbnailUrl)
+		                    .$("imageUrl", product.imageUrl)
+		                    .$("manufacturer", product.manufacturer)
+		                    .$("productLine", product.productLine)
+		                    .$("msrp", product.msrp)
+		                    .$("price", product.price)
+		                    .$("minCouponPrice", product.minCouponPrice)
+		                    .$("coupons", JsonList.collect(product.coupons, Product::couponJson))
+		                    .$("tags", Json.Factory.$(product.tags));
 
 	}
 
 	private static JsonMap couponJson(final Coupon coupon) {
-		return new JsonMap()
-			.$("type", coupon.type)
-			.$("amount", coupon.amount)
-			.$("discount", coupon.discount)
-			.$("description", coupon.description);
+		return new JsonMap().$("type", coupon.type)
+		                    .$("amount", coupon.amount)
+		                    .$("discount", coupon.discount)
+		                    .$("description", coupon.description);
 	}
 
 	private static final Pattern pattern = Pattern.compile("/api/product(?:/(.*))?");
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final String key = matcher.group(1);
@@ -73,18 +71,15 @@ public class Product
 				}
 				final String query = request.getParameter(Searchable.parameter);
 				if (query == null) {
-					respond(response, new JsonMap()
-						.$("products", JsonList.empty)
-						.$("hasMore", false));
+					respond(response, new JsonMap().$("products", JsonList.empty).$("hasMore", false));
 				} else {
 
 					final int page = getParameter(request, Listable.page, 1);
 					final int pageSize = getParameter(request, Listable.pageSize, 20);
 					final ProductSearchResponse info =
-						Callgrove.beejax.productSearch(site.getBeejaxId(), 0, query, pageSize, (page - 1) * pageSize);
-					respond(response, new JsonMap()
-						.$("products", JsonList.collect(info.products, Product::json))
-						.$("hasMore", info.remaining > 0));
+							Callgrove.beejax.productSearch(site.getBeejaxId(), 0, query, pageSize, (page - 1) * pageSize);
+					respond(response, new JsonMap().$("products", JsonList.collect(info.products, Product::json))
+					                               .$("hasMore", info.remaining > 0));
 				}
 			} else {
 				Site site = Locator.$(new Site(getParameter(request, "site", -1)));

@@ -1,28 +1,20 @@
 package net.inetalliance.sonar.reporting;
 
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.obj.DailyProductLineVisits;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.types.ContactType;
-import com.callgrove.types.SaleSource;
-import net.inetalliance.funky.math.NumberMath;
-import net.inetalliance.log.Log;
-import net.inetalliance.log.progress.ProgressMeter;
-import net.inetalliance.potion.obj.IdPo;
-import net.inetalliance.potion.query.Query;
+import com.callgrove.obj.*;
+import com.callgrove.types.*;
+import net.inetalliance.funky.math.*;
+import net.inetalliance.log.*;
+import net.inetalliance.log.progress.*;
+import net.inetalliance.potion.obj.*;
+import net.inetalliance.potion.query.*;
 import net.inetalliance.types.Currency;
-import net.inetalliance.types.Named;
-import net.inetalliance.types.json.JsonList;
-import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.json.JsonString;
-import org.joda.time.DateMidnight;
-import org.joda.time.Interval;
+import net.inetalliance.types.*;
+import net.inetalliance.types.json.*;
+import org.joda.time.*;
 
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
+import javax.servlet.*;
 import java.util.*;
-import java.util.stream.Collectors;
+import java.util.stream.*;
 
 import static com.callgrove.Callgrove.*;
 import static java.util.concurrent.TimeUnit.*;
@@ -32,32 +24,14 @@ import static net.inetalliance.sql.OrderBy.Direction.*;
 import static org.joda.time.DateTimeConstants.*;
 
 public abstract class Performance<R extends IdPo & Named, G extends IdPo>
-	extends CachedGroupingRangeReport<R, G> {
-	private Map<Integer, Set<String>> groupQueues;
-
+		extends CachedGroupingRangeReport<R, G> {
 	private static final transient Log log = Log.getInstance(Performance.class);
+	private Map<Integer, Set<String>> groupQueues;
 	private Map<Integer, Set<String>> rowQueues;
 
 	protected Performance(final String groupParam) {
 		super(groupParam);
 	}
-
-	// Begin Servlet methods
-	@Override
-	public void init(final ServletConfig config)
-		throws ServletException {
-		super.init(config);
-		log.info("Initalizing row queues for %s", getClass().getSimpleName());
-		this.rowQueues = new HashMap<>();
-		addRowQueues(rowQueues);
-		log.info("Initalizing group queues for %s", getClass().getSimpleName());
-		this.groupQueues = new HashMap<>();
-		addGroupQueues(groupQueues);
-	}
-
-	protected abstract void addGroupQueues(final Map<Integer, Set<String>> groupQueues);
-
-	protected abstract void addRowQueues(final Map<Integer, Set<String>> rowQueues);
 
 	@Override
 	public void destroy() {
@@ -66,28 +40,28 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 		rowQueues.clear();
 	}
 
+	@Override
+	protected int getJobSize(final Agent loggedIn, final int numGroups) {
+		return rowQueues.size();
+	}
+
 	// End Servlet methods
-	protected JsonMap generate(final EnumSet<SaleSource> sources,
-		final EnumSet<ContactType> contactTypes,
-		final Agent loggedIn,
-		final ProgressMeter meter,
-		final DateMidnight start,
-		final DateMidnight end,
-		final Set<G> groups, final Map<String, String> extras) {
+	protected JsonMap generate(final EnumSet<SaleSource> sources, final EnumSet<ContactType> contactTypes,
+			final Agent loggedIn, final ProgressMeter meter, final DateMidnight start, final DateMidnight end,
+			final Set<G> groups, final Map<String, String> extras) {
 		final Query<R> allRows = allRows(loggedIn);
 		final Map<String, Interval> intervals = new TreeMap<>();
 		final Interval current = getReportingInterval(start, end);
 		intervals.put("current", current);
 		final int days = (int) (current.toDurationMillis() / MILLIS_PER_DAY);
 		intervals.put("prev", getReportingInterval(start.minusDays(days), end.minusDays(days)));
-		intervals.put("prev2",
-			getReportingInterval(start.minusDays(2 * days), end.minusDays(2 * days)));
+		intervals.put("prev2", getReportingInterval(start.minusDays(2 * days), end.minusDays(2 * days)));
 		final int dayOfWeek = current.getStart().getDayOfWeek();
 		final int lastYearDayOfWeek = start.minusYears(1).getDayOfWeek();
 		final int delta = dayOfWeek - lastYearDayOfWeek;
 
-		final Interval lastYear = getReportingInterval(start.minusYears(1).plusDays(delta),
-			end.minusYears(1).plusDays(delta));
+		final Interval lastYear =
+				getReportingInterval(start.minusYears(1).plusDays(delta), end.minusYears(1).plusDays(delta));
 		intervals.put("last", lastYear);
 		final Set<String> groupQueues = new HashSet<>(8);
 		for (final G group : groups) {
@@ -98,10 +72,9 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 		final Map<String, Integer> silentCalls = new HashMap<>();
 		final Map<String, Integer> totalVisits = new HashMap<>();
 		final Map<String, Currency> totalRevenue = new HashMap<>();
-    final Map<String, Integer> totalOpps = new HashMap<>();
+		final Map<String, Integer> totalOpps = new HashMap<>();
 		final Query<Opportunity> groupSales = oppsWithGroup(groups).and(Opportunity.isSold);
-		Query<Opportunity> oppQuery = Opportunity.withSources(sources)
-			.and(Opportunity.withContactTypes(contactTypes));
+		Query<Opportunity> oppQuery = Opportunity.withSources(sources).and(Opportunity.withContactTypes(contactTypes));
 
 		forEach(allRows.orderBy("name", ASCENDING), r -> {
 			meter.setLabel(r.getName());
@@ -121,13 +94,11 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 
 			list.add(row);
 			final Query<Call> callWithQueue =
-				Call.isQueue
-					.and(queues.isEmpty() ? Query.none(Call.class) : Call.withQueueIn(queues))
-					.and(Call.withDurationGreaterThan(30, SECONDS));
-			final Query<Call> callWithQueueAndSource = sources.isEmpty() ? callWithQueue :
-				callWithQueue.and(Call.withSourceIn(sources));
-			final Query<DailyProductLineVisits> groupVisits =
-				visitsWithGroup(groups).and(visitsWithRow(r));
+					Call.isQueue.and(queues.isEmpty() ? Query.none(Call.class) : Call.withQueueIn(queues))
+					            .and(Call.withDurationGreaterThan(30, SECONDS));
+			final Query<Call> callWithQueueAndSource =
+					sources.isEmpty() ? callWithQueue : callWithQueue.and(Call.withSourceIn(sources));
+			final Query<DailyProductLineVisits> groupVisits = visitsWithGroup(groups).and(visitsWithRow(r));
 			final Query<Opportunity> rowSales = groupSales.and(oppsWithRow(r));
 			row.$("name", r.getName());
 			row.$("id", getId(r));
@@ -139,61 +110,87 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 			row.$("visits", visits);
 			final JsonMap revenue = new JsonMap();
 			row.$("revenue", revenue);
-      final JsonMap opps = new JsonMap();
-      row.$("opps", opps);
+			final JsonMap opps = new JsonMap();
+			row.$("opps", opps);
 			addExtra(row, intervals, r, groups);
 			for (final Map.Entry<String, Interval> entry : intervals.entrySet()) {
 				final String key = entry.getKey();
 				final Interval interval = entry.getValue();
 				update(totalCalls, calls, key,
-					count(callWithQueueAndSource.and(Call.inInterval(interval)).and(Call.isNotSilent)), NumberMath.INTEGER);
+				       count(callWithQueueAndSource.and(Call.inInterval(interval)).and(Call.isNotSilent)), NumberMath.INTEGER);
 				update(silentCalls, silent, key,
-					count(callWithQueueAndSource.and(Call.inInterval(interval)).and(Call.isSilent)), NumberMath.INTEGER);
-				update(totalVisits, visits, key, $$(groupVisits.and(
-					DailyProductLineVisits.inInterval(interval)), SUM, Integer.class, "visits"), NumberMath.INTEGER);
+				       count(callWithQueueAndSource.and(Call.inInterval(interval)).and(Call.isSilent)), NumberMath.INTEGER);
+				update(totalVisits, visits, key,
+				       $$(groupVisits.and(DailyProductLineVisits.inInterval(interval)), SUM, Integer.class, "visits"),
+				       NumberMath.INTEGER);
 				final Query<Opportunity> sub1 = oppQuery.and(Opportunity.soldInInterval(interval));
 				final Query<Opportunity> and = rowSales.and(sub1);
-				update(totalRevenue,
-					revenue,
-					key,
-					$$(and, SUM, Currency.class, "amount"),
-					Currency.MATH);
-        update(totalOpps, opps, key, count(and), NumberMath.INTEGER);
+				update(totalRevenue, revenue, key, $$(and, SUM, Currency.class, "amount"), Currency.MATH);
+				update(totalOpps, opps, key, count(and), NumberMath.INTEGER);
 			}
 			meter.increment();
 		});
 		final JsonMap totals = new JsonMap();
-    addTotals(totals, "calls", totalCalls);
+		addTotals(totals, "calls", totalCalls);
 		addTotals(totals, "silent", silentCalls);
 		addTotals(totals, "visits", totalVisits);
 		addTotals(totals, "revenue", totalRevenue);
-    addTotals(totals, "opps", totalOpps);
-		final JsonMap json = new JsonMap()
-			.$("rows", list)
-			.$("total", totals)
-			.$("lastAdjustment", delta)
-			.$("labels", (JsonList) groups.stream().map(this::getGroupLabel).map(JsonString::new).collect(
-				Collectors.toCollection(JsonList::new)));
+		addTotals(totals, "opps", totalOpps);
+		final JsonMap json = new JsonMap().$("rows", list)
+		                                  .$("total", totals)
+		                                  .$("lastAdjustment", delta)
+		                                  .$("labels", (JsonList) groups.stream()
+		                                                                .map(this::getGroupLabel)
+		                                                                .map(JsonString::new)
+		                                                                .collect(Collectors.toCollection(JsonList::new)));
 		addExtra(json, intervals, groups);
 		return json;
 	}
 
-	protected void addExtra(final JsonMap row, final Map<String, Interval> interval, final R r,
-		final Set<G> groups) {
+	// Begin Servlet methods
+	@Override
+	public void init(final ServletConfig config)
+			throws ServletException {
+		super.init(config);
+		log.info("Initalizing row queues for %s", getClass().getSimpleName());
+		this.rowQueues = new HashMap<>();
+		addRowQueues(rowQueues);
+		log.info("Initalizing group queues for %s", getClass().getSimpleName());
+		this.groupQueues = new HashMap<>();
+		addGroupQueues(groupQueues);
+	}
+
+	protected abstract void addRowQueues(final Map<Integer, Set<String>> rowQueues);
+
+	protected abstract void addGroupQueues(final Map<Integer, Set<String>> groupQueues);
+
+	protected abstract Query<Opportunity> oppsWithGroup(final Set<G> groups);
+
+	protected abstract Query<DailyProductLineVisits> visitsWithGroup(final Set<G> groups);
+
+	protected abstract Query<DailyProductLineVisits> visitsWithRow(final R r);
+
+	protected abstract Query<Opportunity> oppsWithRow(final R row);
+
+	protected void addExtra(final JsonMap row, final Map<String, Interval> interval, final R r, final Set<G> groups) {
 
 	}
 
-	protected void addExtra(final JsonMap json, final Map<String, Interval> intervals,
-		final Set<G> groups) {
+	private <N extends Number & Comparable<N>> void update(final Map<String, N> totals, final JsonMap map,
+			final String key, final N value, final NumberMath<N> calc) {
+		totals.put(key, calc.add(totals.getOrDefault(key, calc.zero()), value));
+		put(map, key, value);
 	}
 
-	private <N extends Number>
-	void addTotals(final JsonMap totals, final String key, final Map<String, N> data) {
+	private <N extends Number> void addTotals(final JsonMap totals, final String key, final Map<String, N> data) {
 		final JsonMap map = new JsonMap();
 		for (final Map.Entry<String, N> entry : data.entrySet()) {
 			put(map, entry.getKey(), entry.getValue());
 		}
 		totals.put(key, map);
+	}
+
+	protected void addExtra(final JsonMap json, final Map<String, Interval> intervals, final Set<G> groups) {
 	}
 
 	private <N extends Number> void put(final JsonMap map, final String key, final N n) {
@@ -205,24 +202,4 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 			map.put(key, n.doubleValue());
 		}
 	}
-
-	protected abstract Query<Opportunity> oppsWithRow(final R row);
-
-	private <N extends Number & Comparable<N>> void update(final Map<String, N> totals, final JsonMap map,
-		final String key, final N value,
-		final NumberMath<N> calc) {
-		totals.put(key, calc.add(totals.getOrDefault(key, calc.zero()), value));
-		put(map, key, value);
-	}
-
-	protected abstract Query<DailyProductLineVisits> visitsWithRow(final R r);
-
-	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
-		return rowQueues.size();
-	}
-
-	protected abstract Query<Opportunity> oppsWithGroup(final Set<G> groups);
-
-	protected abstract Query<DailyProductLineVisits> visitsWithGroup(final Set<G> groups);
 }

@@ -1,14 +1,14 @@
 cargo {
-  containerId = "tomcat9x"
-  deployable {
-    context = "api"
-  }
-  remote {
-    protocol = "https"
-    hostname = "crm.inetalliance.net"
-    port = 443
-    username = "-"
-    password = "-"
-  }
+    containerId = "tomcat9x"
+    deployable {
+        context = "api"
+    }
+    remote {
+        protocol = "https"
+        hostname = "crm.inetalliance.net"
+        port = 443
+        username = "-"
+        password = "-"
+    }
 
 }

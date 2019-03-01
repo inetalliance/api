@@ -11,7 +11,7 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/siteGroup/*")
 public class SiteGroups
-	extends ListableModel.Named<SiteGroup> {
+		extends ListableModel.Named<SiteGroup> {
 	public SiteGroups() {
 		super(SiteGroup.class);
 	}

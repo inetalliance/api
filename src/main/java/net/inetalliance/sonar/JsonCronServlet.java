@@ -13,40 +13,40 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 public abstract class JsonCronServlet
-  extends AngularServlet
-  implements Runnable {
-  public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, DaemonThreadFactory.$);
-  private final int interval;
-  private final TimeUnit timeUnit;
-  private transient Json content;
+		extends AngularServlet
+		implements Runnable {
+	public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, DaemonThreadFactory.$);
+	private final int interval;
+	private final TimeUnit timeUnit;
+	private transient Json content;
 
-  public JsonCronServlet(final int interval, final TimeUnit timeUnit) {
-    this.interval = interval;
-    this.timeUnit = timeUnit;
-  }
+	public JsonCronServlet(final int interval, final TimeUnit timeUnit) {
+		this.interval = interval;
+		this.timeUnit = timeUnit;
+	}
 
-  @Override
-  public void init(final ServletConfig config)
-    throws ServletException {
-    super.init(config);
-    scheduler.scheduleWithFixedDelay(this, 0, interval, timeUnit);
-  }
+	@Override
+	public void init(final ServletConfig config)
+			throws ServletException {
+		super.init(config);
+		scheduler.scheduleWithFixedDelay(this, 0, interval, timeUnit);
+	}
 
-  @Override
-  public void run() {
-    content = produce();
-  }
+	@Override
+	public void run() {
+		content = produce();
+	}
 
-  protected abstract Json produce();
+	protected abstract Json produce();
 
-  @Override
-  protected void get(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    respond(response, content);
-  }
+	@Override
+	protected void get(final HttpServletRequest request, final HttpServletResponse response)
+			throws Exception {
+		respond(response, content);
+	}
 
-  @Override
-  public void destroy() {
-    scheduler.shutdown();
-  }
+	@Override
+	public void destroy() {
+		scheduler.shutdown();
+	}
 }

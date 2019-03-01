@@ -15,22 +15,20 @@ import java.util.stream.Collectors;
 
 @WebServlet("/api/categorySearch")
 public class CategorySearch
-	extends AngularServlet {
+		extends AngularServlet {
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final String query = request.getParameter(Searchable.parameter);
 		if (query == null) {
-			respond(response, new JsonMap()
-				.$("categories", JsonList.empty)
-				.$("hasMore", false));
+			respond(response, new JsonMap().$("categories", JsonList.empty).$("hasMore", false));
 		} else {
 			final int page = getParameter(request, Listable.page, 1);
 			final int pageSize = getParameter(request, Listable.pageSize, 20);
 			final CategorySearchResponse results = Callgrove.beejax.categorySearch(query, pageSize, (page - 1) * pageSize);
-			respond(response,
-				Listable.formatResult(results.categories.stream().map(CategoryLookup::json).collect(Collectors.toList())));
+			respond(response, Listable.formatResult(
+					results.categories.stream().map(CategoryLookup::json).collect(Collectors.toList())));
 		}
 	}
 }

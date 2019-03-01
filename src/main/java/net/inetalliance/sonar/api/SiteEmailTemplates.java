@@ -14,15 +14,14 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/siteEmailTemplate/*")
 public class SiteEmailTemplates
-	extends ListableModel<Site> {
+		extends ListableModel<Site> {
 
 	public SiteEmailTemplates() {
 		super(Site.class, Pattern.compile("/api/siteEmailTemplate(?:/(\\d+))?"));
 	}
 
 	@Override
-	public Query<Site> all(final Class<Site> type,
-	                       final HttpServletRequest request) {
+	public Query<Site> all(final Class<Site> type, final HttpServletRequest request) {
 
 		Query<Site> q = super.all(type, request);
 		return q.orderBy("name", ASCENDING);
@@ -30,10 +29,9 @@ public class SiteEmailTemplates
 
 	@Override
 	public Json toJson(final HttpServletRequest request, Site site) {
-		return new JsonMap()
-			.$("id", site.getId())
-			.$("name", site.getName())
-			.$("emailTemplate", site.getEmailTemplate())
-			.$("emailTemplateStyles", site.getEmailTemplateStyles());
+		return new JsonMap().$("id", site.getId())
+		                    .$("name", site.getName())
+		                    .$("emailTemplate", site.getEmailTemplate())
+		                    .$("emailTemplateStyles", site.getEmailTemplateStyles());
 	}
 }

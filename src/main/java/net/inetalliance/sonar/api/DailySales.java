@@ -44,30 +44,27 @@ import static net.inetalliance.types.www.ContentType.*;
  */
 @WebServlet("/api/salesChart")
 public class DailySales
-	extends AngularServlet {
+		extends AngularServlet {
 
 	private RedisJsonCache cache;
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Agent loggedIn = Startup.getAgent(request);
 		assert loggedIn != null;
 		final Set<Site> sites = Startup.locateParameterValues(request, "site", Site.class);
-		final Set<ProductLine> productLines = Startup.locateParameterValues(request, "productLine",
-			ProductLine.class);
+		final Set<ProductLine> productLines = Startup.locateParameterValues(request, "productLine", ProductLine.class);
 		final Set<Agent> agents = Startup.locateParameterValues(request, "agent", Agent.class);
 		final String mode = request.getParameter("mode");
-		final SaleSource saleSource = isEmpty(mode) || "all".equals(mode)
-			? null : StringFun.camelCaseToEnum(SaleSource.class, mode);
+		final SaleSource saleSource =
+				isEmpty(mode) || "all".equals(mode) ? null : StringFun.camelCaseToEnum(SaleSource.class, mode);
 		final Interval interval = Callgrove.getInterval(request);
-		final String cacheKey = String.format("l:%s,s:%s,p:%s,a:%s,m:%s,i:%s/%s",
-			loggedIn.key,
-			IdPo.mapId(sites),
-			IdPo.mapId(productLines),
-			agents.stream().map(a -> a.key).collect(toList()), saleSource,
-			DateTimeFormat.shortDate().print(interval.getStart()),
-			DateTimeFormat.shortDate().print(interval.getEnd()));
+		final String cacheKey =
+				String.format("l:%s,s:%s,p:%s,a:%s,m:%s,i:%s/%s", loggedIn.key, IdPo.mapId(sites), IdPo.mapId(productLines),
+				              agents.stream().map(a -> a.key).collect(toList()), saleSource,
+				              DateTimeFormat.shortDate().print(interval.getStart()),
+				              DateTimeFormat.shortDate().print(interval.getEnd()));
 
 		final String cached = cache.get(cacheKey);
 		if (StringFun.isEmpty(cached)) {
@@ -87,8 +84,7 @@ public class DailySales
 					// this shouldn't really happen. they'd have to be sneakily changing the json URI outside of the UI
 					final Set<Site> forbidden = new HashSet<>(sites);
 					forbidden.removeAll(visible);
-					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden,
-						visible);
+					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden, visible);
 					throw new ForbiddenException();
 				}
 			}
@@ -115,8 +111,7 @@ public class DailySales
 				if (!visible.containsAll(agents)) {
 					final Set<Agent> forbidden = new HashSet<>(agents);
 					agents.removeAll(visible);
-					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden,
-						visible);
+					log.error("%s tried to request sales data for %s, but is only granted access to %s", forbidden, visible);
 					throw new ForbiddenException();
 				}
 			}
@@ -128,44 +123,45 @@ public class DailySales
 			final Query<Opportunity> finalOQ = oQ;
 			final Query<Call> finalCQ = cQ;
 
-			final Map<String, DateTime> firstCall = Locator.$$(Call.withSiteIn(sites).and(Call.isQueue), Aggregate.MIN,
-				String.class, "callerid_number", DateTime.class, "created");
+			final Map<String, DateTime> firstCall =
+					Locator.$$(Call.withSiteIn(sites).and(Call.isQueue), Aggregate.MIN, String.class, "callerid_number",
+					           DateTime.class, "created");
 			final SortedSet<DateTime> newCallers = new TreeSet<>(firstCall.values());
 
 			final DateMidnight end = interval.getEnd().plusDays(1).toDateMidnight();
 			ProgressHandler.$.start(loggedIn.key, response, Weeks.weeksBetween(interval.getStart(), end).getWeeks(),
-				progressMeter -> {
-					DateMidnight current = interval.getStart().toDateMidnight();
-					if (current.getDayOfWeek() != end.getDayOfWeek()) {
-						current = current.withDayOfWeek(end.getDayOfWeek());
-						if (current.isAfter(interval.getStart())) {
-							current = current.minusWeeks(1);
-						}
-					}
-					while (current.isBefore(end)) {
-						final JsonList point = new JsonList();
-						final Calculator<Currency> calc = new Calculator<>(Currency.MATH);
-						final Interval week = new Interval(current, current.plusWeeks(1).minus(1));
-						Locator.forEach(finalOQ.and(Opportunity.isSold.and(soldInInterval(week))),
-							o -> calc.accept(o.getAmount()));
+			                        progressMeter -> {
+				                        DateMidnight current = interval.getStart().toDateMidnight();
+				                        if (current.getDayOfWeek() != end.getDayOfWeek()) {
+					                        current = current.withDayOfWeek(end.getDayOfWeek());
+					                        if (current.isAfter(interval.getStart())) {
+						                        current = current.minusWeeks(1);
+					                        }
+				                        }
+				                        while (current.isBefore(end)) {
+					                        final JsonList point = new JsonList();
+					                        final Calculator<Currency> calc = new Calculator<>(Currency.MATH);
+					                        final Interval week = new Interval(current, current.plusWeeks(1).minus(1));
+					                        Locator.forEach(finalOQ.and(Opportunity.isSold.and(soldInInterval(week))),
+					                                        o -> calc.accept(o.getAmount()));
 
-						point.add(jsDateFormat.print(current));
-						final Stats<Currency> stats = calc.getStats();
-						point.add(stats.n);
-						point.add(new JsonFloat(stats.sum()));
-						point.add(Locator.count(finalOQ.and(createdInInterval(week))));
-						final Query<Call> finalCQinInterval = finalCQ.and(Call.inInterval(week));
-						point.add(Locator.count(finalCQinInterval));
-						point.add(Locator.countDistinct(finalCQinInterval, "callerId_number"));
-						point.add(newCallers.subSet(week.getStart(), week.getEnd()).size());
+					                        point.add(jsDateFormat.print(current));
+					                        final Stats<Currency> stats = calc.getStats();
+					                        point.add(stats.n);
+					                        point.add(new JsonFloat(stats.sum()));
+					                        point.add(Locator.count(finalOQ.and(createdInInterval(week))));
+					                        final Query<Call> finalCQinInterval = finalCQ.and(Call.inInterval(week));
+					                        point.add(Locator.count(finalCQinInterval));
+					                        point.add(Locator.countDistinct(finalCQinInterval, "callerId_number"));
+					                        point.add(newCallers.subSet(week.getStart(), week.getEnd()).size());
 
-						days.add(point);
-						current = current.plusWeeks(1);
-						progressMeter.increment();
-					}
-					cache.set(cacheKey, days);
-					return days;
-				});
+					                        days.add(point);
+					                        current = current.plusWeeks(1);
+					                        progressMeter.increment();
+				                        }
+				                        cache.set(cacheKey, days);
+				                        return days;
+			                        });
 
 		} else {
 			log.debug("Returning cached report result for %s", cacheKey);
@@ -179,7 +175,7 @@ public class DailySales
 
 	@Override
 	public void init(final ServletConfig config)
-		throws ServletException {
+			throws ServletException {
 		super.init(config);
 		cache = new RedisJsonCache(config.getServletName());
 	}

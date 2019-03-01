@@ -1,9 +1,10 @@
 package net.inetalliance.sonar.api;
 
-import javax.servlet.annotation.WebServlet;
+import javax.servlet.annotation.*;
 
 @WebServlet("/api/model/*")
-public class Model extends net.inetalliance.angular.Model {
+public class Model
+		extends net.inetalliance.angular.Model {
 	public Model() {
 		super();
 	}

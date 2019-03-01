@@ -23,18 +23,17 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class ScriptRoot
-	extends TypeModel<com.callgrove.obj.ScriptRoot>
-	implements Listable<com.callgrove.obj.ScriptRoot> {
+		extends TypeModel<com.callgrove.obj.ScriptRoot>
+		implements Listable<com.callgrove.obj.ScriptRoot> {
 
 	private final Info<ProductLine> productLineInfo;
 
 	private static JsonMap json(final com.callgrove.obj.ScriptRoot root) {
-		return new JsonMap()
-			.$("id", root.id)
-			.$("productLine", root.getProductLine().getId())
-			.$("root", root.getRoot().id)
-			.$("name", root.getName())
-			.$("created", root.getCreated());
+		return new JsonMap().$("id", root.id)
+		                    .$("productLine", root.getProductLine().getId())
+		                    .$("root", root.getRoot().id)
+		                    .$("name", root.getName())
+		                    .$("created", root.getCreated());
 	}
 
 	private static final Pattern pattern = Pattern.compile("/api/productLine/(\\d+)/scriptRoot/?(\\d+)?");
@@ -51,7 +50,7 @@ public class ScriptRoot
 
 	@Override
 	public Query<com.callgrove.obj.ScriptRoot> all(final Class<com.callgrove.obj.ScriptRoot> type,
-	                                               final HttpServletRequest request) {
+			final HttpServletRequest request) {
 		final ProductLine productLine = getProductLine(request);
 		return com.callgrove.obj.ScriptRoot.withProductLine(productLine);
 	}
@@ -71,7 +70,7 @@ public class ScriptRoot
 
 	@Override
 	public JsonMap create(final Key<com.callgrove.obj.ScriptRoot> key, final HttpServletRequest request,
-	                      final HttpServletResponse response, final JsonMap data) {
+			final HttpServletResponse response, final JsonMap data) {
 		ScriptNode root = Locator.$(new ScriptNode(data.getInteger("root")));
 		if (root == null) {
 			root = new ScriptNode();
@@ -81,15 +80,14 @@ public class ScriptRoot
 		} else {
 			root = root.duplicate(request.getRemoteUser());
 		}
-		return super.create(key, request, response, data
-			.$("productLine", getProductLine(request).id)
-			.$("root", root.id)
-			.$("created", new DateTime()));
+		return super.create(key, request, response, data.$("productLine", getProductLine(request).id)
+		                                                .$("root", root.id)
+		                                                .$("created", new DateTime()));
 	}
 
 	@Override
-	protected Json toJson(final Key<com.callgrove.obj.ScriptRoot> key,
-	                      final com.callgrove.obj.ScriptRoot root, final HttpServletRequest request) {
+	protected Json toJson(final Key<com.callgrove.obj.ScriptRoot> key, final com.callgrove.obj.ScriptRoot root,
+			final HttpServletRequest request) {
 		return json(root);
 	}
 

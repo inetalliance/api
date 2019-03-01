@@ -35,7 +35,6 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 public class WebHookStats
 		extends AngularServlet {
 
-
 	private static class Statistics {
 		int queueCalls;
 		int outboundCalls;
@@ -60,17 +59,16 @@ public class WebHookStats
 
 		JsonMap toJson() {
 			final Stats<Currency> stats = sales.getStats();
-			return new JsonMap()
-					.$("queueCalls", queueCalls)
-					.$("outboundCalls", outboundCalls)
-					.$("n", n)
-					.$("sold", stats.n)
-					.$("revenue", stats.sum.doubleValue())
-					.$("attempted", attempted)
-					.$("contacted", contacted)
-					.$("talkTime", new Duration(talkTime.getStats().mean).getShortString())
-					.$("delay", new Duration(delay.getStats().mean).getShortString())
-					.$("contactDelay", new Duration(contactDelay.getStats().mean).getShortString());
+			return new JsonMap().$("queueCalls", queueCalls)
+			                    .$("outboundCalls", outboundCalls)
+			                    .$("n", n)
+			                    .$("sold", stats.n)
+			                    .$("revenue", stats.sum.doubleValue())
+			                    .$("attempted", attempted)
+			                    .$("contacted", contacted)
+			                    .$("talkTime", new Duration(talkTime.getStats().mean).getShortString())
+			                    .$("delay", new Duration(delay.getStats().mean).getShortString())
+			                    .$("contactDelay", new Duration(contactDelay.getStats().mean).getShortString());
 		}
 
 		public void add(final Statistics value) {
@@ -98,7 +96,7 @@ public class WebHookStats
 		final Set<Integer> unattempted = new HashSet<>();
 		final Set<Integer> uncontacted = new HashSet<>();
 
-		final Map<String, Statistics> stats = new LazyMap<String, Statistics>(new HashMap<>(), s->new Statistics());
+		final Map<String, Statistics> stats = new LazyMap<String, Statistics>(new HashMap<>(), s -> new Statistics());
 
 		final Statistics todayStats = new Statistics();
 		forEach(webhook, opportunity -> {
@@ -114,24 +112,24 @@ public class WebHookStats
 				todayStats.n++;
 			}
 			forEach(Call.withContact(opportunity.getContact()).and(Call.isAfter(created)).orderBy("created", ASCENDING),
-				call -> {
-					if (agent.delay.k == 0) {
-						agent.delay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
-					}
-					if (call.getDirection() == OUTBOUND) {
-						callStats.outboundCalls++;
-					} else {
-						callStats.queueCalls++;
-					}
-					final long talkTime = call.getTalkTime();
-					if (talkTime > 60000) {
-						callStats.contacted++;
-						callStats.talkTime.accept(talkTime);
-						if (agent.contactDelay.k == 0) {
-							agent.contactDelay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
-						}
-					}
-				});
+			        call -> {
+				        if (agent.delay.k == 0) {
+					        agent.delay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
+				        }
+				        if (call.getDirection() == OUTBOUND) {
+					        callStats.outboundCalls++;
+				        } else {
+					        callStats.queueCalls++;
+				        }
+				        final long talkTime = call.getTalkTime();
+				        if (talkTime > 60000) {
+					        callStats.contacted++;
+					        callStats.talkTime.accept(talkTime);
+					        if (agent.contactDelay.k == 0) {
+						        agent.contactDelay.accept(call.getCreated().getMillis() - opportunity.getCreated().getMillis());
+					        }
+				        }
+			        });
 			agent.queueCalls += callStats.queueCalls;
 			agent.outboundCalls += callStats.outboundCalls;
 			if (callStats.contacted > 0) {
@@ -182,23 +180,22 @@ public class WebHookStats
 		agents.put("Today", todayStats.toJson().$("name", "Today"));
 		json.put("agents", agents);
 		json.put("total", total.toJson());
-		final JsonList notAttempted = unattempted.stream().map(
-				id -> toJson(Locator.$(new Opportunity(id)))).collect(toCollection(JsonList::new));
+		final JsonList notAttempted =
+				unattempted.stream().map(id -> toJson(Locator.$(new Opportunity(id)))).collect(toCollection(JsonList::new));
 		json.put("unattempted", notAttempted);
-		final JsonList notContacted = uncontacted.stream().map(
-				id -> toJson(Locator.$(new Opportunity(id)))).collect(toCollection(JsonList::new));
+		final JsonList notContacted =
+				uncontacted.stream().map(id -> toJson(Locator.$(new Opportunity(id)))).collect(toCollection(JsonList::new));
 		json.put("uncontacted", notContacted);
 		respond(response, json);
 	}
 
 	private JsonMap toJson(final Opportunity o) {
 		final Contact c = o.getContact();
-		return new JsonMap()
-				.$("agent", o.getAssignedTo().getLastNameFirstInitial())
-				.$("name", c.getFullName())
-				.$("phone", c.getShipping().getPhone())
-				.$("email", c.getEmail())
-				.$("age", new Duration(o.getCreated().toDate(), new DateTime().toDate()).getShortString());
+		return new JsonMap().$("agent", o.getAssignedTo().getLastNameFirstInitial())
+		                    .$("name", c.getFullName())
+		                    .$("phone", c.getShipping().getPhone())
+		                    .$("email", c.getEmail())
+		                    .$("age", new Duration(o.getCreated().toDate(), new DateTime().toDate()).getShortString());
 
 	}
 }

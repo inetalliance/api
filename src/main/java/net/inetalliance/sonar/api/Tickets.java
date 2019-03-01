@@ -22,7 +22,7 @@ import static net.inetalliance.potion.Locator.*;
 
 @WebServlet("/api/tickets/*")
 public class Tickets
-	extends AngularServlet {
+		extends AngularServlet {
 	public static final Pattern pattern = compile("/api/tickets/(.*)");
 	public static final String api = "https://youtrack.inetalliance.net/rest";
 	private YouTrack youTrack;
@@ -44,7 +44,7 @@ public class Tickets
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final Opportunity opp = $(new Opportunity(valueOf(matcher.group(1))));
@@ -52,7 +52,7 @@ public class Tickets
 				throw new NotFoundException();
 			}
 			final JsonMap json =
-				youTrack.get("/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+" + opp.getId());
+					youTrack.get("/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+" + opp.getId());
 			response.setContentType(ContentType.JSON.toString());
 			Pretty.$(json, response.getWriter());
 			response.flushBuffer();

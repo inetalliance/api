@@ -28,17 +28,17 @@ public class ScriptTree
 	private final Info<ProductLine> productLineInfo;
 
 	private static Json toJson(ScriptNode scriptNode) {
-			return new JsonMap()
-					.$("id", scriptNode.id)
-					.$("type", scriptNode.getType().getFormattedName())
-					.$("prompt", scriptNode.getPrompt())
-					.$("left", scriptNode.getLeft() == null ? null : scriptNode.getLeft().id)
-					.$("right", scriptNode.getRight() == null ? null : scriptNode.getRight().id);
-		}
+		return new JsonMap().$("id", scriptNode.id)
+		                    .$("type", scriptNode.getType().getFormattedName())
+		                    .$("prompt", scriptNode.getPrompt())
+		                    .$("left", scriptNode.getLeft() == null ? null : scriptNode.getLeft().id)
+		                    .$("right", scriptNode.getRight() == null ? null : scriptNode.getRight().id);
+	}
+
 	private static Pattern pattern = Pattern.compile("/api/script-tree/(\\d+)/(\\d+)");
 
 	public ScriptTree() {
-		productLineInfo= Info.$(ProductLine.class);
+		productLineInfo = Info.$(ProductLine.class);
 		scriptNodeInfo = Info.$(ScriptNode.class);
 	}
 
@@ -53,12 +53,11 @@ public class ScriptTree
 				throw new NotFoundException("Product line %s not found", matcher.group(1));
 			} else if (rootNode == null) {
 				throw new NotFoundException("Root not found", matcher.group(2));
-			} else if (count(ScriptRoot.withProductLine(productLine)
-					.and(ScriptRoot.withRoot(rootNode))) == 0) {
+			} else if (count(ScriptRoot.withProductLine(productLine).and(ScriptRoot.withRoot(rootNode))) == 0) {
 				throw new BadRequestException("Node %s is not a root of a %s script", rootNode.id, productLine.getName());
 			}
 			final Collection<ScriptNode> nodes = rootNode.getTree();
-			final JsonMap json = new JsonMap(nodes.stream().collect(Funky.toMap(n->n.id.toString(), ScriptTree::toJson)));
+			final JsonMap json = new JsonMap(nodes.stream().collect(Funky.toMap(n -> n.id.toString(), ScriptTree::toJson)));
 			json.put("root", rootNode.id);
 			respond(response, json);
 		} else {

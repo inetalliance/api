@@ -13,7 +13,7 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/siteGroup/site")
 public class SiteGroupSites
-	extends SelectMembers<SiteGroup, Site> {
+		extends SelectMembers<SiteGroup, Site> {
 	public SiteGroupSites() {
 		super(SiteGroup.class, Site.class);
 	}
@@ -21,7 +21,7 @@ public class SiteGroupSites
 	@Override
 	public Query<SiteGroup> all(final Class<SiteGroup> type, final HttpServletRequest request) {
 		return Startup.getAgent(request).getVisibleSiteGroupsQuery().and(SiteGroup.isSelectable).orderBy("name",
-				ASCENDING);
+		                                                                                                 ASCENDING);
 	}
 
 	@Override

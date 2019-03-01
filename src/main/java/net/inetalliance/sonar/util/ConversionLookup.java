@@ -1,43 +1,37 @@
 package net.inetalliance.sonar.util;
 
-import com.callgrove.obj.Call;
-import com.callgrove.obj.Contact;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.Site;
-import com.callgrove.types.SalesStage;
-import net.inetalliance.cli.Cli;
-import net.inetalliance.log.Log;
-import net.inetalliance.potion.DbCli;
+import com.callgrove.obj.*;
+import com.callgrove.types.*;
+import net.inetalliance.cli.*;
+import net.inetalliance.log.*;
+import net.inetalliance.potion.*;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.Duration;
-import net.inetalliance.types.annotations.Parameter;
-import net.inetalliance.types.annotations.Required;
-import org.joda.time.DateMidnight;
-import org.joda.time.Interval;
+import net.inetalliance.types.annotations.*;
+import org.joda.time.*;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.InputStreamReader;
-import java.util.Collection;
-import java.util.TreeSet;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
 
 import static com.callgrove.obj.Call.*;
-import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.potion.Locator.$;
-import static net.inetalliance.potion.Locator.forEach;
+import static net.inetalliance.log.Log.*;
+import static net.inetalliance.potion.Locator.*;
 
 public class ConversionLookup
-	extends DbCli {
+		extends DbCli {
+	private static final transient Log log = getInstance(ConversionLookup.class);
 	@Parameter('c')
 	@Required
 	String callerIds;
 
+	public static void main(final String[] args) {
+		Cli.run(new ConversionLookup(), args);
+	}
+
 	@Override
 	protected void exec()
-		throws Throwable {
+			throws Throwable {
 		final File csv = new File(callerIds);
 		if (!csv.exists()) {
 			log.error("input file %s does not exist", csv.getAbsolutePath());
@@ -82,25 +76,21 @@ public class ConversionLookup
 		});
 		log.info("calls: %d", calls.get());
 		log.info("talktime: %s, %s", new Duration(talktime.get()).getShortString(),
-			new Duration(talktime.get() / calls.get()).getShortString());
+		         new Duration(talktime.get() / calls.get()).getShortString());
 		final AtomicLong allTalkTime = new AtomicLong(0);
 		final AtomicInteger allCalls = new AtomicInteger(0);
 
-		forEach(withSite($(new Site(42))).and(isQueue).and(inInterval(
-			new Interval(new DateMidnight(2015, 7, 1), new DateMidnight(2015, 8, 1)))), call -> {
-			allCalls.getAndIncrement();
-			allTalkTime.getAndAdd(call.getTalkTime());
+		forEach(withSite($(new Site(42))).and(isQueue)
+		                                 .and(inInterval(
+				                                 new Interval(new DateMidnight(2015, 7, 1), new DateMidnight(2015, 8, 1)))),
+		        call -> {
+			        allCalls.getAndIncrement();
+			        allTalkTime.getAndAdd(call.getTalkTime());
 
-		});
+		        });
 		log.info("all calls: %d", allCalls.get());
 		log.info("talktime: %s, %s", new Duration(allTalkTime.get()).getShortString(),
-			new Duration(allTalkTime.get() / allCalls.get()).getShortString());
+		         new Duration(allTalkTime.get() / allCalls.get()).getShortString());
 
 	}
-
-	public static void main(final String[] args) {
-		Cli.run(new ConversionLookup(), args);
-	}
-
-	private static final transient Log log = getInstance(ConversionLookup.class);
 }

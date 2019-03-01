@@ -1,29 +1,18 @@
 package net.inetalliance.sonar.reporting;
 
 import com.callgrove.obj.*;
-import net.inetalliance.potion.info.Info;
-import net.inetalliance.potion.query.Query;
+import net.inetalliance.potion.info.*;
+import net.inetalliance.potion.query.*;
 
-import javax.servlet.annotation.WebServlet;
-import java.util.Set;
+import javax.servlet.annotation.*;
+import java.util.*;
 
 @WebServlet("/reporting/reports/productLineSalesCycle")
 public class ProductLineSalesCycle
-	extends SalesCycle<Agent, ProductLine> {
-
+		extends SalesCycle<Agent, ProductLine> {
 
 	public ProductLineSalesCycle() {
 		super("productLine");
-	}
-
-	@Override
-	protected ProductLine getGroup(String[] params, String g) {
-		return Info.$(ProductLine.class).lookup(g);
-	}
-
-	@Override
-	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery().and(Agent.isSales.and(Agent.isLocked.negate()));
 	}
 
 	@Override
@@ -33,13 +22,8 @@ public class ProductLineSalesCycle
 	}
 
 	@Override
-	protected String getGroupLabel(final ProductLine group) {
-		return group.getAbbreviation().toString();
-	}
-
-	@Override
-	protected String getId(final Agent row) {
-		return row.key;
+	protected Query<Opportunity> inGroups(final Set<ProductLine> groups) {
+		return Opportunity.withProductLineIn(groups);
 	}
 
 	@Override
@@ -48,8 +32,8 @@ public class ProductLineSalesCycle
 	}
 
 	@Override
-	protected Query<Opportunity> inGroups(final Set<ProductLine> groups) {
-		return Opportunity.withProductLineIn(groups);
+	protected Query<Opportunity> withRow(final Agent row) {
+		return Opportunity.withAgent(row);
 	}
 
 	@Override
@@ -63,7 +47,22 @@ public class ProductLineSalesCycle
 	}
 
 	@Override
-	protected Query<Opportunity> withRow(final Agent row) {
-		return Opportunity.withAgent(row);
+	protected String getGroupLabel(final ProductLine group) {
+		return group.getAbbreviation().toString();
+	}
+
+	@Override
+	protected String getId(final Agent row) {
+		return row.key;
+	}
+
+	@Override
+	protected Query<Agent> allRows(final Agent loggedIn) {
+		return loggedIn.getViewableAgentsQuery().and(Agent.isSales.and(Agent.isLocked.negate()));
+	}
+
+	@Override
+	protected ProductLine getGroup(String[] params, String g) {
+		return Info.$(ProductLine.class).lookup(g);
 	}
 }

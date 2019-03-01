@@ -13,7 +13,8 @@ import java.util.Collection;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/callCenterAgents")
-public class CallCenterAgents extends SelectMembers<CallCenter, Agent> {
+public class CallCenterAgents
+		extends SelectMembers<CallCenter, Agent> {
 	public CallCenterAgents() {
 		super(CallCenter.class, Agent.class);
 	}

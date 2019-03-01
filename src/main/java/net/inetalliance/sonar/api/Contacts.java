@@ -17,7 +17,7 @@ import static net.inetalliance.funky.StringFun.isEmpty;
 
 @WebServlet("/api/contact/*")
 public class Contacts
-	extends ListableModel<Contact> {
+		extends ListableModel<Contact> {
 
 	public Contacts() {
 		super(Contact.class);
@@ -35,8 +35,7 @@ public class Contacts
 		}
 		final Query<Contact> q;
 		final String cid =
-			call.getCallerId() == null || isEmpty(call.getCallerId().getNumber())
-				? null : call.getCallerId().getNumber();
+				call.getCallerId() == null || isEmpty(call.getCallerId().getNumber()) ? null : call.getCallerId().getNumber();
 		if (call.getContact() != null) {
 			q = Contact.withId(Contact.class, call.getContact().id);
 		} else if (cid != null && cid.length() >= 10) {
@@ -47,15 +46,12 @@ public class Contacts
 		return q;
 	}
 
-
 	@Override
 	public Json toJson(final HttpServletRequest request, final Contact contact) {
 		return request.getParameter("summary") == null ? super.toJson(request, contact) : summary(contact);
 	}
 
 	private static JsonMap summary(final Contact contact) {
-		return new JsonMap()
-			.$("id", contact.id)
-			.$("name", contact.getFullName());
+		return new JsonMap().$("id", contact.id).$("name", contact.getFullName());
 	}
 }

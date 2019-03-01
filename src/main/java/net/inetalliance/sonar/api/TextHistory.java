@@ -16,7 +16,7 @@ import java.util.regex.Pattern;
 
 @WebServlet("/api/textHistory/*")
 public class TextHistory
-	extends AngularServlet {
+		extends AngularServlet {
 	private static final Pattern pattern = Pattern.compile("/api/textHistory/([0-9]+)");
 
 	@Override
@@ -40,7 +40,7 @@ public class TextHistory
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final int opportunityId = Integer.parseInt(matcher.group(1));
@@ -50,8 +50,7 @@ public class TextHistory
 			}
 			respond(response, Avochato.getInstance().searchContacts(opportunity));
 		} else {
-			throw new BadRequestException("Request should match %s",
-				pattern.pattern());
+			throw new BadRequestException("Request should match %s", pattern.pattern());
 		}
 	}
 }

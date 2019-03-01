@@ -26,7 +26,7 @@ import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
 @WebServlet("/api/wizardAnswer/*")
 public class WizardAnswer
-	extends AngularServlet {
+		extends AngularServlet {
 	private static final Pattern pattern = Pattern.compile("/api/wizardAnswer/(\\d+)(?:/question/(\\d+))?");
 
 	private static Json toJson(com.callgrove.obj.WizardAnswer wiz) {
@@ -34,7 +34,7 @@ public class WizardAnswer
 	}
 
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final Opportunity o = Info.$(Opportunity.class).lookup(matcher.group(1));
@@ -50,7 +50,7 @@ public class WizardAnswer
 
 	@Override
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final Opportunity o = Info.$(Opportunity.class).lookup(matcher.group(1));
@@ -58,14 +58,12 @@ public class WizardAnswer
 				throw new NotFoundException("could not find opportunity with id %s", matcher.group(1));
 			}
 			final JsonMap data = JsonMap.parse(request.getInputStream());
-			final Collection<Integer> answers = data.getList("answers").stream()
-				.map(Json::toInteger)
-				.collect(toList());
+			final Collection<Integer> answers = data.getList("answers").stream().map(Json::toInteger).collect(toList());
 			final int question = Integer.parseInt(matcher.group(2));
 
 			// delete existing
 			final SortedSet<com.callgrove.obj.WizardAnswer> existing =
-				Locator.$$(withOpportunity(o).and(withQuestion(question)));
+					Locator.$$(withOpportunity(o).and(withQuestion(question)));
 			existing.forEach(e -> Locator.delete(request.getRemoteUser(), e));
 
 			// create new
@@ -83,7 +81,7 @@ public class WizardAnswer
 
 	@Override
 	protected void delete(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final Opportunity o = Info.$(Opportunity.class).lookup(matcher.group(1));
@@ -94,7 +92,7 @@ public class WizardAnswer
 
 			// delete existing
 			final SortedSet<com.callgrove.obj.WizardAnswer> existing =
-				Locator.$$(withOpportunity(o).and(withQuestion(lastAnswer.getQuestion())));
+					Locator.$$(withOpportunity(o).and(withQuestion(lastAnswer.getQuestion())));
 			existing.forEach(e -> Locator.delete(request.getRemoteUser(), e));
 
 			respond(response, JsonList.collect(Locator.$$(withOpportunity(o)), WizardAnswer::toJson));

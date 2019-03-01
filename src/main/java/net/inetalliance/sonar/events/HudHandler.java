@@ -1,27 +1,20 @@
 package net.inetalliance.sonar.events;
 
-import com.callgrove.DaemonThreadFactory;
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.types.CallDirection;
-import net.inetalliance.log.Log;
-import net.inetalliance.sonar.api.Startup;
-import net.inetalliance.types.json.Json;
-import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.struct.maps.LazyMap;
-import org.asteriskjava.live.AsteriskChannel;
+import com.callgrove.*;
+import com.callgrove.obj.*;
+import com.callgrove.types.*;
+import net.inetalliance.log.*;
+import net.inetalliance.sonar.api.*;
+import net.inetalliance.types.json.*;
+import net.inetalliance.types.struct.maps.*;
+import org.asteriskjava.live.*;
 
-import javax.websocket.Session;
-import java.io.IOException;
+import javax.websocket.*;
+import java.io.*;
 import java.util.*;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
+import java.util.regex.*;
 
 import static com.callgrove.obj.Agent.*;
 import static com.callgrove.types.CallDirection.*;
@@ -29,24 +22,24 @@ import static java.util.concurrent.TimeUnit.*;
 import static net.inetalliance.potion.Locator.*;
 
 public class HudHandler
-	implements Runnable,
-	           MessageHandler {
+		implements Runnable, MessageHandler {
 
 	private static final Map<String, HudStatus> status;
+	private static final Pattern sip = Pattern.compile("SIP/(7[0-9][0-9][0-9]).*");
+	private static final transient Log log = Log.getInstance(HudHandler.class);
+	private static final Lock lock = new ReentrantLock();
 
 	static {
 		status = new LazyMap<>(new HashMap<>(), k -> new HudStatus());
 	}
 
-	private static final Pattern sip = Pattern.compile("SIP/(7[0-9][0-9][0-9]).*");
-	private static final transient Log log = Log.getInstance(HudHandler.class);
-	private static final Lock lock = new ReentrantLock();
 	private final JsonMap current;
 	private final Set<String> linkedChannels;
 	private final JsonMap hud;
 	private final Set<Session> subscribers;
 	private final ExecutorService service = Executors.newFixedThreadPool(4, DaemonThreadFactory.$);
 	private Set<String> untouched = new HashSet<>(8);
+	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 
 	public HudHandler() {
 		subscribers = new HashSet<>(8);
@@ -105,8 +98,6 @@ public class HudHandler
 		}
 	}
 
-	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
-
 	@Override
 	public void run() {
 		if (Startup.pbx != null) {
@@ -122,16 +113,6 @@ public class HudHandler
 		}
 		updateAvailability();
 		updateSimulated();
-	}
-
-	private void updateAvailability() {
-		forEach(isActive, agent -> {
-			HudStatus hudStatus = status.get(agent.key);
-			if (agent.isPaused() == hudStatus.available) {
-				hudStatus.available = !agent.isPaused();
-				untouched.remove(agent.key);
-			}
-		});
 	}
 
 	private void updateChannels() {
@@ -160,6 +141,48 @@ public class HudHandler
 				updateChannel(originatingChannel, dialedChannel);
 			}
 		}
+	}
+
+	private void updateSubscribers() {
+		lock.lock();
+		try {
+			for (final String notActive : untouched) {
+				status.get(notActive).clear();
+			}
+			current.clear();
+			for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
+				current.put(entry.getKey(), new JsonMap().$("direction", entry.getValue().direction)
+				                                         .$("available", entry.getValue().available));
+			}
+
+			if (!this.hud.equals(current)) {
+				this.hud.clear();
+				this.hud.putAll(current);
+				//broadcast(Events.wrap(type, this.hud));
+			}
+		} finally {
+			lock.unlock();
+		}
+	}
+
+	private void updateAvailability() {
+		forEach(isActive, agent -> {
+			HudStatus hudStatus = status.get(agent.key);
+			if (agent.isPaused() == hudStatus.available) {
+				hudStatus.available = !agent.isPaused();
+				untouched.remove(agent.key);
+			}
+		});
+	}
+
+	private void updateSimulated() {
+		forEach(Call.simulated.and(Call.isActive), call -> {
+			final Agent agent = call.getActiveAgent();
+			final HudStatus agentStatus = status.get(agent.key);
+			agentStatus.direction = QUEUE;
+			agentStatus.callId = call.key;
+			untouched.remove(agent.key);
+		});
 	}
 
 	private void updateChannel(final AsteriskChannel originatingChannel, final AsteriskChannel dialedChannel) {
@@ -196,40 +219,6 @@ public class HudHandler
 			agentStatus.direction = direction;
 			agentStatus.callId = originatingChannel.getId();
 			untouched.remove(agent);
-		}
-	}
-
-	private void updateSimulated() {
-		forEach(Call.simulated.and(Call.isActive), call -> {
-			final Agent agent = call.getActiveAgent();
-			final HudStatus agentStatus = status.get(agent.key);
-			agentStatus.direction = QUEUE;
-			agentStatus.callId = call.key;
-			untouched.remove(agent.key);
-		});
-	}
-
-	private void updateSubscribers() {
-		lock.lock();
-		try {
-			for (final String notActive : untouched) {
-				status.get(notActive).clear();
-			}
-			current.clear();
-			for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
-				current.put(entry.getKey(),
-					new JsonMap()
-						.$("direction", entry.getValue().direction)
-						.$("available", entry.getValue().available));
-			}
-
-			if (!this.hud.equals(current)) {
-				this.hud.clear();
-				this.hud.putAll(current);
-				//broadcast(Events.wrap(type, this.hud));
-			}
-		} finally {
-			lock.unlock();
 		}
 	}
 

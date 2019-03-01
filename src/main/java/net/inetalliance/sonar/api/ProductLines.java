@@ -11,7 +11,7 @@ import java.io.IOException;
 
 @WebServlet("/api/productLine/*")
 public class ProductLines
-	extends ListableModel.Named<ProductLine> {
+		extends ListableModel.Named<ProductLine> {
 	private final ScriptRoot scriptRoot;
 
 	public ProductLines() {
@@ -21,9 +21,9 @@ public class ProductLines
 
 	@Override
 	protected void service(final HttpServletRequest req, final HttpServletResponse resp)
-		throws ServletException, IOException {
-		if(scriptRoot.getPattern().matcher(req.getRequestURI()).matches()) {
-			scriptRoot.service(req,resp);
+			throws ServletException, IOException {
+		if (scriptRoot.getPattern().matcher(req.getRequestURI()).matches()) {
+			scriptRoot.service(req, resp);
 		} else {
 			super.service(req, resp);
 		}

@@ -1,35 +1,30 @@
 package net.inetalliance.sonar.events;
 
-import com.callgrove.jobs.Hud;
-import com.callgrove.obj.Agent;
+import com.callgrove.jobs.*;
+import com.callgrove.obj.*;
 import net.inetalliance.angular.events.Events;
-import net.inetalliance.cron.CronJob;
-import net.inetalliance.cron.CronStatus;
-import net.inetalliance.funky.StringFun;
-import net.inetalliance.log.Log;
-import net.inetalliance.potion.Locator;
-import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.struct.maps.LazyMap;
+import net.inetalliance.cron.*;
+import net.inetalliance.funky.*;
+import net.inetalliance.log.*;
+import net.inetalliance.potion.*;
+import net.inetalliance.types.json.*;
+import net.inetalliance.types.struct.maps.*;
 
-import javax.websocket.Session;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
+import javax.websocket.*;
+import java.util.*;
 
 import static java.util.Collections.*;
 import static java.util.concurrent.TimeUnit.*;
 import static net.inetalliance.cron.Cron.*;
 
 public class StatusHandler
-	implements MessageHandler {
-	private static final Map<String, Boolean> paused =
-		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
-	private static final Map<String, Boolean> forwarded =
-		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
+		implements MessageHandler {
+	private static final Map<String, Boolean> paused = synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
+	private static final Map<String, Boolean> forwarded = synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
 
-	private static final Map<String, Boolean> registered =
-		synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
+	private static final Map<String, Boolean> registered = synchronizedMap(new LazyMap<>(new HashMap<>(), k -> false));
 	private static final Map<String, String> calls = synchronizedMap(new HashMap<>());
+	private static final transient Log log = Log.getInstance(StatusHandler.class);
 
 	public StatusHandler() {
 		super();
@@ -46,8 +41,7 @@ public class StatusHandler
 					getStatus(agent, map, false);
 					if (!map.isEmpty()) {
 						if (map.containsKey("callId")) {
-							Events.sendToLatest("pop", agent,
-								new JsonMap().$("callId", map.get("callId")));
+							Events.sendToLatest("pop", agent, new JsonMap().$("callId", map.get("callId")));
 						}
 						Events.broadcast("status", agent, map);
 					}
@@ -55,33 +49,6 @@ public class StatusHandler
 				}
 			}
 		});
-	}
-
-	private static void check(final String property, final String agent, final JsonMap current,
-		final Map<String, Boolean> cache, final boolean defaultValue, final JsonMap changes,
-		final boolean full) {
-		final boolean currentValue = get(current, property, defaultValue);
-		final boolean cachedValue = cache.get(agent);
-		final boolean changed = currentValue != cachedValue;
-
-		if (changed || full) {
-			changes.put(property, currentValue);
-		}
-		if (changed) {
-			cache.put(agent, currentValue);
-		}
-	}
-
-	private static boolean get(final JsonMap map, final String key, final boolean defaultValue) {
-		if (map == null) {
-			return defaultValue;
-		}
-		final Boolean value = map.getBoolean(key);
-		return value == null ? defaultValue : value;
-	}
-
-	private static JsonMap getStatus(final String agent, final boolean full) {
-		return getStatus(agent, new JsonMap(), full);
 	}
 
 	private static JsonMap getStatus(final String agent, final JsonMap map, final boolean full) {
@@ -102,22 +69,26 @@ public class StatusHandler
 		return map.isEmpty() ? null : map;
 	}
 
-	@Override
-	public void destroy() {
-		calls.clear();
-		paused.clear();
-		forwarded.clear();
-		registered.clear();
+	private static void check(final String property, final String agent, final JsonMap current,
+			final Map<String, Boolean> cache, final boolean defaultValue, final JsonMap changes, final boolean full) {
+		final boolean currentValue = get(current, property, defaultValue);
+		final boolean cachedValue = cache.get(agent);
+		final boolean changed = currentValue != cachedValue;
+
+		if (changed || full) {
+			changes.put(property, currentValue);
+		}
+		if (changed) {
+			cache.put(agent, currentValue);
+		}
 	}
 
-	@Override
-	public JsonMap onConnect(final Session session) {
-		final JsonMap status = getStatus(Events.getUser(session).getPhone(), true);
-		final String callId = status.get("callId");
-		if (StringFun.isNotEmpty(callId) && Events.isFirst(session)) {
-			Events.send(session, "pop", new JsonMap().$("callId", callId));
+	private static boolean get(final JsonMap map, final String key, final boolean defaultValue) {
+		if (map == null) {
+			return defaultValue;
 		}
-		return status;
+		final Boolean value = map.getBoolean(key);
+		return value == null ? defaultValue : value;
 	}
 
 	@Override
@@ -133,8 +104,8 @@ public class StatusHandler
 				if (hud != null) {
 					hud.put("paused", agent.isPaused());
 					Hud.currentStatus.set(agent.key, hud);
-					log.info("%s changed %s to paused: %s",
-						agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isPaused());
+					log.info("%s changed %s to paused: %s", agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(),
+					         agent.isPaused());
 				}
 				return new JsonMap().$("paused", agent.isPaused());
 			case FORWARD:
@@ -145,15 +116,35 @@ public class StatusHandler
 				if (hud != null) {
 					hud.put("forwarded", agent.isForwarded());
 					Hud.currentStatus.set(agent.key, hud);
-					log.info("%s changed %s to forwarded: %s",
-						agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(), agent.isForwarded());
+					log.info("%s changed %s to forwarded: %s", agent.getLastNameFirstInitial(), agent.getLastNameFirstInitial(),
+					         agent.isForwarded());
 				}
 				return new JsonMap().$("forwarded", agent.isForwarded());
 		}
 		return null;
 	}
 
-	private static final transient Log log = Log.getInstance(StatusHandler.class);
+	@Override
+	public JsonMap onConnect(final Session session) {
+		final JsonMap status = getStatus(Events.getUser(session).getPhone(), true);
+		final String callId = status.get("callId");
+		if (StringFun.isNotEmpty(callId) && Events.isFirst(session)) {
+			Events.send(session, "pop", new JsonMap().$("callId", callId));
+		}
+		return status;
+	}
+
+	private static JsonMap getStatus(final String agent, final boolean full) {
+		return getStatus(agent, new JsonMap(), full);
+	}
+
+	@Override
+	public void destroy() {
+		calls.clear();
+		paused.clear();
+		forwarded.clear();
+		registered.clear();
+	}
 
 	private enum Action {
 		PAUSE,

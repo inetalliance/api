@@ -15,8 +15,8 @@ import java.util.Collection;
 import java.util.regex.Pattern;
 
 public abstract class SelectMembers<G extends IdPo & Named, M extends Named>
-	extends AngularServlet
-	implements Listable<G> {
+		extends AngularServlet
+		implements Listable<G> {
 	private final Pattern pattern;
 	private final Class<G> groupType;
 
@@ -34,18 +34,16 @@ public abstract class SelectMembers<G extends IdPo & Named, M extends Named>
 	}
 
 	private JsonMap memberJson(final M member) {
-		return new JsonMap()
-			.$("name", member.getName())
-			.$("label", getLabel(member))
-			.$("id", toId(member));
+		return new JsonMap().$("name", member.getName()).$("label", getLabel(member)).$("id", toId(member));
 	}
 
 	private Json groupJson(final G group) {
 		final Collection<M> members = getMembers(group);
-		return members.isEmpty() ? null : new JsonMap()
-			.$("name", group.getName())
-			.$("id", group.id)
-			.$("members", JsonList.collect(members, this::memberJson));
+		return members.isEmpty()
+				? null
+				: new JsonMap().$("name", group.getName())
+				               .$("id", group.id)
+				               .$("members", JsonList.collect(members, this::memberJson));
 	}
 
 	protected abstract Json toId(final M member);
@@ -56,7 +54,7 @@ public abstract class SelectMembers<G extends IdPo & Named, M extends Named>
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		respond(response, Listable.$(groupType, this, request));
 	}
 

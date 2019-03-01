@@ -1,31 +1,24 @@
 package net.inetalliance.sonar.webhook;
 
 import com.callgrove.obj.*;
-import com.callgrove.types.Address;
-import com.callgrove.types.ContactType;
-import com.callgrove.types.SaleSource;
-import com.callgrove.types.SalesStage;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.log.Log;
-import net.inetalliance.potion.Locator;
+import com.callgrove.types.*;
+import net.inetalliance.angular.*;
+import net.inetalliance.log.*;
+import net.inetalliance.potion.*;
 import net.inetalliance.types.Currency;
-import net.inetalliance.types.json.Json;
-import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
+import net.inetalliance.types.json.*;
+import org.joda.time.*;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Random;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import javax.servlet.annotation.*;
+import javax.servlet.http.*;
+import java.util.*;
+import java.util.regex.*;
 
 import static net.inetalliance.potion.Locator.*;
 
 @WebServlet("/hook/facebookLead")
 public class FacebookLead
-	extends AngularServlet {
+		extends AngularServlet {
 
 	private static final transient Log log = Log.getInstance(FacebookLead.class);
 	private static final Pattern phonePattern = Pattern.compile(".*(\\d{10})");
@@ -37,22 +30,16 @@ public class FacebookLead
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		response.getWriter().println("Use POST, dummy.");
-	}
-
-	private static String extractPhone(final String value) {
-		final Matcher matcher = phonePattern.matcher(value);
-		return matcher.matches() ? matcher.group(1) : null;
 	}
 
 	@Override
 	protected void post(final HttpServletRequest request, final HttpServletResponse response) {
 		try {
 			final JsonMap json = JsonMap.parse(request.getInputStream());
-			final Agent[] agents = new Agent[]{
-				new Agent("7108"), // Sean Graham
-				new Agent("7501")  // Chris Johnson
+			final Agent[] agents = new Agent[]{new Agent("7108"), // Sean Graham
+			                                   new Agent("7501")  // Chris Johnson
 			};
 
 			final String fullName = json.get("fullName");
@@ -94,13 +81,16 @@ public class FacebookLead
 			opp.setReminder(date);
 			opp.setEstimatedClose(new DateMidnight());
 			Locator.create("FacebookLead", opp);
-			final JsonMap result = new JsonMap()
-				.$("contact", contact.getId())
-				.$("agent", agent.getSlackName())
-				.$("opp", opp.getId());
+			final JsonMap result =
+					new JsonMap().$("contact", contact.getId()).$("agent", agent.getSlackName()).$("opp", opp.getId());
 			respond(response, result);
 		} catch (Throwable e) {
 			log.error(e);
 		}
+	}
+
+	private static String extractPhone(final String value) {
+		final Matcher matcher = phonePattern.matcher(value);
+		return matcher.matches() ? matcher.group(1) : null;
 	}
 }

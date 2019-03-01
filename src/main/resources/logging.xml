@@ -1,8 +1,8 @@
 <logging>
-	<default level="info">
-		<log type="net.inetalliance.log.SimpleDateLogImpl"/>
+    <default level="info">
+        <log type="net.inetalliance.log.SimpleDateLogImpl"/>
         <package name="net.inetalliance.sonar.events" level="trace"/>
-		<package name="net.inetalliance.imap" level="trace"/>
-		<!--<package name="net.inetalliance.potion.jdbc" level="trace"/>-->
-	</default>
+        <package name="net.inetalliance.imap" level="trace"/>
+        <!--<package name="net.inetalliance.potion.jdbc" level="trace"/>-->
+    </default>
 </logging>

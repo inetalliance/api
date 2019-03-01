@@ -42,7 +42,7 @@ import static net.inetalliance.potion.Locator.*;
 
 @WebListener
 public class Startup
-	extends LocatorStartup {
+		extends LocatorStartup {
 
 	private static final transient Log log = Log.getInstance(Startup.class);
 	public static DefaultAsteriskServer pbx;
@@ -70,12 +70,12 @@ public class Startup
 		if (productLineIds.isEmpty()) {
 			return Query.all(Call.class);
 		}
-		final Set<String> queues =
-			queuesForProductLine.computeIfAbsent(productLineIds, ids -> ids.stream()
-				.map(Integer::valueOf)
-				.map(productLineQueues::get)
-				.flatMap(Funky::stream)
-				.collect(toSet()));
+		final Set<String> queues = queuesForProductLine.computeIfAbsent(productLineIds, ids -> ids.stream()
+		                                                                                          .map(Integer::valueOf)
+		                                                                                          .map(
+				                                                                                          productLineQueues::get)
+		                                                                                          .flatMap(Funky::stream)
+		                                                                                          .collect(toSet()));
 		if (queues.isEmpty()) {
 			return Query.all(Call.class);
 		}
@@ -122,7 +122,7 @@ public class Startup
 			Events.handler = SessionHandler::new;
 			try {
 				Callgrove.beejax =
-					MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
+						MessageServer.$(BeejaxMessageServer.class, getContextParameter(context, "beejaxMessageServer"));
 
 			} catch (Throwable t) {
 				log.error(t);
@@ -130,19 +130,19 @@ public class Startup
 			}
 			log.info("Loading Product Line -> Queue map");
 			productLineQueues = Locator.execute(
-				"SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM " +
-					"queueProductLine where queueProductLine.queue=q.queue)",
-				rs -> {
-					var map = new HashMap<Integer, Set<String>>();
-					try {
-						while (rs.next()) {
-							map.computeIfAbsent(rs.getInt(2), p -> new HashSet<>()).add(rs.getString(1));
+					"SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM " +
+							"queueProductLine where queueProductLine.queue=q.queue)",
+					rs -> {
+						var map = new HashMap<Integer, Set<String>>();
+						try {
+							while (rs.next()) {
+								map.computeIfAbsent(rs.getInt(2), p -> new HashSet<>()).add(rs.getString(1));
+							}
+						} catch (SQLException e) {
+							throw new RuntimeException(e);
 						}
-					} catch (SQLException e) {
-						throw new RuntimeException(e);
-					}
-					return map;
-				});
+						return map;
+					});
 
 			log.info("Context Initialized");
 
@@ -179,8 +179,7 @@ public class Startup
 		}
 	}
 
-	static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param,
-		final Class<T> type) {
+	static <T> Set<T> locateParameterValues(final HttpServletRequest request, final String param, final Class<T> type) {
 		final String[] params = request.getParameterValues(param);
 		if (params == null || params.length == 0) {
 			return Collections.emptySet();
@@ -209,8 +208,7 @@ public class Startup
 					}
 					set.add(t);
 				}
-			} catch (final NoSuchMethodException | InvocationTargetException | InstantiationException |
-				IllegalAccessException e1) {
+			} catch (final NoSuchMethodException | InvocationTargetException | InstantiationException | IllegalAccessException e1) {
 				throw new RuntimeException(e1);
 			}
 		}

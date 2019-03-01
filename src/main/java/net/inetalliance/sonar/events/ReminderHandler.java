@@ -1,25 +1,17 @@
 package net.inetalliance.sonar.events;
 
-import com.callgrove.obj.Contact;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.types.Address;
-import com.callgrove.types.SubContact;
-import net.inetalliance.angular.DaemonThreadFactory;
+import com.callgrove.obj.*;
+import com.callgrove.types.*;
+import net.inetalliance.angular.*;
 import net.inetalliance.angular.events.Events;
-import net.inetalliance.log.Log;
-import net.inetalliance.types.json.JsonList;
-import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.struct.maps.LazyMap;
+import net.inetalliance.log.*;
+import net.inetalliance.types.json.*;
+import net.inetalliance.types.struct.maps.*;
 
-import javax.websocket.Session;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
+import javax.websocket.*;
+import java.util.*;
+import java.util.concurrent.*;
+import java.util.concurrent.locks.*;
 
 import static com.callgrove.obj.Opportunity.*;
 import static java.util.Collections.*;
@@ -28,12 +20,12 @@ import static net.inetalliance.funky.StringFun.*;
 import static net.inetalliance.potion.Locator.*;
 
 public class ReminderHandler
-	implements MessageHandler,
-	           Runnable {
-	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
+		implements MessageHandler, Runnable {
+	private static final transient Log log = Log.getInstance(ReminderHandler.class);
+	public static ReminderHandler $;
 	private final Map<String, JsonList> msgs;
 	private final Lock lock;
-	public static ReminderHandler $;
+	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 
 	ReminderHandler() {
 		$ = this;
@@ -43,18 +35,18 @@ public class ReminderHandler
 	}
 
 	@Override
-	public JsonMap onConnect(final Session session) {
-		return onConnect(Events.getUser(session).getPhone());
-	}
-
-	public JsonMap onConnect(final String agent) {
+	public JsonMap onMessage(final Session session, final JsonMap msg) {
+		final String agent = Events.getUser(session).getPhone();
 		broadcast(agent);
 		return null;
 	}
 
 	@Override
-	public JsonMap onMessage(final Session session, final JsonMap msg) {
-		final String agent = Events.getUser(session).getPhone();
+	public JsonMap onConnect(final Session session) {
+		return onConnect(Events.getUser(session).getPhone());
+	}
+
+	public JsonMap onConnect(final String agent) {
 		broadcast(agent);
 		return null;
 	}
@@ -70,17 +62,6 @@ public class ReminderHandler
 		}
 	}
 
-	@Override
-	public void destroy() {
-		scheduler.shutdownNow();
-	}
-
-	private static JsonMap label(final String label, final String phone) {
-		return new JsonMap()
-			.$("label", label)
-			.$("phone", phone);
-	}
-
 	private void add(Opportunity o) {
 		final Contact c = o.getContact();
 		final JsonList dial = new JsonList();
@@ -89,12 +70,12 @@ public class ReminderHandler
 			dial.add(label("Shipping", shipping.getPhone()));
 		}
 		final Address billing = c.getBilling();
-		if (billing != null && isNotEmpty(billing.getPhone()) &&
-			(shipping == null || !Objects.equals(billing.getPhone(), (shipping.getPhone())))) {
+		if (billing != null && isNotEmpty(billing.getPhone()) && (shipping == null || !Objects.equals(billing.getPhone(),
+		                                                                                              (shipping.getPhone())))) {
 			dial.add(label("Billing", billing.getPhone()));
 		}
-		if (isNotEmpty(c.getMobilePhone()) &&
-			(shipping == null || !Objects.equals(c.getMobilePhone(), (shipping.getPhone())))) {
+		if (isNotEmpty(c.getMobilePhone()) && (shipping == null || !Objects.equals(c.getMobilePhone(),
+		                                                                           (shipping.getPhone())))) {
 			dial.add(label("Mobile", c.getMobilePhone()));
 		}
 		final SubContact contractor = c.getContractor();
@@ -116,16 +97,24 @@ public class ReminderHandler
 			}
 		}
 
-		msgs.get(o.getAssignedTo().key).add(
-			new JsonMap()
-				.$("id", o.id)
-				.$("reminder", o.getReminder())
-				.$("stage", o.getStage())
-				.$("dial", dial)
-				.$("contact", o.getContactName())
-				.$("site", o.getSite().getAbbreviation())
-				.$("productLine", o.getProductLine().getAbbreviation().toString())
-				.$("amount", o.getAmount()));
+		msgs.get(o.getAssignedTo().key)
+		    .add(new JsonMap().$("id", o.id)
+		                      .$("reminder", o.getReminder())
+		                      .$("stage", o.getStage())
+		                      .$("dial", dial)
+		                      .$("contact", o.getContactName())
+		                      .$("site", o.getSite().getAbbreviation())
+		                      .$("productLine", o.getProductLine().getAbbreviation().toString())
+		                      .$("amount", o.getAmount()));
+	}
+
+	private static JsonMap label(final String label, final String phone) {
+		return new JsonMap().$("label", label).$("phone", phone);
+	}
+
+	@Override
+	public void destroy() {
+		scheduler.shutdownNow();
 	}
 
 	@Override
@@ -150,6 +139,4 @@ public class ReminderHandler
 			lock.unlock();
 		}
 	}
-
-	private static final transient Log log = Log.getInstance(ReminderHandler.class);
 }

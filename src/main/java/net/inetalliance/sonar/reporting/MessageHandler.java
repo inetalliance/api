@@ -1,8 +1,8 @@
 package net.inetalliance.sonar.reporting;
 
-import net.inetalliance.types.json.JsonMap;
+import net.inetalliance.types.json.*;
 
-import javax.websocket.Session;
+import javax.websocket.*;
 
 public interface MessageHandler {
 

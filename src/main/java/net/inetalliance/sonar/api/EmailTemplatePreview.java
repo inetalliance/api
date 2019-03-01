@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
 
 @WebServlet("/api/emailTemplatePreview/*")
 public class EmailTemplatePreview
-	extends AngularServlet {
+		extends AngularServlet {
 	private static Pattern pattern = Pattern.compile("/api/emailTemplatePreview/(\\d+)");
 
 	public Pattern getPattern() {
@@ -24,20 +24,19 @@ public class EmailTemplatePreview
 	public EmailTemplatePreview() {
 	}
 
-	private static final String BASE_CSS = "body { font-family: \"Helvetica Neue\",Helvetica,Arial," +
-		"sans-serif; }";
+	private static final String BASE_CSS = "body { font-family: \"Helvetica Neue\",Helvetica,Arial," + "sans-serif; }";
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
 		if (matcher.matches()) {
 			final String id = matcher.group(1);
 			final EmailTemplate emailTemplate = Locator.$(new EmailTemplate(Integer.parseInt(id)));
-			final String content = emailTemplate == null ? "" : String.format
-				("<html><head><style>%s</style></head><body>%s</body></html>",
-					BASE_CSS,
-					emailTemplate.getText());
+			final String content = emailTemplate == null
+					? ""
+					: String.format("<html><head><style>%s</style></head><body>%s</body></html>", BASE_CSS,
+					                emailTemplate.getText());
 			response.setContentLength(content.length());
 			response.setContentType(ContentType.HTML.toString());
 			PrintWriter writer = response.getWriter();

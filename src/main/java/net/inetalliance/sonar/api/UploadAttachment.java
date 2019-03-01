@@ -22,54 +22,50 @@ import java.util.UUID;
 @MultipartConfig
 @WebServlet("/api/uploadAttachment")
 public class UploadAttachment
-  extends AngularServlet {
+		extends AngularServlet {
 
-  @Override
-  protected void post(final HttpServletRequest request, final HttpServletResponse response)
-    throws Exception {
-    final Part file = request.getPart("file");
-    final String filename = getFilename(file);
-    final InputStream input = file.getInputStream();
-    final String siteId = request.getParameter("site");
-    if (siteId == null) {
-      throw new NotFoundException();
-    }
-    final Site site = Locator.$(new Site(Integer.parseInt(siteId)));
-    if (site == null) {
-      throw new NotFoundException();
-    }
+	@Override
+	protected void post(final HttpServletRequest request, final HttpServletResponse response)
+			throws Exception {
+		final Part file = request.getPart("file");
+		final String filename = getFilename(file);
+		final InputStream input = file.getInputStream();
+		final String siteId = request.getParameter("site");
+		if (siteId == null) {
+			throw new NotFoundException();
+		}
+		final Site site = Locator.$(new Site(Integer.parseInt(siteId)));
+		if (site == null) {
+			throw new NotFoundException();
+		}
 
-    final String url = UUID.randomUUID().toString() + "/" + filename;
-    final File destination = new File("/x/attachments/" + site.getDomain() + "/" + url);
-    final File uuidDir = destination.getParentFile();
-    final File siteDir = destination.getParentFile().getParentFile();
-    if (!siteDir.exists()) {
-      siteDir.mkdir();
-    }
-    if (!uuidDir.exists()) {
-      uuidDir.mkdir();
-    }
-    destination.createNewFile();
+		final String url = UUID.randomUUID().toString() + "/" + filename;
+		final File destination = new File("/x/attachments/" + site.getDomain() + "/" + url);
+		final File uuidDir = destination.getParentFile();
+		final File siteDir = destination.getParentFile().getParentFile();
+		if (!siteDir.exists()) {
+			siteDir.mkdir();
+		}
+		if (!uuidDir.exists()) {
+			uuidDir.mkdir();
+		}
+		destination.createNewFile();
 
-    final FileOutputStream output = new FileOutputStream(destination);
-    FileUtil.copy(input, output, true);
+		final FileOutputStream output = new FileOutputStream(destination);
+		FileUtil.copy(input, output, true);
 
-    respond(response, new JsonList(Collections.singleton(new JsonMap()
-      .$("path", url)
-      .$("filename", filename)
-      .$("contentType", file.getContentType())
-    )));
-  }
+		respond(response, new JsonList(Collections.singleton(
+				new JsonMap().$("path", url).$("filename", filename).$("contentType", file.getContentType()))));
+	}
 
-  private static String getFilename(Part part) {
-    for (String cd : part.getHeader("content-disposition").split(";")) {
-      if (cd.trim().startsWith("filename")) {
-        String filename = cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
-        return filename
-          .substring(filename.lastIndexOf('/') + 1)
-          .substring(filename.lastIndexOf('\\') + 1); // MSIE fix.
-      }
-    }
-    return null;
-  }
+	private static String getFilename(Part part) {
+		for (String cd : part.getHeader("content-disposition").split(";")) {
+			if (cd.trim().startsWith("filename")) {
+				String filename = cd.substring(cd.indexOf('=') + 1).trim().replace("\"", "");
+				return filename.substring(filename.lastIndexOf('/') + 1).substring(filename.lastIndexOf('\\') + 1); // MSIE
+				// fix.
+			}
+		}
+		return null;
+	}
 }

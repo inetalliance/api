@@ -1,16 +1,14 @@
 package net.inetalliance.sonar.reporting;
 
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.Site;
-import net.inetalliance.potion.query.Query;
-import net.inetalliance.types.json.JsonMap;
+import com.callgrove.obj.*;
+import net.inetalliance.potion.query.*;
+import net.inetalliance.types.json.*;
 
-import javax.servlet.annotation.WebServlet;
+import javax.servlet.annotation.*;
 
 @WebServlet("/reporting/reports/siteRevenue")
 public class SiteRevenue
-	extends Revenue<Site> {
+		extends Revenue<Site> {
 
 	@Override
 	protected JsonMap addRowInfo(final JsonMap json, final Site site) {
@@ -18,8 +16,8 @@ public class SiteRevenue
 	}
 
 	@Override
-	protected Query<Site> allRows(final Agent loggedIn) {
-		return Site.isActive;
+	protected Query<Opportunity> oppsForRow(final Site row) {
+		return Opportunity.withSite(row);
 	}
 
 	@Override
@@ -28,7 +26,7 @@ public class SiteRevenue
 	}
 
 	@Override
-	protected Query<Opportunity> oppsForRow(final Site row) {
-		return Opportunity.withSite(row);
+	protected Query<Site> allRows(final Agent loggedIn) {
+		return Site.isActive;
 	}
 }

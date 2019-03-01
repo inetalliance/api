@@ -14,13 +14,13 @@ import java.util.regex.Pattern;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 public class ListableModel<T>
-	extends TypeModel<T>
-	implements Listable<T> {
+		extends TypeModel<T>
+		implements Listable<T> {
 	private final Info<T> info;
 
 	protected ListableModel(final Class<T> type) {
-		this(type, Pattern.compile("/(?:api|reporting)/" + StringFun.camel(type.getSimpleName()) +
-			"(?:/(" + getKeyPattern(type) + "))?"));
+		this(type, Pattern.compile(
+				"/(?:api|reporting)/" + StringFun.camel(type.getSimpleName()) + "(?:/(" + getKeyPattern(type) + "))?"));
 	}
 
 	protected ListableModel(final Class<T> type, final Pattern pattern) {
@@ -38,7 +38,7 @@ public class ListableModel<T>
 	}
 
 	public static class Named<T extends net.inetalliance.types.Named>
-		extends ListableModel<T> {
+			extends ListableModel<T> {
 		protected Named(final Class<T> type) {
 			super(type);
 		}

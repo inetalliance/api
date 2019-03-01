@@ -33,7 +33,7 @@ public class YouTrack {
 	}
 
 	public synchronized JsonMap get(final String path)
-		throws IOException {
+			throws IOException {
 		final HttpGet request = new HttpGet(api + path);
 		request.addHeader("Accept", "application/json");
 		log.info("[YouTrack] requesting " + path);
@@ -58,7 +58,7 @@ public class YouTrack {
 					return get(path);
 				}
 				throw new BadRequestException("Could not login to youtrack: %s",
-					authResponse.getStatusLine().getReasonPhrase());
+				                              authResponse.getStatusLine().getReasonPhrase());
 			default:
 				throw new BadRequestException("Got back:", response.getStatusLine().getReasonPhrase());
 
@@ -74,7 +74,7 @@ public class YouTrack {
 		try {
 			final YouTrack youTrack = new YouTrack();
 			final JsonMap jsonMap =
-				youTrack.get("/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+227433");
+					youTrack.get("/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+227433");
 			//%7D+Opportunity+ID" +
 			//"%3A+" + 227433 );+ "&with=id&max=1024");
 			System.out.println(pretty(jsonMap));

@@ -15,8 +15,8 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/emailTemplate/*")
 public class EmailTemplates
-	extends ListableModel<EmailTemplate>
-	implements Searchable<EmailTemplate> {
+		extends ListableModel<EmailTemplate>
+		implements Searchable<EmailTemplate> {
 
 	public EmailTemplates() {
 		super(EmailTemplate.class);
@@ -28,8 +28,7 @@ public class EmailTemplates
 	}
 
 	@Override
-	public Query<EmailTemplate> all(final Class<EmailTemplate> type,
-	                                final HttpServletRequest request) {
+	public Query<EmailTemplate> all(final Class<EmailTemplate> type, final HttpServletRequest request) {
 
 		Query<EmailTemplate> q = super.all(type, request);
 		return q.orderBy("name", ASCENDING);

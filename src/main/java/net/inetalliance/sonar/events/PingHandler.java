@@ -1,14 +1,14 @@
 package net.inetalliance.sonar.events;
 
-import com.callgrove.obj.Agent;
-import net.inetalliance.types.json.JsonMap;
+import com.callgrove.obj.*;
+import net.inetalliance.types.json.*;
 
-import javax.websocket.Session;
+import javax.websocket.*;
 
 import static net.inetalliance.util.shell.Shell.*;
 
 public class PingHandler
-	implements MessageHandler {
+		implements MessageHandler {
 	@Override
 	public JsonMap onMessage(final Session session, final JsonMap msg) {
 		if (log.isTraceEnabled()) {

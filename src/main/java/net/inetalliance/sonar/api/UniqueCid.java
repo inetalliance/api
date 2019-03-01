@@ -24,7 +24,7 @@ import static net.inetalliance.sql.Aggregate.*;
 
 @WebServlet("/api/uniqueCid")
 public class UniqueCid
-	extends AngularServlet {
+		extends AngularServlet {
 
 	public static final Pattern pattern = Pattern.compile("/api/uniqueCid");
 
@@ -35,11 +35,7 @@ public class UniqueCid
 		private int opps;
 
 		JsonMap toJson() {
-			return new JsonMap()
-				.$("old", old)
-				.$("first", first)
-				.$("anon", anon)
-				.$("opps", opps);
+			return new JsonMap().$("old", old).$("first", first).$("anon", anon).$("opps", opps);
 		}
 
 		void add(Info info) {
@@ -52,11 +48,11 @@ public class UniqueCid
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final Interval interval = getInterval(request);
 		final Site atc = new Site(10117);
-		final Map<String, DateTime> firstCall = $$(withSite(atc).and(isQueue), MIN, String.class,
-			"callerid_number", DateTime.class, "created");
+		final Map<String, DateTime> firstCall =
+				$$(withSite(atc).and(isQueue), MIN, String.class, "callerid_number", DateTime.class, "created");
 		final DateMidnight start = interval.getStart().toDateMidnight();
 		final DateMidnight end = interval.getEnd().toDateMidnight();
 		DateMidnight i = start;

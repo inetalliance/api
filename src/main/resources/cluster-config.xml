@@ -1,8 +1,8 @@
 <cluster-config>
-	<development>
-		<node port="11212"/>
-	</development>
-	<production>
-		<node/>
-	</production>
+    <development>
+        <node port="11212"/>
+    </development>
+    <production>
+        <node/>
+    </production>
 </cluster-config>

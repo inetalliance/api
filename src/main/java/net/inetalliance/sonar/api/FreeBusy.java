@@ -40,7 +40,7 @@ public class FreeBusy
 			} else {
 				monthMode = true;
 				final DateMidnight startOfMonth =
-					Json.jsDateTimeFormat.parseDateTime(month).withDayOfMonth(1).toDateMidnight();
+						Json.jsDateTimeFormat.parseDateTime(month).withDayOfMonth(1).toDateMidnight();
 				final DateMidnight start = startOfMonth.minusDays(startOfMonth.getDayOfWeek());
 				interval = new Interval(start, start.plusDays(35));
 			}
@@ -52,32 +52,30 @@ public class FreeBusy
 		final Agent agent = $(new Agent(ticket.getPhone()));
 
 		final JsonMap map = new JsonMap();
-		forEach(withReminderIn(interval).and(withAgent(agent)).orderBy("reminder", ASCENDING),
-			opp -> {
-				if (monthMode) {
-					final String day1 = Json.jsDateFormat.print(opp.getReminder().toDateMidnight());
-					JsonList list = map.getList(day1);
-					if (list == null) {
-						list = new JsonList();
-						map.put(day1, list);
-					}
-					list.add(toJson(opp));
-				} else {
-					map.put(Json.jsDateTimeFormat.print(opp.getReminder()), toJson(opp));
+		forEach(withReminderIn(interval).and(withAgent(agent)).orderBy("reminder", ASCENDING), opp -> {
+			if (monthMode) {
+				final String day1 = Json.jsDateFormat.print(opp.getReminder().toDateMidnight());
+				JsonList list = map.getList(day1);
+				if (list == null) {
+					list = new JsonList();
+					map.put(day1, list);
 				}
+				list.add(toJson(opp));
+			} else {
+				map.put(Json.jsDateTimeFormat.print(opp.getReminder()), toJson(opp));
+			}
 
-			});
+		});
 		respond(response, map);
 	}
 
 	private static JsonMap toJson(final Opportunity opp) {
-		return new JsonMap()
-				.$("id", opp.id)
-				.$("productLine", opp.getProductLine().getName())
-				.$("reminder", opp.getReminder())
-				.$("contact", opp.getContact().getLastNameFirstInitial())
-				.$("site", opp.getSite().getName())
-				.$("stage", opp.getStage())
-				.$("amount", opp.getAmount());
+		return new JsonMap().$("id", opp.id)
+		                    .$("productLine", opp.getProductLine().getName())
+		                    .$("reminder", opp.getReminder())
+		                    .$("contact", opp.getContact().getLastNameFirstInitial())
+		                    .$("site", opp.getSite().getName())
+		                    .$("stage", opp.getStage())
+		                    .$("amount", opp.getAmount());
 	}
 }

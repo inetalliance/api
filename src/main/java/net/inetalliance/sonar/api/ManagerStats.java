@@ -28,9 +28,10 @@ import static net.inetalliance.potion.Locator.*;
 
 @WebServlet("/api/managerStats")
 public class ManagerStats
-	extends AngularServlet {
+		extends AngularServlet {
 	@Override
-	protected void get(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
+	protected void get(final HttpServletRequest request, final HttpServletResponse response)
+			throws Exception {
 		final var manager = Startup.getAgent(request);
 		if (manager == null) {
 			throw new NotFoundException();
@@ -39,49 +40,49 @@ public class ManagerStats
 		intervals.put("today", new DateMidnight().toInterval());
 		intervals.put("yesterday", new DateMidnight().minusDays(1).toInterval());
 		intervals.put("week", new Interval(new DateMidnight().withDayOfWeek(DateTimeConstants.MONDAY),
-			new DateMidnight().withDayOfWeek(DateTimeConstants.MONDAY).plusWeeks(1)));
-		intervals.put("month",
-			new Interval(new DateMidnight().withDayOfMonth(1), new DateMidnight().withDayOfMonth(1).plusMonths(1)));
+		                                   new DateMidnight().withDayOfWeek(DateTimeConstants.MONDAY).plusWeeks(1)));
+		intervals.put("month", new Interval(new DateMidnight().withDayOfMonth(1),
+		                                    new DateMidnight().withDayOfMonth(1).plusMonths(1)));
 
 		final var viewable = new HashSet<Agent>();
-		manager.getManagedCallCenters(Auth.getAuthorized(request)).forEach(
-			c -> viewable.addAll(Locator.$$(Agent.withCallCenter(c))));
+		manager.getManagedCallCenters(Auth.getAuthorized(request))
+		       .forEach(c -> viewable.addAll(Locator.$$(Agent.withCallCenter(c))));
 
 		if (viewable.isEmpty()) {
 			throw new UnauthorizedException();
 		}
 
-		var theQuery = Opportunity.withAgentIn(viewable).and(
-			Opportunity.withSources(EnumSet.of(SaleSource.ONLINE)).negate());
+		var theQuery =
+				Opportunity.withAgentIn(viewable).and(Opportunity.withSources(EnumSet.of(SaleSource.ONLINE)).negate());
 
 		Map<String, JsonList> agentIntervalData = new HashMap<>();
 		intervals.forEach((intervalLabel, interval) -> {
-			var sales = Locator.$$(theQuery.and(Opportunity.soldInInterval(interval)),
-				Aggregate.SUM, String.class, "assignedTo", Currency.class, "amount");
-			var closes = Locator.$$(theQuery.and(Opportunity.soldInInterval(interval)),
-				Aggregate.COUNT, String.class, "assignedTo", Integer.class, "*");
+			var sales =
+					Locator.$$(theQuery.and(Opportunity.soldInInterval(interval)), Aggregate.SUM, String.class, "assignedTo",
+					           Currency.class, "amount");
+			var closes =
+					Locator.$$(theQuery.and(Opportunity.soldInInterval(interval)), Aggregate.COUNT, String.class, "assignedTo",
+					           Integer.class, "*");
 			viewable.forEach(a -> {
 				final int c = closes.getOrDefault(a.key, 0);
 				final Currency r = sales.getOrDefault(a.key, Currency.ZERO);
-				agentIntervalData.computeIfAbsent(a.key, k -> new JsonList()).add(
-					new JsonMap().$("c", c).$("r", r.doubleValue()));
+				agentIntervalData.computeIfAbsent(a.key, k -> new JsonList())
+				                 .add(new JsonMap().$("c", c).$("r", r.doubleValue()));
 			});
 		});
 		var jsonList = new JsonList();
 		agentIntervalData.forEach((k, list) -> {
 			if (list.stream().anyMatch(m -> ((JsonMap) m).getInteger("c") > 0)) {
 				final Agent agent = new Agent(k);
-				final Query<Opportunity> withAgent = Opportunity.withAgent(agent).and(
-					Opportunity.createdInInterval(new DateMidnight().toInterval()));
-				final Query<Call> todayWithAgent = Call.withAgent(agent).and(
-					Call.inInterval(new DateMidnight().toInterval()));
-				jsonList.add(new JsonMap()
-					.$("agent", k)
-					.$("intervals", list)
-					.$("in", count(todayWithAgent.and(Call.isQueue)))
-					.$("out", count(todayWithAgent.and(Call.isOutbound)))
-					.$("surveys", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SURVEY))))
-					.$("social", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SOCIAL)))));
+				final Query<Opportunity> withAgent =
+						Opportunity.withAgent(agent).and(Opportunity.createdInInterval(new DateMidnight().toInterval()));
+				final Query<Call> todayWithAgent = Call.withAgent(agent).and(Call.inInterval(new DateMidnight().toInterval()));
+				jsonList.add(new JsonMap().$("agent", k)
+				                          .$("intervals", list)
+				                          .$("in", count(todayWithAgent.and(Call.isQueue)))
+				                          .$("out", count(todayWithAgent.and(Call.isOutbound)))
+				                          .$("surveys", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SURVEY))))
+				                          .$("social", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SOCIAL)))));
 			}
 
 		});

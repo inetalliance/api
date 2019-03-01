@@ -28,8 +28,8 @@ import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.potion.Locator.$;
 
 @WebServlet({"/login", "/logout"})
-public class AgentAuth extends Auth {
-
+public class AgentAuth
+		extends Auth {
 
 	private DefaultHttpClient client;
 
@@ -43,11 +43,10 @@ public class AgentAuth extends Auth {
 			log.warning("No mail account for %s (sudo?)", authorized.getName());
 		}
 		return Info.$(Agent.class)
-			.toJson($(new Agent(authorized.getPhone())))
-			.$("nylasAccount", nylasAccount == null ? null : nylasAccount.toString())
-			.$("roles", JsonList.collect(authorized.getRoles(), JsonString::new));
+		           .toJson($(new Agent(authorized.getPhone())))
+		           .$("nylasAccount", nylasAccount == null ? null : nylasAccount.toString())
+		           .$("roles", JsonList.collect(authorized.getRoles(), JsonString::new));
 	}
-
 
 	private JsonMap postNylas(final String endpoint, final JsonMap data) {
 		final HttpPost post = new HttpPost(String.format("https://api.nylas.com%s", endpoint));
@@ -68,20 +67,18 @@ public class AgentAuth extends Auth {
 		if (!forceCodeLookup && isNotEmpty(agent.getNylasCode())) {
 			return agent.getNylasCode();
 		}
-		final JsonMap json = new JsonMap()
-			.$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
-			.$("name", agent.getFullName())
-			.$("email_address", agent.getEmail())
-			.$("provider", "imap")
-			.$("settings", new JsonMap()
-				.$("imap_host", "mail.inetalliance.net")
-				.$("imap_port", 993)
-				.$("imap_username", agent.getEmail())
-				.$("imap_password", password)
-				.$("smtp_host", "mail.inetalliance.net")
-				.$("smtp_username", agent.getEmail())
-				.$("smtp_password", password)
-				.$("ssl_required", true));
+		final JsonMap json = new JsonMap().$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
+		                                  .$("name", agent.getFullName())
+		                                  .$("email_address", agent.getEmail())
+		                                  .$("provider", "imap")
+		                                  .$("settings", new JsonMap().$("imap_host", "mail.inetalliance.net")
+		                                                              .$("imap_port", 993)
+		                                                              .$("imap_username", agent.getEmail())
+		                                                              .$("imap_password", password)
+		                                                              .$("smtp_host", "mail.inetalliance.net")
+		                                                              .$("smtp_username", agent.getEmail())
+		                                                              .$("smtp_password", password)
+		                                                              .$("ssl_required", true));
 		final JsonMap account = postNylas("/connect/authorize", json);
 		if (account != null) {
 			final String nylasCode = account.get("code");
@@ -105,16 +102,14 @@ public class AgentAuth extends Auth {
 		final Agent agent = Locator.$(new Agent(authorized.getPhone()));
 		final String nylasCode = getCode(agent, password, forceCodeLookup);
 		if (isNotEmpty(nylasCode)) {
-			final JsonMap json = postNylas("/connect/token", new JsonMap()
-				.$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
-				.$("client_secret", "f02ufhmcopkrzbc35ah6w7wto")
-				.$("code", agent.getNylasCode()));
+			final JsonMap json = postNylas("/connect/token", new JsonMap().$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
+			                                                              .$("client_secret", "f02ufhmcopkrzbc35ah6w7wto")
+			                                                              .$("code", agent.getNylasCode()));
 			if (json != null) {
 				final String token = json.get("access_token");
 				if (isEmpty(token)) {
-					if ("api_error".equals(json.get("type"))
-						&& json.get("message").startsWith("No grant with code")
-						&& !forceCodeLookup) {
+					if ("api_error".equals(json.get("type")) && json.get("message")
+					                                                .startsWith("No grant with code") && !forceCodeLookup) {
 						onLogin(request, authorized, true);
 					}
 				} else {
@@ -128,7 +123,6 @@ public class AgentAuth extends Auth {
 	public void init(final ServletConfig config) {
 		this.client = new DefaultHttpClient(new PoolingClientConnectionManager());
 	}
-
 
 	@Override
 	public void destroy() {

@@ -29,38 +29,33 @@ import static net.inetalliance.funky.StringFun.isNotEmpty;
 
 @WebServlet("/api/opportunity/*")
 public class Opportunities
-	extends ListableModel<Opportunity> {
+		extends ListableModel<Opportunity> {
 
 	public static Json json(Opportunity arg) {
 		final Agent assignedTo = arg.getAssignedTo();
 		final ProductLine productLine = arg.getProductLine();
 		final Site site = arg.getSite();
 		final SalesStage stage = arg.getStage();
-		return new JsonMap()
-			.$("id", arg.id)
-			.$("stage", new JsonMap()
-				.$("name", stage.name())
-				.$("ordinal", stage.ordinal()))
-			.$("site", new JsonMap()
-				.$("id", site.id)
-				.$("beejaxId", site.getBeejaxId())
-				.$("abbreviation", site.getAbbreviation())
-				.$("name", site.getName()))
-			.$("assignedTo", new JsonMap()
-				.$("name", assignedTo.getLastNameFirstInitial())
-				.$("key", assignedTo.key))
-			.$("productLine", new JsonMap()
-				.$("name", productLine.getName())
-				.$("abbreviation", productLine.getAbbreviation())
-				.$("id", productLine.id)
-				.$("wizard", productLine.getWizard())
-				.$("root", productLine.getRoot() == null ? null : productLine.getRoot().id));
+		return new JsonMap().$("id", arg.id)
+		                    .$("stage", new JsonMap().$("name", stage.name()).$("ordinal", stage.ordinal()))
+		                    .$("site", new JsonMap().$("id", site.id)
+		                                            .$("beejaxId", site.getBeejaxId())
+		                                            .$("abbreviation", site.getAbbreviation())
+		                                            .$("name", site.getName()))
+		                    .$("assignedTo",
+		                       new JsonMap().$("name", assignedTo.getLastNameFirstInitial()).$("key", assignedTo.key))
+		                    .$("productLine", new JsonMap().$("name", productLine.getName())
+		                                                   .$("abbreviation", productLine.getAbbreviation())
+		                                                   .$("id", productLine.id)
+		                                                   .$("wizard", productLine.getWizard())
+		                                                   .$("root", productLine.getRoot() == null
+				                                                   ? null
+				                                                   : productLine.getRoot().id));
 	}
-
 
 	@Override
 	public JsonMap create(final Key<Opportunity> key, final HttpServletRequest request,
-	                      final HttpServletResponse response, final JsonMap data) {
+			final HttpServletResponse response, final JsonMap data) {
 		data.put("created", new DateTime());
 		return super.create(key, request, response, data);
 	}
@@ -68,10 +63,14 @@ public class Opportunities
 	private static Map<Integer, Set<Integer>> relatedSites = new HashMap<>();
 
 	public static Set<Integer> relatedSites(Integer id) {
-		return relatedSites.computeIfAbsent(id, i -> Locator.$(new Site(id)).getSiteGroups()
-			.stream().map(SiteGroup::getSites).flatMap(Funky::stream).map(s -> s.id).collect(toSet()));
+		return relatedSites.computeIfAbsent(id, i -> Locator.$(new Site(id))
+		                                                    .getSiteGroups()
+		                                                    .stream()
+		                                                    .map(SiteGroup::getSites)
+		                                                    .flatMap(Funky::stream)
+		                                                    .map(s -> s.id)
+		                                                    .collect(toSet()));
 	}
-
 
 	public Opportunities() {
 		super(Opportunity.class);

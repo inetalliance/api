@@ -15,8 +15,7 @@ import javax.servlet.http.HttpServletResponse;
 
 @WebServlet("/api/insertScript")
 public class InsertScriptNode
-	extends AngularServlet {
-
+		extends AngularServlet {
 
 	private final Info<ScriptNode> info;
 
@@ -25,7 +24,7 @@ public class InsertScriptNode
 	}
 
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final ScriptNode from = info.lookup(request.getParameter("from"));
 		if (from == null) {
 			throw new NotFoundException();

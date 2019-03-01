@@ -37,7 +37,7 @@ import static net.inetalliance.types.util.LocalizedMessages.$M;
 
 @WebServlet("/api/reportCard/*")
 public class ReportCards
-	extends AngularServlet {
+		extends AngularServlet {
 
 	public ReportCards() {
 		super();
@@ -47,13 +47,13 @@ public class ReportCards
 
 	private Agent getAgent(final HttpServletRequest request) {
 		final Matcher matcher = pattern.matcher(request.getRequestURI());
-		return matcher.matches() && matcher.group(1) != null ?
-			Locator.$(new Agent(matcher.group(1))) :
-			Startup.getAgent(request);
+		return matcher.matches() && matcher.group(1) != null
+				? Locator.$(new Agent(matcher.group(1)))
+				: Startup.getAgent(request);
 	}
 
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 
 		final Agent loggedIn = Startup.getAgent(request);
 		final Agent agent = getAgent(request);
@@ -64,13 +64,12 @@ public class ReportCards
 			throw new ForbiddenException();
 		}
 		if (!agent.equals(loggedIn) && !loggedIn.getViewableAgents().contains(agent)) {
-			throw new UnauthorizedException("%s %s attempted to view the report card of %s %s",
-				loggedIn.getFirstName(), loggedIn.getLastName(), agent.getFirstName(), agent.getLastName());
+			throw new UnauthorizedException("%s %s attempted to view the report card of %s %s", loggedIn.getFirstName(),
+			                                loggedIn.getLastName(), agent.getFirstName(), agent.getLastName());
 		}
-		final Report<ReportCard> report =
-			new Report<>($M(request.getLocale(), "reportCardForAgent", agent.getLastNameFirstInitial(),
-				DateTimeFormat.shortDate().print(new DateMidnight())),
-				ReportCard.class);
+		final Report<ReportCard> report = new Report<>(
+				$M(request.getLocale(), "reportCardForAgent", agent.getLastNameFirstInitial(),
+				   DateTimeFormat.shortDate().print(new DateMidnight())), ReportCard.class);
 		forEach(Query.all(ProductLine.class), productLine -> {
 			final Integer cycle = productLine.getCycleDays();
 			if (cycle != null) {
@@ -83,25 +82,22 @@ public class ReportCards
 					final DailyPerformance total = new DailyPerformance(null, productLine, null);
 					final DailyPerformance[] last = new DailyPerformance[1];
 					forEach(DailyPerformance.withAgent(agent)
-							.and(DailyPerformance.inInterval(interval)
-								.and(DailyPerformance.withProductLine(productLine)))
-							.orderBy("day", ASCENDING),
-						arg -> {
-							if (last[0] == null || arg.day.isAfter(last[0].day)) {
-								last[0] = arg;
-							}
-							total.add(arg);
-						});
+					                        .and(DailyPerformance.inInterval(interval)
+					                                             .and(DailyPerformance.withProductLine(productLine)))
+					                        .orderBy("day", ASCENDING), arg -> {
+						if (last[0] == null || arg.day.isAfter(last[0].day)) {
+							last[0] = arg;
+						}
+						total.add(arg);
+					});
 
 					final ReportCardData data = reportCard.getData(i);
 					reportCard.productLine = productLine.getName();
 					final int qCalls = total.getQueueCalls();
 					final int tCalls = qCalls + total.getOutboundCalls();
-					data.setQueueRatio(
-						qCalls == 0 ? 0 : 100.0D * total.getCloses() / total.getQueueCalls());
+					data.setQueueRatio(qCalls == 0 ? 0 : 100.0D * total.getCloses() / total.getQueueCalls());
 					data.setTotalRatio(
-						tCalls == 0 ? 0 :
-							100.0D * total.getCloses() / (total.getQueueCalls() + total.getOutboundCalls()));
+							tCalls == 0 ? 0 : 100.0D * total.getCloses() / (total.getQueueCalls() + total.getOutboundCalls()));
 					if (last[0] != null) {
 						final DailyRank cycle1 = last[0].getCycle1();
 						if (cycle1 != null) {
@@ -154,34 +150,30 @@ public class ReportCards
 		final JsonMap json = report.toJson();
 		json.remove("title");
 		json.remove("record");
-		EnumSet.of(CallDirection.QUEUE, CallDirection.OUTBOUND).forEach(dir ->
-			json.put(StringFun.enumToCamelCase(dir),
-				count(Call.withAgent(agent).and(Call.createdAfter(new DateMidnight())).and(Call.withDirection(dir)))));
+		EnumSet.of(CallDirection.QUEUE, CallDirection.OUTBOUND)
+		       .forEach(dir -> json.put(StringFun.enumToCamelCase(dir), count(
+				       Call.withAgent(agent).and(Call.createdAfter(new DateMidnight())).and(Call.withDirection(dir)))));
 		final JsonList sales = new JsonList();
 		json.put("sales", sales);
 		final Interval thisMonth = new Interval(new DateMidnight().withDayOfMonth(1), new DateMidnight().plusDays(1));
 		final double[] total = {0, 0};
 		forEach(Query.all(ProductLine.class), productLine -> {
-			final Query<Opportunity> saleQuery = Opportunity.withAgent(agent).and(soldInInterval(thisMonth))
-				.and(withProductLine(productLine));
+			final Query<Opportunity> saleQuery =
+					Opportunity.withAgent(agent).and(soldInInterval(thisMonth)).and(withProductLine(productLine));
 			final int closes = Locator.count(saleQuery);
 			if (closes > 0) {
 				final Currency productLineSales = $$(saleQuery, Aggregate.SUM, Currency.class, "amount");
 				if (productLineSales != null && productLineSales.greaterThan(Currency.ZERO)) {
-					sales.add(new JsonMap()
-						.$("product", productLine.getName())
-						.$("total", productLineSales.doubleValue())
-						.$("closes", closes));
+					sales.add(new JsonMap().$("product", productLine.getName())
+					                       .$("total", productLineSales.doubleValue())
+					                       .$("closes", closes));
 					total[0] += productLineSales.doubleValue();
 					total[1] += closes;
 				}
 			}
 		});
 
-		sales.add(new JsonMap()
-			.$("product", "Total")
-			.$("total", total[0])
-			.$("closes", total[1]));
+		sales.add(new JsonMap().$("product", "Total").$("total", total[0]).$("closes", total[1]));
 		respond(response, json);
 	}
 }

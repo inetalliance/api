@@ -22,8 +22,8 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/objection/*")
 public class Objections
-	extends ListableModel<Objection>
-	implements Searchable<Objection> {
+		extends ListableModel<Objection>
+		implements Searchable<Objection> {
 
 	public Objections() {
 		super(Objection.class);

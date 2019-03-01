@@ -1,30 +1,25 @@
 package net.inetalliance.sonar.reporting;
 
+import com.callgrove.obj.Queue;
 import com.callgrove.obj.*;
-import net.inetalliance.potion.info.Info;
-import net.inetalliance.potion.query.Query;
+import net.inetalliance.potion.info.*;
+import net.inetalliance.potion.query.*;
 
-import javax.servlet.annotation.WebServlet;
-import java.util.HashSet;
-import java.util.Set;
+import javax.servlet.annotation.*;
+import java.util.*;
 
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.potion.query.Query.*;
 
 @WebServlet("/reporting/reports/agentSalesCycle")
 public class AgentSalesCycle
-	extends SalesCycle<ProductLine, Agent> {
+		extends SalesCycle<ProductLine, Agent> {
 
 	private final Info<Agent> info;
 
 	public AgentSalesCycle() {
 		super("agent");
 		info = Info.$(Agent.class);
-	}
-
-	@Override
-	protected Query<ProductLine> allRows(final Agent loggedIn) {
-		return Query.all(ProductLine.class);
 	}
 
 	@Override
@@ -39,18 +34,8 @@ public class AgentSalesCycle
 	}
 
 	@Override
-	protected Agent getGroup(final String[] params, final String key) {
-		return info.lookup(key);
-	}
-
-	@Override
-	protected String getGroupLabel(final Agent group) {
-		return group.getLastNameFirstInitial();
-	}
-
-	@Override
-	protected String getId(final ProductLine row) {
-		return row.getId().toString();
+	protected Query<Opportunity> inGroups(final Set<Agent> groups) {
+		return Opportunity.withAgentIn(groups);
 	}
 
 	@Override
@@ -59,8 +44,8 @@ public class AgentSalesCycle
 	}
 
 	@Override
-	protected Query<Opportunity> inGroups(final Set<Agent> groups) {
-		return Opportunity.withAgentIn(groups);
+	protected Query<Opportunity> withRow(final ProductLine row) {
+		return Opportunity.withProductLine(row);
 	}
 
 	@Override
@@ -74,7 +59,22 @@ public class AgentSalesCycle
 	}
 
 	@Override
-	protected Query<Opportunity> withRow(final ProductLine row) {
-		return Opportunity.withProductLine(row);
+	protected String getGroupLabel(final Agent group) {
+		return group.getLastNameFirstInitial();
+	}
+
+	@Override
+	protected String getId(final ProductLine row) {
+		return row.getId().toString();
+	}
+
+	@Override
+	protected Query<ProductLine> allRows(final Agent loggedIn) {
+		return Query.all(ProductLine.class);
+	}
+
+	@Override
+	protected Agent getGroup(final String[] params, final String key) {
+		return info.lookup(key);
 	}
 }

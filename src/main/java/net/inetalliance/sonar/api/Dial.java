@@ -1,53 +1,45 @@
 package net.inetalliance.sonar.api;
 
-import com.callgrove.elastix.CallRouter;
+import com.callgrove.elastix.*;
+import com.callgrove.obj.Queue;
 import com.callgrove.obj.*;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.auth.Auth;
-import net.inetalliance.angular.exception.BadRequestException;
-import net.inetalliance.angular.exception.ForbiddenException;
-import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.log.Log;
-import net.inetalliance.potion.Locator;
-import net.inetalliance.potion.obj.AddressPo;
+import net.inetalliance.angular.*;
+import net.inetalliance.angular.auth.*;
+import net.inetalliance.angular.exception.*;
+import net.inetalliance.log.*;
+import net.inetalliance.potion.*;
+import net.inetalliance.potion.obj.*;
 import org.asteriskjava.live.*;
-import org.joda.time.DateTime;
-import org.joda.time.Duration;
+import org.joda.time.*;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.beans.PropertyChangeEvent;
-import java.beans.PropertyChangeListener;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.regex.Pattern;
+import javax.servlet.annotation.*;
+import javax.servlet.http.*;
+import java.beans.*;
+import java.util.*;
+import java.util.concurrent.atomic.*;
+import java.util.regex.*;
 
-import static com.callgrove.elastix.CallRouter.resolved;
-import static com.callgrove.types.CallDirection.OUTBOUND;
+import static com.callgrove.elastix.CallRouter.*;
+import static com.callgrove.types.CallDirection.*;
 import static com.callgrove.types.Resolution.*;
-import static com.callgrove.types.SaleSource.PHONE_CALL;
-import static java.lang.String.format;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
-import static net.inetalliance.potion.Locator.create;
-import static net.inetalliance.sonar.api.Startup.pbx;
-import static org.asteriskjava.live.ChannelState.HUNGUP;
+import static com.callgrove.types.SaleSource.*;
+import static java.lang.String.*;
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sonar.api.Startup.*;
+import static org.asteriskjava.live.ChannelState.*;
 
 @SuppressWarnings("Duplicates")
 @WebServlet("/api/dial")
 public class Dial
-	extends AngularServlet {
+		extends AngularServlet {
 
 	private static final transient Log log = Log.getInstance(Dial.class);
 	private static AtomicInteger id = new AtomicInteger(0);
 
 	@Override
 	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 		final int id = Dial.id.getAndIncrement();
 
 		final Agent loggedIn = Locator.$(new Agent(Auth.getAuthorized(request).getPhone()));
@@ -73,9 +65,8 @@ public class Dial
 					log.info("Not originating call from %s to extension %s because pbx is not configured", dial, number);
 				} else {
 					pbx.originateToExtensionAsync(dial, "from-internal", number, 1, 30000,
-						new CallerId(format("%s %s", loggedIn.getFirstName(),
-							loggedIn.getLastName()), loggedInNumber),
-						null, null);
+					                              new CallerId(format("%s %s", loggedIn.getFirstName(), loggedIn.getLastName()),
+					                                           loggedInNumber), null, null);
 				}
 
 			} else {
@@ -123,15 +114,14 @@ public class Dial
 						}
 					}
 					final String effectivePhone = effectiveQueue != null && isNotEmpty(effectiveQueue.getTollfree())
-						? effectiveQueue.getTollfree() : site.getTollfree();
-					final CallerId callerId = new CallerId(loggedIn.getLastNameFirstInitial(),
-						effectivePhone.charAt(0) == '1' ? effectivePhone.substring(1) :
-							effectivePhone
-					);
+							? effectiveQueue.getTollfree()
+							: site.getTollfree();
+					final CallerId callerId = new CallerId(loggedIn.getLastNameFirstInitial(), effectivePhone.charAt(0) == '1'
+							? effectivePhone.substring(1)
+							: effectivePhone);
 					log.info("Dialing %s for %s on %s/%s [%s]", AddressPo.formatPhoneNumber(number),
-						loggedIn.getLastNameFirstInitial(),
-						site.getAbbreviation(), callerId.getNumber(),
-						effectiveQueue == null ? "main" : effectiveQueue.getAbbreviation());
+					         loggedIn.getLastNameFirstInitial(), site.getAbbreviation(), callerId.getNumber(),
+					         effectiveQueue == null ? "main" : effectiveQueue.getAbbreviation());
 
 					final String dial = format("%s/%s", loggedIn.isForwarded() ? "Zap/g0" : "SIP", loggedInNumber);
 
@@ -147,8 +137,8 @@ public class Dial
 					if (pbx == null) {
 						log.info("Not originating call from %s to %s because pbx is not configured", dial, number);
 					} else {
-						pbx.originateToExtensionAsync(dial, "from-internal", number, 1, 30000, callerId,
-							variables, handle(id, number, callerId, loggedIn, site, opp, effectiveQueue));
+						pbx.originateToExtensionAsync(dial, "from-internal", number, 1, 30000, callerId, variables,
+						                              handle(id, number, callerId, loggedIn, site, opp, effectiveQueue));
 					}
 				}
 			} catch (NumberFormatException nfe) {
@@ -157,12 +147,8 @@ public class Dial
 		}
 	}
 
-	private String printAgent(final Agent agent) {
-		return agent == null ? null : agent.getLastNameFirstInitial();
-	}
-
-	private OriginateCallback handle(final int id, final String number, final CallerId callerId, final Agent agent, final Site site,
-	                                 final Opportunity opp, final Queue effectiveQueue) {
+	private OriginateCallback handle(final int id, final String number, final CallerId callerId, final Agent agent,
+			final Site site, final Opportunity opp, final Queue effectiveQueue) {
 		return new OriginateCallback() {
 			@Override
 			public void onDialing(AsteriskChannel channel) {
@@ -232,7 +218,7 @@ public class Dial
 											// look and see if we just came from VoiceMail (history-1 = hangup, history-2 = previous app)
 											final List<ExtensionHistoryEntry> history = source.getExtensionHistory();
 											if (history.size() > 2 && "macro-vm".equals(
-												history.get(history.size() - 2).getExtension().getContext())) {
+													history.get(history.size() - 2).getExtension().getContext())) {
 												copy.setResolution(VOICEMAIL);
 											} else {
 												copy.setResolution(ANSWERED);
@@ -253,7 +239,8 @@ public class Dial
 									segment.setAnswered(new DateTime());
 									segment.setAgent(Locator.$(new Agent(masq.getDialedChannel().getCallerId().getNumber())));
 									log.debug("[%d:%s] agent (xfer segment) -> %s", id, call.key, printAgent(call.getAgent()));
-									segment.setCallerId(new com.callgrove.types.CallerId(meta.agent.getLastNameFirstInitial(), meta.agent.key));
+									segment.setCallerId(
+											new com.callgrove.types.CallerId(meta.agent.getLastNameFirstInitial(), meta.agent.key));
 									create("dial", segment);
 									meta.agent = segment.getAgent();
 									Locator.update(call, "dial", copy -> {
@@ -270,7 +257,8 @@ public class Dial
 							case "linkedChannel": {
 								final AsteriskChannel oldValue = (AsteriskChannel) evt.getOldValue();
 								final AsteriskChannel newValue = (AsteriskChannel) evt.getNewValue();
-								log.trace("[%d:%s] link: %s -> %s", id, call.key, oldValue == null ? null : oldValue.getId(), newValue == null ? null : newValue.getId());
+								log.trace("[%d:%s] link: %s -> %s", id, call.key, oldValue == null ? null : oldValue.getId(),
+								          newValue == null ? null : newValue.getId());
 								if (newValue == null) { // unlinking a channel
 									assert oldValue != null;
 									final Segment segment = Locator.$(new Segment(call, oldValue.getId()));
@@ -324,5 +312,9 @@ public class Dial
 
 			}
 		};
+	}
+
+	private String printAgent(final Agent agent) {
+		return agent == null ? null : agent.getLastNameFirstInitial();
 	}
 }

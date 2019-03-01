@@ -1,19 +1,17 @@
 package net.inetalliance.sonar.webhook;
 
 import com.callgrove.obj.*;
-import com.callgrove.types.Address;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.exception.BadRequestException;
-import net.inetalliance.funky.Funky;
-import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
+import com.callgrove.types.*;
+import net.inetalliance.angular.*;
+import net.inetalliance.angular.exception.*;
+import net.inetalliance.funky.*;
+import net.inetalliance.types.json.*;
+import org.joda.time.*;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.util.Map;
-import java.util.regex.Pattern;
+import javax.servlet.annotation.*;
+import javax.servlet.http.*;
+import java.util.*;
+import java.util.regex.*;
 
 import static com.callgrove.obj.Webhook.*;
 import static com.callgrove.types.ContactType.*;
@@ -26,7 +24,7 @@ import static net.inetalliance.types.geopolitical.us.State.*;
 
 @WebServlet("/hook/opportunity")
 public class QuoteRequest
-	extends AngularServlet {
+		extends AngularServlet {
 
 	public Pattern getPattern() {
 		return Pattern.compile("/hook/quoteRequest");
@@ -34,15 +32,13 @@ public class QuoteRequest
 
 	@Override
 	protected void post(final HttpServletRequest request, final HttpServletResponse response)
-		throws Exception {
+			throws Exception {
 
-		@SuppressWarnings("SpellCheckingInspection") final Webhook webhook = $1(
-			withApiKey("53d3befd1d210670d99efc615091ad2f")); // magic key for quote request
+		@SuppressWarnings("SpellCheckingInspection") final Webhook webhook =
+				$1(withApiKey("53d3befd1d210670d99efc615091ad2f")); // magic key for quote request
 
-		Map<String, String> params = request.getParameterMap()
-			.entrySet()
-			.stream()
-			.collect(Funky.toMap(Map.Entry::getKey, e -> e.getValue()[0]));
+		Map<String, String> params =
+				request.getParameterMap().entrySet().stream().collect(Funky.toMap(Map.Entry::getKey, e -> e.getValue()[0]));
 
 		if ($1(Opportunity.withWebhook(webhook, params.get("leadKey"))) != null) {
 			throw new BadRequestException("Already created opportunity for lead key %s", params.get("leadKey"));

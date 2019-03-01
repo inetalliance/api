@@ -30,20 +30,14 @@ public class RelatedLeads
 		final Contact contact = opportunity.getContact();
 		forEach(Contact.withPhoneNumberIn(contact).join(Opportunity.class, "contact"), arg -> {
 			if (!arg.id.equals(opportunity.id)) {
-				final JsonMap map = new JsonMap()
-						.$("id")
-						.$("stage")
-						.$("amount")
-						.$("created")
-						.$("estimatedClose");
+				final JsonMap map = new JsonMap().$("id").$("stage").$("amount").$("created").$("estimatedClose");
 				if (arg.getStage() == SOLD) {
 					map.$("saleDate");
 				}
 				Info.$(arg).fill(arg, map);
-				map
-						.$("site", arg.getSite().getAbbreviation())
-						.$("assignedTo", arg.getAssignedTo().getLastNameFirstInitial())
-						.$("productLine", arg.getProductLine().getName());
+				map.$("site", arg.getSite().getAbbreviation())
+				   .$("assignedTo", arg.getAssignedTo().getLastNameFirstInitial())
+				   .$("productLine", arg.getProductLine().getName());
 				list.add(map);
 			}
 		});
