@@ -87,7 +87,9 @@ public class ProductLineClosing
 		final Info<DailyPerformance> info = Info.$(DailyPerformance.class);
 		final Query<Call> callQuery = Call.inInterval(interval).and(Call.withQueueIn(queues));
 		final Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLine(productLine))
-		                                                            .and(Opportunity.withSources(sources))
+		                                                            .and(sources.isEmpty()
+				                                                                 ? isOnline.negate()
+				                                                                 : Opportunity.withSources(sources))
 		                                                            .and(Opportunity.withContactTypes(contactTypes))
 		                                                            .and(sites == null || sites.isEmpty() ? Query.all(
 				                                                            Opportunity.class) :

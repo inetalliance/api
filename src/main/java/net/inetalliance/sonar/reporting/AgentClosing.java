@@ -21,6 +21,7 @@ import java.util.concurrent.atomic.*;
 import static com.callgrove.Callgrove.*;
 import static com.callgrove.obj.Call.*;
 import static com.callgrove.obj.Opportunity.*;
+import static com.callgrove.types.SaleSource.*;
 import static java.util.stream.Collectors.*;
 import static net.inetalliance.funky.StringFun.*;
 import static net.inetalliance.log.Log.*;
@@ -81,6 +82,18 @@ public class AgentClosing
 			throw new NotFoundException("Could not find agent with key %s", agentKey);
 		}
 
+
+		final Query<Opportunity> oppSources;
+		final Query<Call> callSources;
+
+		if(sources.isEmpty()) {
+			oppSources = Opportunity.isOnline.negate();
+			callSources = Call.withSourceIn(EnumSet.of(ONLINE)).negate();
+		} else {
+			oppSources = Opportunity.withSources(sources);
+			callSources = Call.withSourceIn(sources);
+		}
+
 		boolean uniqueCid = Boolean.valueOf(extras.getOrDefault("uniqueCid", "false"));
 
 		final Interval interval = getReportingInterval(start, end);
@@ -91,7 +104,7 @@ public class AgentClosing
 		final Info<DailyPerformance> info = Info.$(DailyPerformance.class);
 		final Query<Call> callQuery = Call.inInterval(interval);
 		final Query<Opportunity> oppQuery = soldInInterval(interval).and(Opportunity.withAgent(agent))
-		                                                            .and(Opportunity.withSources(sources))
+		                                                            .and(oppSources)
 		                                                            .and(Opportunity.withContactTypes(contactTypes))
 		                                                            .and(sites == null || sites.isEmpty() ? Query.all(
 				                                                            Opportunity.class) :
@@ -106,7 +119,7 @@ public class AgentClosing
 					productLineQueues.isEmpty() ? Query.none(Call.class) : callQuery.and(Call.withQueueIn(productLineQueues));
 			final DailyPerformance productLineTotal = new DailyPerformance();
 			final Query<Call> queueQuery =
-					productLineCallQuery.and(isQueue).and(withSourceIn(sources)).and(withBlame(agent));
+					productLineCallQuery.and(isQueue).and(callSources).and(withBlame(agent));
 			productLineTotal.setQueueCalls(uniqueCid ? countDistinct(queueQuery, "callerId_number") : count(queueQuery));
 
 			final Query<Call> outboundQuery = productLineCallQuery.and(isOutbound).and(Call.withAgent(agent));
