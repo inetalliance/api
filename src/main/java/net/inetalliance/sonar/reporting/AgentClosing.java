@@ -51,8 +51,8 @@ public class AgentClosing
 	}
 
 	@Override
-	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery(false);
+	protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+		return loggedIn.getViewableAgentsQuery(false).and(Agent.activeAfter(intervalStart)).and(Agent.isSales);
 	}
 
 	@Override
@@ -61,8 +61,8 @@ public class AgentClosing
 	}
 
 	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
-		return count(allRows(loggedIn));
+	protected int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart) {
+		return count(allRows(loggedIn, intervalStart));
 	}
 
 	@Override
@@ -82,11 +82,10 @@ public class AgentClosing
 			throw new NotFoundException("Could not find agent with key %s", agentKey);
 		}
 
-
 		final Query<Opportunity> oppSources;
 		final Query<Call> callSources;
 
-		if(sources.isEmpty()) {
+		if (sources.isEmpty()) {
 			oppSources = Opportunity.isOnline.negate();
 			callSources = Call.withSourceIn(EnumSet.of(ONLINE)).negate();
 		} else {
@@ -118,8 +117,7 @@ public class AgentClosing
 			final Query<Call> productLineCallQuery =
 					productLineQueues.isEmpty() ? Query.none(Call.class) : callQuery.and(Call.withQueueIn(productLineQueues));
 			final DailyPerformance productLineTotal = new DailyPerformance();
-			final Query<Call> queueQuery =
-					productLineCallQuery.and(isQueue).and(callSources).and(withBlame(agent));
+			final Query<Call> queueQuery = productLineCallQuery.and(isQueue).and(callSources).and(withBlame(agent));
 			productLineTotal.setQueueCalls(uniqueCid ? countDistinct(queueQuery, "callerId_number") : count(queueQuery));
 
 			final Query<Call> outboundQuery = productLineCallQuery.and(isOutbound).and(Call.withAgent(agent));

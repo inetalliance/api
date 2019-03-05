@@ -46,7 +46,7 @@ public abstract class CachedGroupingRangeReport<R, G>
 
 	protected abstract String getId(final R row);
 
-	protected abstract Query<R> allRows(final Agent loggedIn);
+	protected abstract Query<R> allRows(final Agent loggedIn, final DateTime intervalStart);
 
 	@Override
 	public final void get(final HttpServletRequest request, final HttpServletResponse response)
@@ -110,15 +110,16 @@ public abstract class CachedGroupingRangeReport<R, G>
 								: Arrays.stream(contactTypesParam)
 								        .map(s -> StringFun.camelCaseToEnum(ContactType.class, s))
 								        .collect(Collectors.toCollection(() -> EnumSet.noneOf(ContactType.class)));
-				ProgressHandler.$.start(authorized.getPhone(), response, getJobSize(loggedIn, groupParams.length), meter -> {
-					final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end, groups, extras);
-					if (end.isAfter(new DateMidnight())) {
-						log.debug("Not caching report %s because end is after midnight today", q);
-					} else {
-						cache.set(q, map);
-					}
-					return map;
-				});
+				ProgressHandler.$.start(authorized.getPhone(), response,
+				                        getJobSize(loggedIn, groupParams.length, interval.getStart()), meter -> {
+							final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end, groups, extras);
+							if (end.isAfter(new DateMidnight())) {
+								log.debug("Not caching report %s because end is after midnight today", q);
+							} else {
+								cache.set(q, map);
+							}
+							return map;
+						});
 			}
 		} else {
 			log.debug("Returning cached report result for %s", q);
@@ -132,7 +133,7 @@ public abstract class CachedGroupingRangeReport<R, G>
 
 	protected abstract G getGroup(final String[] params, String g);
 
-	protected abstract int getJobSize(final Agent loggedIn, final int numGroups);
+	protected abstract int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart);
 
 	protected abstract JsonMap generate(final EnumSet<SaleSource> sources, final EnumSet<ContactType> contactTypes,
 			final Agent loggedIn, final ProgressMeter meter, final DateMidnight start, final DateMidnight end,
