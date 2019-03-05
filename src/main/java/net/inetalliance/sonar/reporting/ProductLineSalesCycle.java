@@ -3,6 +3,7 @@ package net.inetalliance.sonar.reporting;
 import com.callgrove.obj.*;
 import net.inetalliance.potion.info.*;
 import net.inetalliance.potion.query.*;
+import org.joda.time.*;
 
 import javax.servlet.annotation.*;
 import java.util.*;
@@ -57,8 +58,8 @@ public class ProductLineSalesCycle
 	}
 
 	@Override
-	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery().and(Agent.isSales.and(Agent.isLocked.negate()));
+	protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+		return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart)).and(Agent.isSales);
 	}
 
 	@Override

@@ -30,8 +30,8 @@ public abstract class SalesCycle<R, G>
 	protected abstract Query<Call> callWithRow(final R row);
 
 	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
-		return count(allRows(loggedIn));
+	protected int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart) {
+		return count(allRows(loggedIn, intervalStart));
 	}
 
 	@Override
@@ -45,7 +45,7 @@ public abstract class SalesCycle<R, G>
 		                                                 .and(inGroups(groups))
 		                                                 .and(isPhoneSale)
 		                                                 .and(Opportunity.withSiteIn($$(isDistributor.negate())));
-		forEach(allRows(loggedIn), r -> {
+		forEach(allRows(loggedIn, interval.getStart()), r -> {
 			meter.increment();
 			meter.setLabel(getLabel(r));
 			final Calculator<Long> created = Calculator.newLong();

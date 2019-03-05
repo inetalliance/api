@@ -41,7 +41,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 	}
 
 	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
+	protected int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart) {
 		return rowQueues.size();
 	}
 
@@ -49,7 +49,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 	protected JsonMap generate(final EnumSet<SaleSource> sources, final EnumSet<ContactType> contactTypes,
 			final Agent loggedIn, final ProgressMeter meter, final DateMidnight start, final DateMidnight end,
 			final Set<G> groups, final Map<String, String> extras) {
-		final Query<R> allRows = allRows(loggedIn);
+		final Query<R> allRows = allRows(loggedIn, start.toDateTime());
 		final Map<String, Interval> intervals = new TreeMap<>();
 		final Interval current = getReportingInterval(start, end);
 		intervals.put("current", current);

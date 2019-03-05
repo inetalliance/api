@@ -96,7 +96,7 @@ public class SitePerformance
 	}
 
 	@Override
-	protected Query<ProductLine> allRows(final Agent loggedIn) {
+	protected Query<ProductLine> allRows(final Agent loggedIn, final DateTime intervalStart) {
 		return Query.all(ProductLine.class);
 	}
 

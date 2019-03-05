@@ -3,6 +3,7 @@ package net.inetalliance.sonar.reporting;
 import com.callgrove.obj.*;
 import net.inetalliance.potion.query.*;
 import net.inetalliance.types.json.*;
+import org.joda.time.*;
 
 import javax.servlet.annotation.*;
 
@@ -26,7 +27,7 @@ public class SiteRevenue
 	}
 
 	@Override
-	protected Query<Site> allRows(final Agent loggedIn) {
+	protected Query<Site> allRows(final Agent loggedIn, final DateTime intervalStart) {
 		return Site.isActive;
 	}
 }

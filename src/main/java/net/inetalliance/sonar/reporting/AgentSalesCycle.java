@@ -4,6 +4,7 @@ import com.callgrove.obj.Queue;
 import com.callgrove.obj.*;
 import net.inetalliance.potion.info.*;
 import net.inetalliance.potion.query.*;
+import org.joda.time.*;
 
 import javax.servlet.annotation.*;
 import java.util.*;
@@ -69,7 +70,7 @@ public class AgentSalesCycle
 	}
 
 	@Override
-	protected Query<ProductLine> allRows(final Agent loggedIn) {
+	protected Query<ProductLine> allRows(final Agent loggedIn, final DateTime intervalStart) {
 		return Query.all(ProductLine.class);
 	}
 

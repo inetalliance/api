@@ -48,8 +48,8 @@ public class SurveyClosing
 	}
 
 	@Override
-	protected Query<Agent> allRows(final Agent loggedIn) {
-		return loggedIn.getViewableAgentsQuery().and(Agent.isSales);
+	protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+		return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart)).and(Agent.isSales);
 	}
 
 	@Override
@@ -58,8 +58,8 @@ public class SurveyClosing
 	}
 
 	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
-		return count(allRows(loggedIn));
+	protected int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart) {
+		return count(allRows(loggedIn, intervalStart));
 	}
 
 	@Override
@@ -98,7 +98,7 @@ public class SurveyClosing
 
 		final Set<String> queuesForProductLine = ProductLineClosing.getQueues(loggedIn, productLine, sites);
 		final JsonList rows = new JsonList();
-		forEach(allRows(loggedIn), agent -> {
+		forEach(allRows(loggedIn, interval.getStart()), agent -> {
 			final Query<Opportunity> andAgent = base.and(Opportunity.withAgent(agent));
 			final JsonMap row = new JsonMap().$("agent", agent.getLastNameFirstInitial());
 			final AtomicBoolean hasOpps = new AtomicBoolean(false);
