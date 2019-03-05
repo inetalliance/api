@@ -31,14 +31,18 @@ public abstract class Revenue<R extends Named>
 	private static final transient Log log = Log.getInstance(Revenue.class);
 
 	private static Map<Integer, Integer> bjxIds = new HashMap<>();
-	private static Map<String[], Collection<Category>> cache = new HashMap<>();	private static Integer getCallgroveSiteId(final Integer beejaxId) {
+	private static Map<String[], Collection<Category>> cache = new HashMap<>();
+
+	private static Integer getCallgroveSiteId(final Integer beejaxId) {
 		return bjxIds.computeIfAbsent(beejaxId,
 		                              id -> Optional.ofNullable($1(Site.withBeejaxId(id))).map(s -> s.id).orElse(null));
 	}
 
 	Revenue() {
 		super("tags", "p");
-	}	private static TwoTuple<Integer, Integer> convertChain(final ProductChain chain) {
+	}
+
+	private static TwoTuple<Integer, Integer> convertChain(final ProductChain chain) {
 		return new TwoTuple<>(getCallgroveSiteId(chain.site), chain.id);
 	}
 
@@ -50,7 +54,9 @@ public abstract class Revenue<R extends Named>
 		DATA,
 		NO_PRODUCT,
 		NOT_MATCHING
-	}	protected abstract JsonMap addRowInfo(final JsonMap json, final R row);
+	}
+
+	protected abstract JsonMap addRowInfo(final JsonMap json, final R row);
 
 	@Override
 	protected JsonMap generate(final EnumSet<SaleSource> sources, final EnumSet<ContactType> contactTypes,
@@ -73,7 +79,7 @@ public abstract class Revenue<R extends Named>
 		}
 		final Query<Opportunity> finalOppQuery = oppQuery;
 		final JsonList rows = new JsonList();
-		Locator.forEach(allRows(loggedIn), row -> {
+		Locator.forEach(allRows(loggedIn, interval.getStart()), row -> {
 			final JsonList rowData = new JsonList(categories.size());
 			final Query<Opportunity> rowQuery = finalOppQuery.and(oppsForRow(row));
 			int opps = 0;
@@ -123,8 +129,6 @@ public abstract class Revenue<R extends Named>
 		return new JsonMap().$("labels", labels).$("rows", rows);
 	}
 
-
-
 	private static Map<Integer, Query<? super Opportunity>> getCategoryQueries(final ProgressMeter meter,
 			final Set<Category> categories) {
 		final Map<Integer, Query<? super Opportunity>> categoryQueries = new HashMap<>(categories.size());
@@ -158,8 +162,6 @@ public abstract class Revenue<R extends Named>
 		return getCategory(params, Integer.valueOf(arg));
 	}
 
-
-
 	static Category getCategory(final String[] params, final Integer key) {
 		return cache.computeIfAbsent(params, p -> Callgrove.beejax.categoryLookup(
 				Stream.of(p).map(Integer::valueOf).collect(toSet())))
@@ -170,10 +172,8 @@ public abstract class Revenue<R extends Named>
 
 	}
 
-
-
 	@Override
-	protected int getJobSize(final Agent loggedIn, final int numGroups) {
-		return count(allRows(loggedIn)) + numGroups;
+	protected int getJobSize(final Agent loggedIn, final int numGroups, final DateTime intervalStart) {
+		return count(allRows(loggedIn, intervalStart)) + numGroups;
 	}
 }
