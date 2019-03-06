@@ -38,7 +38,7 @@ public class HudHandler
 	private final JsonMap hud;
 	private final Set<Session> subscribers;
 	private final ExecutorService service = Executors.newFixedThreadPool(4, DaemonThreadFactory.$);
-	private Set<String> untouched = new HashSet<>(8);
+	private Set<String> touched = new HashSet<>(8);
 	private ScheduledExecutorService scheduler = Executors.newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 
 	public HudHandler() {
@@ -100,8 +100,7 @@ public class HudHandler
 
 	@Override
 	public void run() {
-		untouched.clear();
-		untouched.addAll(status.keySet());
+		touched.clear();
 		if (Startup.pbx != null) {
 			try {
 				linkedChannels.clear();
@@ -146,19 +145,9 @@ public class HudHandler
 	private void updateSubscribers() {
 		lock.lock();
 		try {
-			for (final String notActive : untouched) {
-				status.get(notActive).clear();
-			}
-			current.clear();
-			for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
-				current.put(entry.getKey(), new JsonMap().$("direction", entry.getValue().direction)
-				                                         .$("available", entry.getValue().available));
-			}
 
-			if (!this.hud.equals(current)) {
-				this.hud.clear();
-				this.hud.putAll(current);
-				//broadcast(Events.wrap(type, this.hud));
+			if (!touched.isEmpty()) {
+				broadcast( new JsonMap().$("type","hud").$("msg",this.hud));
 			}
 		} finally {
 			lock.unlock();
@@ -170,7 +159,7 @@ public class HudHandler
 			HudStatus hudStatus = status.get(agent.key);
 			if (agent.isPaused() == hudStatus.available) {
 				hudStatus.available = !agent.isPaused();
-				untouched.remove(agent.key);
+				touched.add(agent.key);
 			}
 		});
 	}
@@ -181,7 +170,7 @@ public class HudHandler
 			final HudStatus agentStatus = status.get(agent.key);
 			agentStatus.direction = QUEUE;
 			agentStatus.callId = call.key;
-			untouched.remove(agent.key);
+			touched.add(agent.key);
 		});
 	}
 
@@ -203,7 +192,7 @@ public class HudHandler
 					final HudStatus agentStatus = status.get(otherAgent);
 					agentStatus.direction = INTERNAL;
 					agentStatus.callId = dialedChannel.getId();
-					untouched.remove(otherAgent);
+					touched.add(otherAgent);
 				}
 			}
 		} else if (dialedChannel != null) {
@@ -218,7 +207,7 @@ public class HudHandler
 			final HudStatus agentStatus = status.get(agent);
 			agentStatus.direction = direction;
 			agentStatus.callId = originatingChannel.getId();
-			untouched.remove(agent);
+			touched.add(agent);
 		}
 	}
 
