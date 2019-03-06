@@ -100,19 +100,19 @@ public class HudHandler
 
 	@Override
 	public void run() {
+		untouched.clear();
+		untouched.addAll(status.keySet());
 		if (Startup.pbx != null) {
 			try {
 				linkedChannels.clear();
-				untouched.clear();
-				untouched.addAll(status.keySet());
 				updateChannels();
-				updateSubscribers();
 			} catch (final Throwable t) {
 				log.error(t);
 			}
 		}
 		updateAvailability();
 		updateSimulated();
+		updateSubscribers();
 	}
 
 	private void updateChannels() {
