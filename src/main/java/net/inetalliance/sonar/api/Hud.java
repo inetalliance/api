@@ -3,7 +3,6 @@ package net.inetalliance.sonar.api;
 import com.callgrove.obj.*;
 import net.inetalliance.sonar.*;
 import net.inetalliance.types.json.*;
-import net.inetalliance.types.struct.maps.*;
 
 import javax.servlet.annotation.*;
 import java.util.*;
@@ -26,15 +25,17 @@ public class Hud
 			 "ATC"};
 
 	public Hud() {
-		super(5, MINUTES);
+		super(1, MINUTES);
 	}
 
 	@Override
 	protected Json produce() {
-		final Map<Integer, JsonList> agents = new LazyMap<>(new HashMap<>(), k -> new JsonList(8));
+		final var agents = new HashMap<Integer, JsonList>();
 		final Set<String> firstNames = new HashSet<>(8);
 		forEach(isLocked.negate(), agent -> {
-			if (phone.matcher(agent.key).matches()) {
+			if (phone
+					.matcher(agent.key)
+					.matches()) {
 				final CallCenter callCenter = agent.getCallCenter();
 				final Integer key = classify(callCenter);
 				if (key != null) {
@@ -56,32 +57,46 @@ public class Hud
 						}
 					} else {
 						if (firstNames.contains(agent.getFirstName())) {
-							agentName = agent.getFirstName() + ' ' + agent.getLastName().charAt(0);
+							agentName = agent.getFirstName() + ' ' + agent
+									.getLastName()
+									.charAt(0);
 						} else {
 							agentName = agent.getFirstName();
 						}
 						firstNames.add(agentName);
 					}
-					agents.get(key).add(new JsonMap().$("name", agentName).$("key", agent.key));
+					agents
+							.computeIfAbsent(key, k -> new JsonList())
+							.add(new JsonMap()
+									     .$("name", agentName)
+									     .$("available", !agent.isPaused())
+									     .$("key", agent.key));
 				}
 
 			}
 		});
 		final JsonList json = new JsonList(callCenters.length);
 		for (int i = 0; i < callCenters.length; i++) {
-			json.add(new JsonMap().$("name", callCenters[i]).$("agents", agents.get(i)));
-
+			json.add(new JsonMap()
+					         .$("name", callCenters[i])
+					         .$("agents", agents.computeIfAbsent(i, k -> new JsonList())));
 		}
 		return json;
 	}
 
 	private static Integer classify(CallCenter c) {
 		return cache.computeIfAbsent(c, callCenter -> {
-			if (callCenter.getName().startsWith("AZ")) {
+			if (callCenter
+					.getName()
+					.startsWith("AZ")) {
 				return 1;
-			} else if (callCenter.getName().startsWith("GA")) {
+			} else if (callCenter
+					.getName()
+					.startsWith("GA")) {
 				return 0;
-			} else if (callCenter.getName().startsWith("NC")) {
+			} else if (callCenter
+					.getName()
+					.startsWith("NC")) {
 				return 2;
 			}
 
