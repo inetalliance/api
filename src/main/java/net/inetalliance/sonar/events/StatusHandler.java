@@ -4,7 +4,6 @@ import com.callgrove.jobs.*;
 import com.callgrove.obj.*;
 import net.inetalliance.angular.events.Events;
 import net.inetalliance.cron.*;
-import net.inetalliance.funky.*;
 import net.inetalliance.log.*;
 import net.inetalliance.potion.*;
 import net.inetalliance.types.json.*;
@@ -126,12 +125,7 @@ public class StatusHandler
 
 	@Override
 	public JsonMap onConnect(final Session session) {
-		final JsonMap status = getStatus(Events.getUser(session).getPhone(), true);
-		final String callId = status.get("callId");
-		if (StringFun.isNotEmpty(callId) && Events.isFirst(session)) {
-			Events.send(session, "pop", new JsonMap().$("callId", callId));
-		}
-		return status;
+		return getStatus(Events.getUser(session).getPhone(), true);
 	}
 
 	private static JsonMap getStatus(final String agent, final boolean full) {
