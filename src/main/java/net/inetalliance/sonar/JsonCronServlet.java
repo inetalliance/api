@@ -1,52 +1,53 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.DaemonThreadFactory;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.types.json.Json;
-
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import net.inetalliance.angular.AngularServlet;
+import net.inetalliance.types.json.Json;
 
 public abstract class JsonCronServlet
-		extends AngularServlet
-		implements Runnable {
-	public static final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(1, DaemonThreadFactory.$);
-	private final int interval;
-	private final TimeUnit timeUnit;
-	private transient Json content;
+    extends AngularServlet
+    implements Runnable {
 
-	public JsonCronServlet(final int interval, final TimeUnit timeUnit) {
-		this.interval = interval;
-		this.timeUnit = timeUnit;
-	}
+  public static final ScheduledExecutorService scheduler = Executors
+      .newScheduledThreadPool(1, DaemonThreadFactory.$);
+  private final int interval;
+  private final TimeUnit timeUnit;
+  private transient Json content;
 
-	@Override
-	public void init(final ServletConfig config)
-			throws ServletException {
-		super.init(config);
-		scheduler.scheduleWithFixedDelay(this, 0, interval, timeUnit);
-	}
+  public JsonCronServlet(final int interval, final TimeUnit timeUnit) {
+    this.interval = interval;
+    this.timeUnit = timeUnit;
+  }
 
-	@Override
-	public void run() {
-		content = produce();
-	}
+  @Override
+  public void init(final ServletConfig config)
+      throws ServletException {
+    super.init(config);
+    scheduler.scheduleWithFixedDelay(this, 0, interval, timeUnit);
+  }
 
-	protected abstract Json produce();
+  @Override
+  public void run() {
+    content = produce();
+  }
 
-	@Override
-	protected void get(final HttpServletRequest request, final HttpServletResponse response)
-			throws Exception {
-		respond(response, content);
-	}
+  protected abstract Json produce();
 
-	@Override
-	public void destroy() {
-		scheduler.shutdown();
-	}
+  @Override
+  protected void get(final HttpServletRequest request, final HttpServletResponse response)
+      throws Exception {
+    respond(response, content);
+  }
+
+  @Override
+  public void destroy() {
+    scheduler.shutdown();
+  }
 }
