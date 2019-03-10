@@ -114,7 +114,7 @@ public class ManagerStats
       jsonList.add(new JsonMap()
           .$("agent", k)
           .$("intervals", list)
-          .$("in", count(todayWithAgent.and(Call.isQueue)))
+          .$("in", count(todayWithAgent.and(Call.isQueue).and(Call.isAnswered)))
           .$("out", count(todayWithAgent.and(Call.isOutbound)))
           .$("surveys", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SURVEY))))
           .$("social", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SOCIAL)))));
