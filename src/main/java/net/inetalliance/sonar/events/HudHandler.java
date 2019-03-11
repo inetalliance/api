@@ -15,17 +15,15 @@ import com.callgrove.types.CallDirection;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.TreeSet;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import javax.websocket.Session;
@@ -33,7 +31,6 @@ import net.inetalliance.log.Log;
 import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.types.struct.maps.LazyMap;
 import org.asteriskjava.live.AsteriskChannel;
 
 public class HudHandler
@@ -42,37 +39,26 @@ public class HudHandler
   private static final Map<String, HudStatus> status;
   private static final Pattern sip = Pattern.compile("SIP/(7[0-9][0-9][0-9]).*");
   private static final transient Log log = Log.getInstance(HudHandler.class);
-  private static final Lock lock = new ReentrantLock();
 
   static {
-    status = new LazyMap<>(new HashMap<>(), k -> new HudStatus());
+    status = new HashMap<>();
   }
 
-  private final JsonMap current;
-  private final Set<String> linkedChannels;
   private final JsonMap hud;
   private final Set<Session> subscribers;
   private final ExecutorService service = Executors.newFixedThreadPool(4, DaemonThreadFactory.$);
-  private Set<String> untouched = new HashSet<>(8);
   private ScheduledExecutorService scheduler = Executors
       .newSingleThreadScheduledExecutor(DaemonThreadFactory.$);
 
-  public HudHandler() {
-    subscribers = new HashSet<>(8);
-    linkedChannels = new TreeSet<>();
-    current = new JsonMap();
-    hud = new JsonMap();
+  HudHandler() {
+    subscribers = Collections.synchronizedSet(new HashSet<>(8));
+    hud = new JsonMap(true);
     scheduler.scheduleWithFixedDelay(this, 0, 250, MILLISECONDS);
 
   }
 
-  public static HudStatus getStatus(final String agent) {
-    lock.lock();
-    try {
-      return status.get(agent);
-    } finally {
-      lock.unlock();
-    }
+  static HudStatus getStatus(final String agent) {
+    return status.get(agent);
 
   }
 
@@ -82,20 +68,10 @@ public class HudHandler
       final Action action = Action.valueOf(msg.get("action").toUpperCase());
       switch (action) {
         case SUBSCRIBE:
-          lock.lock();
-          try {
-            subscribers.add(session);
-          } finally {
-            lock.unlock();
-          }
+          subscribers.add(session);
           return hud;
         case UNSUBSCRIBE:
-          lock.lock();
-          try {
-            subscribers.remove(session);
-          } finally {
-            lock.unlock();
-          }
+          subscribers.remove(session);
       }
     } catch (IllegalArgumentException e) {
       log.error(e);
@@ -105,22 +81,14 @@ public class HudHandler
 
   @Override
   public void destroy() {
-    lock.lock();
-    try {
-      hud.clear();
-      scheduler.shutdownNow();
-    } finally {
-      lock.unlock();
-    }
+    hud.clear();
+    scheduler.shutdownNow();
   }
 
   @Override
   public void run() {
-    untouched.clear();
-    untouched.addAll(status.keySet());
     if (Startup.pbx != null) {
       try {
-        linkedChannels.clear();
         updateChannels();
       } catch (final Throwable t) {
         log.error(t);
@@ -128,13 +96,26 @@ public class HudHandler
     }
     updateAvailability();
     updateSimulated();
-    updateSubscribers();
+    JsonMap current = new JsonMap();
+    for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
+      current.put(entry.getKey(),
+          new JsonMap().$("direction", entry.getValue().direction)
+              .$("available", entry.getValue().available));
+    }
+
+    if (!current.equals(hud)) {
+      hud.clear();
+      hud.putAll(current);
+      broadcast(new JsonMap().$("type", "hud").$("msg", this.hud));
+    }
   }
 
   private void updateChannels() {
     if (Startup.pbx == null) {
       return;
     }
+    final Set<String> linkedChannels = new HashSet<>();
+
     for (final AsteriskChannel channel : Startup.pbx.getChannels()) {
       if (!linkedChannels.contains(channel.getId())) {
         final AsteriskChannel linkedChannel = channel.getLinkedChannel();
@@ -159,34 +140,12 @@ public class HudHandler
     }
   }
 
-  private void updateSubscribers() {
-    lock.lock();
-    try {
-      for (final String notActive : untouched) {
-        status.get(notActive).clear();
-      }
-      current.clear();
-      for (final Map.Entry<String, HudStatus> entry : status.entrySet()) {
-        current.put(entry.getKey(), new JsonMap().$("direction", entry.getValue().direction)
-            .$("available", entry.getValue().available));
-      }
-
-      if (!this.hud.equals(current)) {
-        this.hud.clear();
-        current.putAll(this.hud);
-        broadcast(new JsonMap().$("type", "hud").$("msg", this.hud));
-      }
-    } finally {
-      lock.unlock();
-    }
-  }
 
   private void updateAvailability() {
     forEach(isActive, agent -> {
-      HudStatus hudStatus = status.get(agent.key);
+      HudStatus hudStatus = status.computeIfAbsent(agent.key, k -> new HudStatus());
       if (agent.isPaused() == hudStatus.available) {
         hudStatus.available = !agent.isPaused();
-        untouched.remove(agent.key);
       }
     });
   }
@@ -194,10 +153,10 @@ public class HudHandler
   private void updateSimulated() {
     forEach(Call.simulated.and(Call.isActive), call -> {
       final Agent agent = call.getActiveAgent();
-      final HudStatus agentStatus = status.get(agent.key);
+      final HudStatus agentStatus = status.computeIfAbsent(agent.key, k -> new HudStatus());
       agentStatus.direction = QUEUE;
       agentStatus.callId = call.key;
-      untouched.remove(agent.key);
+      agentStatus.available = !agent.isPaused();
     });
   }
 
@@ -217,10 +176,9 @@ public class HudHandler
         if (direction == INTERNAL) // add both sides of internal calls
         {
           final String otherAgent = dM.group(1);
-          final HudStatus agentStatus = status.get(otherAgent);
+          final HudStatus agentStatus = status.computeIfAbsent(otherAgent, k -> new HudStatus());
           agentStatus.direction = INTERNAL;
           agentStatus.callId = dialedChannel.getId();
-          untouched.remove(otherAgent);
         }
       }
     } else if (dialedChannel != null) {
@@ -232,17 +190,15 @@ public class HudHandler
       direction = null;
     }
     if (agent != null) {
-      final HudStatus agentStatus = status.get(agent);
+      final HudStatus agentStatus = status.computeIfAbsent(agent, k -> new HudStatus());
       agentStatus.direction = direction;
       agentStatus.callId = originatingChannel.getId();
-      untouched.remove(agent);
     }
   }
 
   private void broadcast(final JsonMap msg) {
     final CountDownLatch latch = new CountDownLatch(subscribers.size());
     final Collection<Session> toRemove = new ArrayList<>(0);
-    lock.lock();
     try {
       for (final Session subscriber : subscribers) {
         service.submit(() -> {
@@ -261,7 +217,6 @@ public class HudHandler
     } finally {
       // remove any dead ones we found
       subscribers.removeAll(toRemove);
-      lock.unlock();
     }
   }
 
