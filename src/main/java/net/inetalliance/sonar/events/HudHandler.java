@@ -173,7 +173,7 @@ public class HudHandler
 
       if (!this.hud.equals(current)) {
         this.hud.clear();
-        this.hud.putAll(current);
+        current.putAll(this.hud);
         broadcast(new JsonMap().$("type", "hud").$("msg", this.hud));
       }
     } finally {
