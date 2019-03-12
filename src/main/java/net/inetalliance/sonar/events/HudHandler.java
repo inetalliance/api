@@ -88,6 +88,7 @@ public class HudHandler
   @Override
   public void run() {
     for (HudStatus value : status.values()) {
+      value.direction = null;
       value.callId = null;
     }
     if (Startup.pbx != null) {
