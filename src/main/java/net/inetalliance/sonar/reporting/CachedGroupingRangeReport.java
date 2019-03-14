@@ -66,13 +66,16 @@ public abstract class CachedGroupingRangeReport<R, G>
 		if (groupParams == null) {
 			groupParams = new String[]{};
 		}
+    final String[] callCentersParam = request.getParameterValues("callCenters");
 		final String q =
-				format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,%s", getClass().getSimpleName(),
+				format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,callCenters:%s,%s",
+          getClass().getSimpleName(),
 				       !loggedIn.isManager() && loggedIn.isTeamLeader() ? loggedIn.key : "admin",
 				       Callgrove.simple.print(start),
 				       Callgrove.simple.print(end), groupParam, String.join(",", groupParams),
 				       mode == null ? "" : String.join(",", mode),
 				       contactTypesParam == null ? "" : String.join(",", contactTypesParam),
+          callCentersParam == null ? "" : String.join(",", callCentersParam),
 				       Arrays.stream(extraParams).map(s -> format("%s:%s", s, request.getParameter(s))).collect(joining(",")));
 		final Map<String, String> extras = new HashMap<>(extraParams.length);
 		for (final String extraParam : extraParams) {
