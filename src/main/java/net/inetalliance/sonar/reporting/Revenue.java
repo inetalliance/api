@@ -16,6 +16,7 @@ import static net.inetalliance.sql.Aggregate.SUM;
 
 import com.callgrove.Callgrove;
 import com.callgrove.obj.Agent;
+import com.callgrove.obj.CallCenter;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Site;
@@ -110,7 +111,8 @@ public abstract class Revenue<R extends Named>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Category> categories, final Map<String, String> extras) {
+      final Set<Category> categories, Collection<CallCenter> callCenters,
+      final Map<String, String> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access %s", loggedIn == null ? "Nobody?" : loggedIn.key,
           getClass().getSimpleName());

@@ -19,6 +19,7 @@ import static net.inetalliance.sql.Aggregate.SUM;
 
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
+import com.callgrove.obj.CallCenter;
 import com.callgrove.obj.DailyPerformance;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
@@ -27,6 +28,7 @@ import com.callgrove.obj.Segment;
 import com.callgrove.obj.Site;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.Map;
@@ -93,7 +95,7 @@ public class AgentClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, final Map<String, String> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);

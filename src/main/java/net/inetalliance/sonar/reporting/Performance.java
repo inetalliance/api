@@ -11,10 +11,12 @@ import static org.joda.time.DateTimeConstants.MILLIS_PER_DAY;
 
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
+import com.callgrove.obj.CallCenter;
 import com.callgrove.obj.DailyProductLineVisits;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -67,7 +69,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, final Map<String, String> extras) {
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras) {
     final Query<R> allRows = allRows(loggedIn, start.toDateTime());
     final Map<String, Interval> intervals = new TreeMap<>();
     final Interval current = getReportingInterval(start, end);
@@ -98,6 +100,11 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     Query<Opportunity> oppQuery = Opportunity.withSources(sources)
         .and(Opportunity.withContactTypes(contactTypes));
 
+    if (!callCenters.isEmpty()) {
+      oppQuery = oppQuery.and(Opportunity.withCallCenterIn(callCenters));
+    }
+
+    final Query<Opportunity> finalOppQuery = oppQuery;
     forEach(allRows.orderBy("name", ASCENDING), r -> {
       meter.setLabel(r.getName());
       final JsonMap row = new JsonMap();
@@ -149,7 +156,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
             $$(groupVisits.and(DailyProductLineVisits.inInterval(interval)), SUM, Integer.class,
                 "visits"),
             NumberMath.INTEGER);
-        final Query<Opportunity> sub1 = oppQuery.and(Opportunity.soldInInterval(interval));
+        final Query<Opportunity> sub1 = finalOppQuery.and(Opportunity.soldInInterval(interval));
         final Query<Opportunity> and = rowSales.and(sub1);
         update(totalRevenue, revenue, key, $$(and, SUM, Currency.class, "amount"), Currency.MATH);
         update(totalOpps, opps, key, count(and), NumberMath.INTEGER);

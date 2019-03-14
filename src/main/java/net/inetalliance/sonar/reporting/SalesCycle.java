@@ -13,6 +13,7 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
+import com.callgrove.obj.CallCenter;
 import com.callgrove.obj.Contact;
 import com.callgrove.obj.DailyPerformance;
 import com.callgrove.obj.Opportunity;
@@ -58,7 +59,7 @@ public abstract class SalesCycle<R, G>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, final Map<String, String> extras) {
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras) {
     final JsonList rows = new JsonList();
     final Interval interval = getReportingInterval(start, end);
     final Interval callInterval = interval.withStart(interval.getStart().minusDays(60));

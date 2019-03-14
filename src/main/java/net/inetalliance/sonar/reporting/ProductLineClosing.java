@@ -117,7 +117,7 @@ public class ProductLineClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, final Map<String, String> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);
@@ -139,7 +139,7 @@ public class ProductLineClosing
 
     final Info<DailyPerformance> info = Info.$(DailyPerformance.class);
     final Query<Call> callQuery = Call.inInterval(interval).and(Call.withQueueIn(queues));
-    final Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLine(productLine))
+    Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLine(productLine))
         .and(sources.isEmpty()
             ? isOnline.negate()
             : Opportunity.withSources(sources))
@@ -147,11 +147,15 @@ public class ProductLineClosing
         .and(sites == null || sites.isEmpty() ? Query.all(
             Opportunity.class) :
             Opportunity.withSiteIn(sites));
+    if (!callCenters.isEmpty()) {
+      oppQuery = oppQuery.and(Opportunity.withCallCenterIn(callCenters));
+    }
     final JsonList rows = new JsonList();
     final AtomicInteger totalCalls = new AtomicInteger(0);
     final AtomicInteger totalAgents = new AtomicInteger(0);
     final Map<Integer, AtomicInteger> callCenterCount = new HashMap<>();
     final Map<Integer, DailyPerformance> callCenterTotals = new HashMap<>();
+    final Query<Opportunity> finalOppQuery = oppQuery
     Locator.forEach(allRows(loggedIn, interval.getStart()), agent -> {
       meter.increment(agent.getLastNameFirstInitial());
       final Query<Call> agentCallQuery = callQuery.and(Call.withBlame(agent));
@@ -172,7 +176,7 @@ public class ProductLineClosing
         agentTotal.setOutboundCalls(count(outboundQuery));
       }
       agentTotal.setDumps(count(agentCallQuery.and(isQueue).and(Call.isDumped)));
-      final Query<Opportunity> agentOppQuery = oppQuery.and(Opportunity.withAgent(agent))
+      final Query<Opportunity> agentOppQuery = finalOppQuery.and(Opportunity.withAgent(agent))
           .and(withAmountGreaterThan(
               productLine.getLowestReasonableAmount()));
       agentTotal.setCloses(count(agentOppQuery));

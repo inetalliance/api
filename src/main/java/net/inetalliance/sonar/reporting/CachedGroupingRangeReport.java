@@ -8,14 +8,18 @@ import static net.inetalliance.types.www.ContentType.JSON;
 
 import com.callgrove.Callgrove;
 import com.callgrove.obj.Agent;
+import com.callgrove.obj.CallCenter;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
 import java.io.PrintWriter;
 import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import javax.servlet.ServletConfig;
@@ -27,6 +31,7 @@ import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.events.ProgressHandler;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
@@ -76,18 +81,25 @@ public abstract class CachedGroupingRangeReport<R, G>
     if (groupParams == null) {
       groupParams = new String[]{};
     }
-    final String[] callCentersParam = request.getParameterValues("callCenters");
+    final String[] callCentersParam = request.getParameterValues("callCenter");
+    final Collection<CallCenter> callCenters = Optional.ofNullable(callCentersParam)
+        .map(array -> Arrays.stream(array)
+            .map(key -> Locator.$(new CallCenter(Integer.parseInt(key))))
+            .flatMap(callCenter -> Funky.stream(callCenter.toBreadthFirstIterator()))
+            .collect(Collectors.toList()))
+        .orElse(Collections.emptyList());
+
     final String q =
-        format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,callCenters:%s,
-           %s",
-          getClass().getSimpleName(),
+        format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,callCenters:%s,%s",
+            getClass().getSimpleName(),
             !loggedIn.isManager() && loggedIn.isTeamLeader() ? loggedIn.key : "admin",
             Callgrove.simple.print(start),
             Callgrove.simple.print(end), groupParam, String.join(",", groupParams),
             mode == null ? "" : String.join(",", mode),
             contactTypesParam == null ? "" : String.join(",", contactTypesParam),
-          callCentersParam == null ? "" : String.join(",", callCentersParam),
-				       Arrays.stream(extraParams).map(s -> format("%s:%s", s, request.getParameter(s))).collect(joining(",")));
+            callCentersParam == null ? "" : String.join(",", callCentersParam),
+            Arrays.stream(extraParams).map(s -> format("%s:%s", s, request.getParameter(s)))
+                .collect(joining(",")));
     final Map<String, String> extras = new HashMap<>(extraParams.length);
     for (final String extraParam : extraParams) {
       extras.put(extraParam, request.getParameter(extraParam));
@@ -128,7 +140,7 @@ public abstract class CachedGroupingRangeReport<R, G>
         ProgressHandler.$.start(authorized.getPhone(), response,
             getJobSize(loggedIn, groupParams.length, interval.getStart()), meter -> {
               final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
-                  groups, extras);
+                  groups, callCenters, extras);
               if (end.isAfter(new DateMidnight())) {
                 log.debug("Not caching report %s because end is after midnight today", q);
               } else {
@@ -156,7 +168,7 @@ public abstract class CachedGroupingRangeReport<R, G>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, final Map<String, String> extras);
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras);
 
   @Override
   public void init(final ServletConfig config)
