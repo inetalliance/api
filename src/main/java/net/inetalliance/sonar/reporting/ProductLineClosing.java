@@ -155,7 +155,7 @@ public class ProductLineClosing
     final AtomicInteger totalAgents = new AtomicInteger(0);
     final Map<Integer, AtomicInteger> callCenterCount = new HashMap<>();
     final Map<Integer, DailyPerformance> callCenterTotals = new HashMap<>();
-    final Query<Opportunity> finalOppQuery = oppQuery
+    final Query<Opportunity> finalOppQuery = oppQuery;
     Locator.forEach(allRows(loggedIn, interval.getStart()), agent -> {
       meter.increment(agent.getLastNameFirstInitial());
       final Query<Call> agentCallQuery = callQuery.and(Call.withBlame(agent));
