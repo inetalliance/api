@@ -57,7 +57,9 @@ public class Review
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
     final Agent loggedIn = Startup.getAgent(request);
-    assert loggedIn != null;
+    if(loggedIn == null) {
+      throw new ForbiddenException();
+    }
     final String callCenterParam = request.getParameter("callCenter");
     final CallCenter callCenter;
     if (isEmpty(callCenterParam)) {

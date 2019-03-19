@@ -62,7 +62,9 @@ public class WorkStatus
     }
     final DateMidnight day = simple.parseDateTime(date).toDateMidnight();
     final Agent loggedIn = Startup.getAgent(request);
-    assert loggedIn != null;
+    if (loggedIn == null) {
+      throw new ForbiddenException();
+    }
     final Map<String, State> state = new TreeMap<>();
     if (loggedIn.isManager() || loggedIn.isTeamLeader()) {
       final JsonMap json = new JsonMap();

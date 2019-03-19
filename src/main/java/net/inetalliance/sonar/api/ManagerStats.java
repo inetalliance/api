@@ -5,7 +5,6 @@ import static net.inetalliance.potion.Locator.count;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
 import com.callgrove.types.SaleSource;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -15,7 +14,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.angular.exception.NotFoundException;
+import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.UnauthorizedException;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
@@ -31,16 +30,12 @@ import org.joda.time.Interval;
 public class ManagerStats
     extends AngularServlet {
 
-  private static Query<Opportunity> withProduct(int id) {
-    return Opportunity.withProductLine(new ProductLine(id));
-  }
-
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
     final var manager = Startup.getAgent(request);
     if (manager == null) {
-      throw new NotFoundException();
+      throw new ForbiddenException();
     }
     var intervals = new LinkedHashMap<String, Interval>();
     intervals.put("today", new DateMidnight().toInterval());
@@ -58,10 +53,8 @@ public class ManagerStats
             .plusMonths(1)
     ));
 
-    final Agent loggedIn = Startup.getAgent(request);
-    assert loggedIn != null;
     final var viewable =
-        Locator.$$(loggedIn
+        Locator.$$(manager
             .getViewableAgentsQuery(false)
             .and(Agent.activeAfter(new DateMidnight().withDayOfMonth(1)))
             .and(Agent.isSales));

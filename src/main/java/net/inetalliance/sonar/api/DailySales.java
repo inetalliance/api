@@ -66,7 +66,9 @@ public class DailySales
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
     final Agent loggedIn = Startup.getAgent(request);
-    assert loggedIn != null;
+    if(loggedIn == null) {
+      throw new ForbiddenException();
+    }
     final Set<Site> sites = Startup.locateParameterValues(request, "site", Site.class);
     final Set<ProductLine> productLines = Startup
         .locateParameterValues(request, "productLine", ProductLine.class);

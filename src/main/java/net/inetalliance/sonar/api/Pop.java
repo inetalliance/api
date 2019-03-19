@@ -21,6 +21,7 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.TypeModel;
+import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.potion.query.Search;
@@ -62,7 +63,9 @@ public class Pop
     final Opportunity[] preferred = new Opportunity[1];
     final JsonList contacts = new JsonList(1);
     final Agent loggedIn = Startup.getAgent(request);
-    assert loggedIn != null;
+    if (loggedIn == null) {
+      throw new ForbiddenException();
+    }
     final Comparator<Opportunity> matchQuality = (a, b) -> {
       if (b == null) {
         return 1;

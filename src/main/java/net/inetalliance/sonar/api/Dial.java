@@ -294,7 +294,9 @@ public class Dial
                     oldValue == null ? null : oldValue.getId(),
                     newValue == null ? null : newValue.getId());
                 if (newValue == null) { // unlinking a channel
-                  assert oldValue != null;
+                  if (oldValue == null) {
+                    throw new NullPointerException("old channel unknown");
+                  }
                   final Segment segment = Locator.$(new Segment(call, oldValue.getId()));
                   if (segment == null) {
                     log.error("[%d:%s] could not find segment object %s", id, call.key,
