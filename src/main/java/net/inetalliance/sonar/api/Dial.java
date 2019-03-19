@@ -16,6 +16,7 @@ import static org.asteriskjava.live.ChannelState.HUNGUP;
 import com.callgrove.elastix.CallRouter;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
+import com.callgrove.obj.Did;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Queue;
@@ -122,6 +123,7 @@ public class Dial
           final Site site = opp.getSite();
           final ProductLine productLine = opp.getProductLine();
           Queue effectiveQueue = null;
+
           final Set<Queue> queues = site.getQueues();
           if (queues.size() == 1) {
             effectiveQueue = queues.iterator().next();
@@ -129,7 +131,10 @@ public class Dial
             for (final Queue queue : queues) {
               if (productLine.equals(queue.getProductLine())) {
                 effectiveQueue = queue;
-                break;
+                final Did did = Locator.$1(Did.withQueue(queue));
+                if(did != null && did.getSource().equals(opp.getSource())) {
+                  break;
+                }
               }
             }
           }
