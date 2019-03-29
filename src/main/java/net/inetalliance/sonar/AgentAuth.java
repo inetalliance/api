@@ -53,7 +53,12 @@ public class AgentAuth
     post.setEntity(new StringEntity(Json.pretty(data), ContentType.APPLICATION_JSON));
     try {
       final HttpResponse res = client.execute(post);
-      return JsonMap.parse(res.getEntity().getContent());
+      final JsonMap response = JsonMap.parse(res.getEntity().getContent());
+      if ("api_error".equals(response.get("type"))) {
+        log.error("Nylas API error: %s", response.get("message"));
+        return null;
+      }
+      return response;
     } catch (IOException e) {
       log.error(e);
 
@@ -107,16 +112,14 @@ public class AgentAuth
           new JsonMap().$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
               .$("client_secret", "f02ufhmcopkrzbc35ah6w7wto")
               .$("code", agent.getNylasCode()));
-      if (json != null) {
-        final String token = json.get("access_token");
-        if (isEmpty(token)) {
-          if ("api_error".equals(json.get("type")) && json.get("message")
-              .startsWith("No grant with code") && !forceCodeLookup) {
-            onLogin(request, authorized, true);
-          }
-        } else {
-          request.getSession().setAttribute("nylasAccount", token);
+      final String token = json == null ? null : json.get("access_token");
+      if (isEmpty(token)) {
+        if ("api_error".equals(json.get("type")) && json.get("message")
+            .startsWith("No grant with code") && !forceCodeLookup) {
+          onLogin(request, authorized, true);
         }
+      } else {
+        request.getSession().setAttribute("nylasAccount", token);
       }
     }
   }
