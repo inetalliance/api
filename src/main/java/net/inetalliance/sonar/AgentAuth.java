@@ -53,12 +53,7 @@ public class AgentAuth
     post.setEntity(new StringEntity(Json.pretty(data), ContentType.APPLICATION_JSON));
     try {
       final HttpResponse res = client.execute(post);
-      final JsonMap response = JsonMap.parse(res.getEntity().getContent());
-      if ("api_error".equals(response.get("type"))) {
-        log.error("Nylas API error: %s", response.get("message"));
-        return null;
-      }
-      return response;
+      return JsonMap.parse(res.getEntity().getContent());
     } catch (IOException e) {
       log.error(e);
 
