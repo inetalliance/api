@@ -59,7 +59,7 @@ public abstract class SalesCycle<R, G>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras) {
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String[]> extras) {
     final JsonList rows = new JsonList();
     final Interval interval = getReportingInterval(start, end);
     final Interval callInterval = interval.withStart(interval.getStart().minusDays(60));

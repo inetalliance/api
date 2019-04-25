@@ -63,6 +63,12 @@ public abstract class CachedGroupingRangeReport<R, G>
 
   protected abstract Query<R> allRows(final Agent loggedIn, final DateTime intervalStart);
 
+  static String getSingleExtra(final Map<String, String[]> extras, final String extra,
+      final String defaultValue) {
+    final String[] values = extras.get(extra);
+    return values == null || values.length == 0 ? defaultValue : values[0];
+  }
+
   @Override
   public final void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
@@ -100,9 +106,9 @@ public abstract class CachedGroupingRangeReport<R, G>
             callCentersParam == null ? "" : String.join(",", callCentersParam),
             Arrays.stream(extraParams).map(s -> format("%s:%s", s, request.getParameter(s)))
                 .collect(joining(",")));
-    final Map<String, String> extras = new HashMap<>(extraParams.length);
+    final Map<String, String[]> extras = new HashMap<>(extraParams.length);
     for (final String extraParam : extraParams) {
-      extras.put(extraParam, request.getParameter(extraParam));
+      extras.put(extraParam, request.getParameterValues(extraParam));
     }
 
     final String cached = cache.get(q);
@@ -168,7 +174,7 @@ public abstract class CachedGroupingRangeReport<R, G>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras);
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String[]> extras);
 
   @Override
   public void init(final ServletConfig config)

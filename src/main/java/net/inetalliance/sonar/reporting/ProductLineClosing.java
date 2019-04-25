@@ -6,9 +6,9 @@ import static com.callgrove.obj.Call.isQueue;
 import static com.callgrove.obj.Opportunity.isOnline;
 import static com.callgrove.obj.Opportunity.soldInInterval;
 import static com.callgrove.obj.Opportunity.withAmountGreaterThan;
-import static com.callgrove.obj.Opportunity.withProductLine;
+import static com.callgrove.obj.Opportunity.withProductLineIn;
+import static java.util.stream.Collectors.toSet;
 import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.potion.Locator.$;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.potion.Locator.count;
 import static net.inetalliance.potion.Locator.countDistinct;
@@ -24,6 +24,7 @@ import com.callgrove.obj.Segment;
 import com.callgrove.obj.Site;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.HashMap;
@@ -35,6 +36,7 @@ import javax.servlet.annotation.WebServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
@@ -70,7 +72,7 @@ public class ProductLineClosing
 
   }
 
-  public static void retainVisible(Agent loggedIn, Collection<Site> sites, Set<String> queues) {
+  static void retainVisible(Agent loggedIn, Collection<Site> sites, Set<String> queues) {
     final Set<Site> visibleSites = loggedIn.getVisibleSites();
     if (sites != null && !sites.isEmpty()) {
       final Set<String> siteQueues = new HashSet<>(sites.size() << 2);
@@ -117,29 +119,36 @@ public class ProductLineClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters,
+      final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);
       throw new UnauthorizedException();
     }
-    final String productLineId = extras.get("productLine");
-    if (StringFun.isEmpty(productLineId)) {
+    final String[] productLineIds = extras.get("productLine");
+    if (productLineIds.length == 0 || StringFun
+        .isEmpty(productLineIds[0])) {
       throw new BadRequestException("Must specify product line via ?productLine=");
     }
-    final ProductLine productLine = $(new ProductLine(Integer.valueOf(productLineId)));
-    if (productLine == null) {
-      throw new NotFoundException("Could not find product line with id %s", productLineId);
+    final Set<ProductLine> productLines = Arrays.stream(productLineIds)
+        .map(id -> Locator.$(new ProductLine(Integer.valueOf(id))))
+        .collect(toSet());
+    if (productLines.isEmpty()) {
+      throw new NotFoundException("Could not find product lines with ids %s",
+          Arrays.toString(productLineIds));
     }
-    boolean uniqueCid = Boolean.valueOf(extras.getOrDefault("uniqueCid", "false"));
+    boolean uniqueCid = Boolean.valueOf(getSingleExtra(extras, "uniqueCid", "false"));
 
     final Interval interval = getReportingInterval(start, end);
 
-    Set<String> queues = getQueues(loggedIn, productLine, sites);
+    final Set<String> queues =
+        productLines.stream().map(pl -> getQueues(loggedIn, pl, sites)).flatMap(Funky::stream)
+            .collect(toSet());
 
     final Info<DailyPerformance> info = Info.$(DailyPerformance.class);
     final Query<Call> callQuery = Call.inInterval(interval).and(Call.withQueueIn(queues));
-    Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLine(productLine))
+    Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLineIn(productLines))
         .and(sources.isEmpty()
             ? isOnline.negate()
             : Opportunity.withSources(sources))
@@ -176,11 +185,18 @@ public class ProductLineClosing
         agentTotal.setOutboundCalls(count(outboundQuery));
       }
       agentTotal.setDumps(count(agentCallQuery.and(isQueue).and(Call.isDumped)));
-      final Query<Opportunity> agentOppQuery = finalOppQuery.and(Opportunity.withAgent(agent))
-          .and(withAmountGreaterThan(
-              productLine.getLowestReasonableAmount()));
-      agentTotal.setCloses(count(agentOppQuery));
-      agentTotal.setSales($$(agentOppQuery, SUM, Currency.class, "amount"));
+      int closes = 0;
+      Currency sales = Currency.ZERO;
+      for (ProductLine productLine : productLines) {
+
+        final Query<Opportunity> agentOppQuery = finalOppQuery.and(Opportunity.withAgent(agent))
+            .and(withAmountGreaterThan(
+                productLine.getLowestReasonableAmount()));
+        closes += count(agentOppQuery);
+        sales = sales.add($$(agentOppQuery, SUM, Currency.class, "amount"));
+      }
+      agentTotal.setCloses(closes);
+      agentTotal.setSales(sales);
       if (agentTotal.getCloses() > 0 || agentTotal.getQueueCalls() > 0) {
         callCenterTotals.computeIfAbsent(agent.getCallCenter().id, k -> new DailyPerformance())
             .add(agentTotal);

@@ -3,16 +3,16 @@ package net.inetalliance.sonar.reporting;
 import static com.callgrove.Callgrove.getReportingInterval;
 import static com.callgrove.obj.Opportunity.createdInInterval;
 import static com.callgrove.obj.Opportunity.soldInInterval;
-import static com.callgrove.obj.Opportunity.withProductLine;
+import static com.callgrove.obj.Opportunity.withProductLineIn;
 import static com.callgrove.obj.Opportunity.withSaleSource;
 import static com.callgrove.obj.Opportunity.withSiteIn;
 import static com.callgrove.types.SaleSource.PHONE_CALL;
 import static com.callgrove.types.SaleSource.SURVEY;
 import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toSet;
 import static net.inetalliance.funky.StringFun.enumToCamelCase;
 import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.potion.Locator.$;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.potion.Locator.count;
 import static net.inetalliance.potion.Locator.forEach;
@@ -27,6 +27,7 @@ import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Site;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Map;
@@ -36,8 +37,10 @@ import javax.servlet.annotation.WebServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
+import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.Currency;
@@ -91,19 +94,20 @@ public class SurveyClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);
       throw new UnauthorizedException();
     }
-    final String productLineId = extras.get("productLine");
-    if (isEmpty(productLineId)) {
+    final String[] productLineIds = extras.get("productLine");
+    if (productLineIds == null || productLineIds.length == 0 || isEmpty(productLineIds[0])) {
       throw new BadRequestException("Must specify product line via ?productLine=");
     }
-    final ProductLine productLine = $(new ProductLine(Integer.valueOf(productLineId)));
-    if (productLine == null) {
-      throw new NotFoundException("Could not find product line with id %s", productLineId);
+    final Set<ProductLine> productLines = Arrays.stream(productLineIds).map(id->Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
+    if (productLines.isEmpty()) {
+      throw new NotFoundException("Could not find product lines with ids %s",
+          Arrays.toString(productLineIds));
     }
 
     final Interval interval = getReportingInterval(start, end);
@@ -121,11 +125,12 @@ public class SurveyClosing
     boolean hasSite = sites != null && !sites.isEmpty();
 
     final Query<Opportunity> base =
-        hasSite ? withProductLine(productLine).and(withSiteIn(sites))
-            : withProductLine(productLine);
+        hasSite ? withProductLineIn(productLines).and(withSiteIn(sites))
+            : withProductLineIn(productLines);
 
-    final Set<String> queuesForProductLine = ProductLineClosing
-        .getQueues(loggedIn, productLine, sites);
+    final Set<String> queuesForProductLine =
+        productLines.stream().map(pl->ProductLineClosing.getQueues(loggedIn,pl,sites)).flatMap(
+            Funky::stream).collect(toSet());
     final JsonList rows = new JsonList();
     forEach(allRows(loggedIn, interval.getStart()), agent -> {
       final Query<Opportunity> andAgent = base.and(Opportunity.withAgent(agent));

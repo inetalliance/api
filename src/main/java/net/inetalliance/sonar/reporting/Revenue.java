@@ -112,7 +112,7 @@ public abstract class Revenue<R extends Named>
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
       final Set<Category> categories, Collection<CallCenter> callCenters,
-      final Map<String, String> extras) {
+      final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access %s", loggedIn == null ? "Nobody?" : loggedIn.key,
           getClass().getSimpleName());
@@ -120,7 +120,8 @@ public abstract class Revenue<R extends Named>
     }
 
     final Interval interval = getReportingInterval(start, end);
-    final ProductLine productLine = Info.$(ProductLine.class).lookup(extras.get("p"));
+    final ProductLine productLine = Info.$(ProductLine.class).lookup(
+        getSingleExtra(extras,"p",null));
 
     final Map<Integer, Query<? super Opportunity>> categoryQueries = getCategoryQueries(meter,
         categories);

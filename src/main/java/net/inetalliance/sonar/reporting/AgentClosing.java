@@ -95,13 +95,14 @@ public class AgentClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters,
+      final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);
       throw new UnauthorizedException();
     }
-    final String agentKey = extras.get("agent");
+    final String agentKey = getSingleExtra(extras, "agent", "");
     if (isEmpty(agentKey)) {
       throw new BadRequestException("Must specify agent via ?agent=");
     }
@@ -121,7 +122,8 @@ public class AgentClosing
       callSources = Call.withSourceIn(sources);
     }
 
-    boolean uniqueCid = Boolean.valueOf(extras.getOrDefault("uniqueCid", "false"));
+    boolean uniqueCid = Boolean.valueOf(
+        getSingleExtra(extras, "uniqueCid", "false"));
 
     final Interval interval = getReportingInterval(start, end);
 

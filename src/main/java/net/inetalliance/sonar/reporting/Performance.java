@@ -69,7 +69,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String> extras) {
+      final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String[]> extras) {
     final Query<R> allRows = allRows(loggedIn, start.toDateTime());
     final Map<String, Interval> intervals = new TreeMap<>();
     final Interval current = getReportingInterval(start, end);
