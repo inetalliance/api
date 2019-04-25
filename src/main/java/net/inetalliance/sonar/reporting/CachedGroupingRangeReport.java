@@ -95,8 +95,20 @@ public abstract class CachedGroupingRangeReport<R, G>
             .collect(Collectors.toList()))
         .orElse(Collections.emptyList());
 
+    final StringBuilder extra = new StringBuilder();
+    for (String extraParam : extraParams) {
+      final String[] extraValues = request.getParameterValues(extraParam);
+      if(extraValues != null) {
+        extra.append(",")
+            .append(
+            Arrays.stream(extraValues)
+                .map(v -> extraParam + ":" + v)
+                .collect(joining(",")));
+      }
+    }
+
     final String q =
-        format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,callCenters:%s,%s",
+        format("report:%s,user:%s,start:%s,end:%s,%s:%s,mode:%s,contactTypes:%s,callCenters:%s%s",
             getClass().getSimpleName(),
             !loggedIn.isManager() && loggedIn.isTeamLeader() ? loggedIn.key : "admin",
             Callgrove.simple.print(start),
@@ -104,8 +116,7 @@ public abstract class CachedGroupingRangeReport<R, G>
             mode == null ? "" : String.join(",", mode),
             contactTypesParam == null ? "" : String.join(",", contactTypesParam),
             callCentersParam == null ? "" : String.join(",", callCentersParam),
-            Arrays.stream(extraParams).map(s -> format("%s:%s", s, request.getParameter(s)))
-                .collect(joining(",")));
+            extra.toString());
     final Map<String, String[]> extras = new HashMap<>(extraParams.length);
     for (final String extraParam : extraParams) {
       extras.put(extraParam, request.getParameterValues(extraParam));
