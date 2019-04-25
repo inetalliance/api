@@ -6,7 +6,7 @@ import static com.callgrove.obj.Call.isQueue;
 import static com.callgrove.obj.Opportunity.isOnline;
 import static com.callgrove.obj.Opportunity.soldInInterval;
 import static com.callgrove.obj.Opportunity.withAmountGreaterThan;
-import static com.callgrove.obj.Opportunity.withProductLineIn;
+import static com.callgrove.obj.Opportunity.withProductLine;
 import static java.util.stream.Collectors.toSet;
 import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.potion.Locator.$$;
@@ -148,7 +148,7 @@ public class ProductLineClosing
 
     final Info<DailyPerformance> info = Info.$(DailyPerformance.class);
     final Query<Call> callQuery = Call.inInterval(interval).and(Call.withQueueIn(queues));
-    Query<Opportunity> oppQuery = soldInInterval(interval).and(withProductLineIn(productLines))
+    Query<Opportunity> oppQuery = soldInInterval(interval)
         .and(sources.isEmpty()
             ? isOnline.negate()
             : Opportunity.withSources(sources))
@@ -189,7 +189,8 @@ public class ProductLineClosing
       Currency sales = Currency.ZERO;
       for (ProductLine productLine : productLines) {
 
-        final Query<Opportunity> agentOppQuery = finalOppQuery.and(Opportunity.withAgent(agent))
+        final Query<Opportunity> agentOppQuery = finalOppQuery.and(withProductLine(productLine))
+            .and(Opportunity.withAgent(agent))
             .and(withAmountGreaterThan(
                 productLine.getLowestReasonableAmount()));
         closes += count(agentOppQuery);
