@@ -97,8 +97,12 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     final Map<String, Currency> totalRevenue = new HashMap<>();
     final Map<String, Integer> totalOpps = new HashMap<>();
     final Query<Opportunity> groupSales = oppsWithGroup(groups).and(Opportunity.isSold);
-    Query<Opportunity> oppQuery = Opportunity.withSources(sources)
-        .and(Opportunity.withContactTypes(contactTypes));
+    Query<Opportunity> oppQuery = Opportunity.withContactTypes(contactTypes) ;
+
+    if(!sources.isEmpty()) {
+      oppQuery = oppQuery.and(Opportunity.withSources(sources)
+          .and(Opportunity.withContactTypes(contactTypes)));
+    }
 
     if (!callCenters.isEmpty()) {
       oppQuery = oppQuery.and(Opportunity.withCallCenterIn(callCenters));
