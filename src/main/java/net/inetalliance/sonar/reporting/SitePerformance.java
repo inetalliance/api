@@ -108,7 +108,8 @@ public class SitePerformance
 
   @Override
   protected Query<ProductLine> allRows(final Agent loggedIn, final DateTime intervalStart) {
-    return Query.all(ProductLine.class);
+    // don't show bogus vehicle conversion data in reports
+    return ProductLine.withId(10045).negate();
   }
 
   @Override
