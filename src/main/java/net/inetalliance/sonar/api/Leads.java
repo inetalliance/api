@@ -1,13 +1,14 @@
 package net.inetalliance.sonar.api;
 
 import static com.callgrove.obj.Opportunity.isActive;
+import static com.callgrove.obj.Opportunity.isClosed;
+import static com.callgrove.obj.Opportunity.isDead;
+import static com.callgrove.obj.Opportunity.isSold;
 import static com.callgrove.obj.Opportunity.withProductLineIdIn;
 import static com.callgrove.obj.Opportunity.withSiteIdIn;
-import static com.callgrove.obj.Opportunity.withStages;
 import static com.callgrove.types.ContactType.DEALER;
 import static com.callgrove.types.SaleSource.ONLINE;
 import static java.lang.System.currentTimeMillis;
-import static java.util.EnumSet.of;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.toList;
@@ -23,8 +24,8 @@ import com.callgrove.obj.Contact;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Site;
+import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
-import com.callgrove.types.SalesStage;
 import java.io.IOException;
 import java.util.Arrays;
 import java.util.EnumSet;
@@ -40,6 +41,7 @@ import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
 import net.inetalliance.funky.Funky;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.DelegatingQuery;
@@ -80,6 +82,7 @@ public class Leads
               ? null
               : c.getState().getAbbreviation())
           .$("dealer", c.getContactType() == DEALER))
+          .$("amountNoCents", o.getAmount().toStringNoCents())
           .$("productLine", new JsonMap().$("name", o.getProductLine().getName())
               .$("abbreviation",
                   o.getProductLine().getAbbreviation())
@@ -88,7 +91,7 @@ public class Leads
                   .get(o.getProductLine())))
           .$("assignedTo", new JsonMap().$("name", o.getSource() == ONLINE
               ? "Web Order"
-              : o.getAssignedTo().getLastNameFirstInitial()))
+              : o.getAssignedTo().getFirstNameLastInitial()))
           .$("site", new JsonMap().$("name", o.getSite().getName())
               .$("abbreviation", o.getSite().getAbbreviation())
               .$("uri", o.getSite().getUri())));
@@ -117,6 +120,15 @@ public class Leads
         labels.put(s, site.getAbbreviation());
       }
       filters.put("s", labels);
+    }
+    final String[] contactTypes = request.getParameterValues("type");
+    if (contactTypes != null && contactTypes.length > 0) {
+      final JsonMap labels = new JsonMap();
+      for (final String contactTypeName : contactTypes) {
+        final ContactType contactName = ContactType.valueOf(contactTypeName);
+        labels.put(contactTypeName, contactName.getLocalizedName().toString());
+      }
+      filters.put("type", labels);
     }
     final String[] sources = request.getParameterValues("src");
     if (sources != null && sources.length > 0) {
@@ -147,7 +159,7 @@ public class Leads
         if (agent == null) {
           throw new NotFoundException("Could not find agent with key %s", a);
         }
-        labels.put(a, agent.getLastNameFirstInitial());
+        labels.put(a, agent.getFirstNameLastInitial());
       }
       filters.put("a", labels);
     }
@@ -220,6 +232,14 @@ public class Leads
     if (ss != null && ss.length > 0) {
       query = query.and(withSiteIdIn(Arrays.stream(ss).map(Integer::valueOf).collect(toList())));
     }
+    final String[] contactTypes = request.getParameterValues("type");
+    if (contactTypes != null && contactTypes.length > 0) {
+      query = query.and(Opportunity.withContactTypes(Arrays.stream(contactTypes)
+          .map(ContactType::valueOf)
+          .collect(Collectors.toCollection(
+              () -> EnumSet.noneOf(ContactType.class)))));
+    }
+
     final String[] sources = request.getParameterValues("src");
     if (sources != null && sources.length > 0) {
       query = query.and(Opportunity.withSources(Arrays.stream(sources)
@@ -228,10 +248,28 @@ public class Leads
               () -> EnumSet.noneOf(SaleSource.class)))));
     }
 
+    boolean onlySold = false;
+
     if (support || review) {
-      final SalesStage stage = getParameter(request, SalesStage.class, "stage");
-      if (stage != null) {
-        query = query.and(withStages(of(stage)));
+      final String stage = request.getParameter("st");
+      if (StringFun.isNotEmpty(stage)) {
+
+        switch (stage) {
+          case "OPEN":
+            query = query.and(isActive);
+            break;
+          case "CLOSED":
+            query = query.and(isClosed);
+            break;
+          case "SOLD":
+            onlySold = true;
+            query = query.and(isSold);
+            break;
+          case "DEAD":
+            query = query.and(isDead);
+            break;
+        }
+
       }
 
       final String[] as = request.getParameterValues("a");
@@ -251,7 +289,12 @@ public class Leads
     }
     final Range ec = getParameter(request, Range.class, "ec");
     if (ec != null) {
-      query = query.and(Opportunity.estimatedCloseInInterval(ec.toInterval()));
+      if (onlySold) {
+        query = query.and(Opportunity.soldInInterval(ec.toInterval()));
+
+      } else {
+        query = query.and(Opportunity.estimatedCloseInInterval(ec.toInterval()));
+      }
     }
     final Range sd = getParameter(request, Range.class, "sd");
     if (sd != null) {

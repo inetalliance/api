@@ -39,6 +39,8 @@ public class Agents
 
   @Override
   public Json toJson(final HttpServletRequest request, final Agent agent) {
-    return info.toJson(agent).$("lastNameFirstInitial", agent.getLastNameFirstInitial());
+    return info.toJson(agent)
+        .$("lastNameFirstInitial", agent.getLastNameFirstInitial())
+        .$("firstNameLastInitial", agent.getFirstNameLastInitial());
   }
 }
