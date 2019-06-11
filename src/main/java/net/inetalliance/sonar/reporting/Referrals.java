@@ -52,12 +52,14 @@ public class Referrals extends AngularServlet {
 
     if (affiliateIdString == null) {
       respond(response, null);
+      return;
     }
     Affiliate affiliate = null;
     try {
       affiliate = Locator.$(new Affiliate(Integer.parseInt(affiliateIdString)));
     } catch (NumberFormatException e) {
       respond(response, null);
+      return;
     }
 
     final String q =
