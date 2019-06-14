@@ -93,7 +93,8 @@ public class Referrals extends AngularServlet {
           .$("phoneSales", phoneSales)
           .$("phoneCommissions", phoneCommissions)
           .$("onlineOrders", onlineOrders)
-          .$("onlineCommissions", onlineCommissions);
+          .$("onlineCommissions", onlineCommissions)
+          .$("totalCommissions", phoneCommissions.add(onlineCommissions));
 
       cache.set(q, result);
       respond(response, result);
