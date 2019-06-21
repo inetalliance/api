@@ -4,16 +4,19 @@ import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.sonar.api.Opportunities.relatedSites;
 
+import com.callgrove.obj.Affiliate;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.AreaCodeTime;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.Contact;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
+import com.callgrove.obj.Queue;
 import com.callgrove.obj.ScriptNode;
 import com.callgrove.obj.Site;
 import com.callgrove.obj.SiteGroup;
 import com.callgrove.types.CallerId;
+import com.callgrove.types.SaleSource;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.regex.Pattern;
@@ -22,6 +25,7 @@ import javax.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.TypeModel;
 import net.inetalliance.angular.exception.ForbiddenException;
+import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.potion.query.Search;
@@ -145,6 +149,19 @@ public class Pop
     final CallerId remoteCallerId = call.getRemoteCallerId();
     map.$("direction", call.getDirection());
     map.$("source", call.getSource());
+    if(call.getSource() != null && call.getSource() == SaleSource.REFERRAL) {
+      final Queue queue = call.getQueue();
+      if(queue != null) {
+        final Affiliate affiliate = queue.getAffiliate();
+        if(affiliate == null) {
+          log.error("queue %s is referral, but has no affiliate", queue.key);
+
+        } else {
+          map.$("referrer", affiliate.getDomain());
+        }
+
+      }
+    }
     if (remoteCallerId != null) {
       map.$("phone", remoteCallerId.getNumber());
       String[] split = remoteCallerId.getName().split("[ ]", 2);
@@ -159,5 +176,6 @@ public class Pop
     }
     return map;
   }
+  private static final transient Log log = Log.getInstance(Pop.class);
 }
 

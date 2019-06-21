@@ -1,13 +1,43 @@
 package net.inetalliance.sonar.reporting;
 
+import static com.callgrove.obj.Call.inInterval;
+import static com.callgrove.obj.Call.isQueue;
+import static com.callgrove.obj.Opportunity.createdBefore;
+import static com.callgrove.obj.Opportunity.createdInInterval;
+import static com.callgrove.obj.Opportunity.isActive;
+import static com.callgrove.obj.Opportunity.isDead;
+import static com.callgrove.obj.Opportunity.withReferrer;
+import static com.callgrove.obj.Opportunity.withSaleSource;
+import static com.callgrove.obj.Queue.withAffiliate;
+import static com.callgrove.types.SaleSource.ONLINE;
+import static com.callgrove.types.SaleSource.REFERRAL;
+import static net.inetalliance.potion.Locator.$1;
+import static net.inetalliance.potion.Locator.count;
+import static net.inetalliance.potion.Locator.countDistinct;
 import static net.inetalliance.types.www.ContentType.JSON;
 
 import com.callgrove.Callgrove;
 import com.callgrove.obj.Affiliate;
+import com.callgrove.obj.Call;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.types.SaleSource;
+import com.google.api.client.googleapis.auth.oauth2.GoogleCredential;
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport;
+import com.google.api.client.http.HttpTransport;
+import com.google.api.client.json.JsonFactory;
+import com.google.api.client.json.gson.GsonFactory;
+import com.google.api.services.analyticsreporting.v4.AnalyticsReporting;
+import com.google.api.services.analyticsreporting.v4.AnalyticsReportingScopes;
+import com.google.api.services.analyticsreporting.v4.model.DateRange;
+import com.google.api.services.analyticsreporting.v4.model.GetReportsRequest;
+import com.google.api.services.analyticsreporting.v4.model.GetReportsResponse;
+import com.google.api.services.analyticsreporting.v4.model.Metric;
+import com.google.api.services.analyticsreporting.v4.model.ReportRequest;
+import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.ParseException;
+import java.util.ArrayList;
+import java.util.List;
 import javax.servlet.ServletConfig;
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -24,6 +54,8 @@ import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
 import org.joda.time.Interval;
+import org.joda.time.format.DateTimeFormat;
+import org.joda.time.format.DateTimeFormatter;
 
 @WebServlet({"/reporting/reports/referrals"})
 public class Referrals extends AngularServlet {
@@ -41,11 +73,57 @@ public class Referrals extends AngularServlet {
     cache = new RedisJsonCache(getClass().getSimpleName());
   }
 
+  private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
+
+  private static final AnalyticsReporting analytics;
+
+  static {
+
+    try {
+
+      HttpTransport httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+      GoogleCredential credential = GoogleCredential
+          .fromStream(Referrals.class.getResourceAsStream("/client-secrets.json"))
+          .createScoped(AnalyticsReportingScopes.all());
+
+      // Construct the Analytics Reporting service object.
+      analytics = new AnalyticsReporting.Builder(httpTransport, JSON_FACTORY, credential)
+          .setApplicationName("Sonar Reporting").build();
+    } catch (Throwable t) {
+      throw new RuntimeException(t);
+    }
+  }
+
+  private int countVisitors(Affiliate affiliate, Interval interval) throws IOException {
+    DateRange dateRange = new DateRange();
+    final DateTimeFormatter formatter = DateTimeFormat.forPattern("YYYY-MM-dd");
+    dateRange.setStartDate(formatter.print(interval.getStart()));
+    dateRange.setEndDate(formatter.print(interval.getEnd()));
+    Metric visitors = new Metric()
+        .setExpression("ga:users").setAlias("users");
+    ReportRequest request = new ReportRequest()
+        .setViewId(affiliate.getViewId())
+        .setMetrics(List.of(visitors))
+        .setDateRanges(List.of(dateRange));
+
+    var requests = new ArrayList<ReportRequest>();
+    requests.add(request);
+
+    GetReportsRequest getReport = new GetReportsRequest()
+        .setReportRequests(requests);
+
+    GetReportsResponse response = analytics.reports().batchGet(getReport).execute();
+    return Integer.valueOf(response.getReports().get(0).getData().getTotals().get(0).getValues().get(0));
+
+
+  }
+
+
   @Override
   protected void get(HttpServletRequest request, HttpServletResponse response)
       throws Exception {
 
-    final Interval interval = Callgrove.getInterval(request);
+    final Interval interval = Callgrove.getReportingInterval(request);
     final DateMidnight start = interval.getStart().toDateMidnight();
     final DateMidnight end = interval.getEnd().toDateMidnight();
     final String affiliateIdString = request.getParameter("affiliate");
@@ -72,21 +150,30 @@ public class Referrals extends AngularServlet {
     final String cached = cache.get(q);
     if (StringFun.isEmpty(cached)) {
 
-      final JsonList phoneSales = query(interval, SaleSource.PHONE_CALL, affiliate);
-      final JsonList onlineOrders = query(interval, SaleSource.ONLINE, affiliate);
+      final JsonList phoneSales = query(interval, REFERRAL, affiliate);
+      final JsonList onlineOrders = query(interval, ONLINE, affiliate);
 
       // add commission
       final Currency phoneCommissions = sumCommissions(phoneSales);
       final Currency onlineCommissions = sumCommissions(onlineOrders);
 
-      final int phoneLeadsCreated = (int) Math.floor(Math.random() * 200);
-      final int phoneLeadsOpen = (int) Math.floor(Math.random() * phoneLeadsCreated);
-      final int phoneLeadsClosedAsDead = (int) Math
-          .floor(Math.random() * (phoneLeadsCreated - phoneLeadsOpen));
+      var withAffiliate = withReferrer(affiliate.getDomain());
+
+      final int phoneLeadsCreated = count(
+          withAffiliate.and(createdInInterval(interval)).and(withSaleSource(REFERRAL)));
+      final int phoneLeadsOpen = count(
+          withAffiliate.and(isActive).and(createdBefore(interval.getEnd())));
+      final int phoneLeadsClosedAsDead = count(
+          withAffiliate.and(isDead).and(createdBefore(interval.getEnd())));
+
+      var queue = $1(withAffiliate(affiliate));
+
+      var affiliateCalls = isQueue.and(inInterval(interval).and(Call.withQueue(queue)));
+
       final JsonMap result = new JsonMap()
-          .$("uniqueVisitors", Math.floor(Math.random() * 500))
-          .$("uniqueCallerIds", Math.floor(Math.random() * 400))
-          .$("totalCalls", Math.floor(Math.random() * 800))
+          .$("uniqueVisitors", countVisitors(affiliate, interval))
+          .$("uniqueCallerIds", countDistinct(affiliateCalls, "callerid_number"))
+          .$("totalCalls", count(affiliateCalls))
           .$("phoneLeadsCreated", phoneLeadsCreated)
           .$("phoneLeadsClosedAsDead", phoneLeadsClosedAsDead)
           .$("phoneLeadsOpen", phoneLeadsOpen)
@@ -127,11 +214,12 @@ public class Referrals extends AngularServlet {
     return Locator
         .$$(Opportunity.soldInInterval(interval)
             .and(Opportunity.isSold)
-// TODO: uncomment this line to make this report actually work
-//            .and(Opportunity.withReferrer(affiliate.getDomain()))
-            .and(Opportunity.withSaleSource(source)
+            .and(withReferrer(affiliate.getDomain()))
+            .and(withSaleSource(source)
                 .orderBy("saleDate", Direction.ASCENDING)))
-        .stream()
+        .stream(
+
+        )
         .map(opp -> new JsonMap()
             .$("id", opp.getId())
             .$("item", opp.getProductLineName())
