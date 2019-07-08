@@ -6,10 +6,12 @@ import com.callgrove.Callgrove;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Site;
+import com.callgrove.types.SaleSource;
 import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.EnumSet;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +33,7 @@ import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
+import net.inetalliance.types.localized.LocalizedString;
 import org.joda.time.DateMidnight;
 import org.joda.time.Interval;
 
@@ -57,6 +60,7 @@ public class RevenueOverTime extends AngularServlet {
     final Interval interval = Callgrove.getInterval(request);
     final DateMidnight start = interval.getStart().toDateMidnight().withDayOfWeek(1);
     final DateMidnight end = interval.getEnd().toDateMidnight().withDayOfWeek(7);
+    final String[] mode = request.getParameterValues("mode");
     final String[] siteStrings = request.getParameterValues("site");
     final String[] productLineStrings = request.getParameterValues("product");
 
@@ -82,10 +86,11 @@ public class RevenueOverTime extends AngularServlet {
     }
 
     final String q =
-        String.format("report:%s,start:%s,end:%s,site:%s,product:%s",
+        String.format("report:%s,start:%s,end:%s,mode:%s,site:%s,product:%s",
             getClass().getSimpleName(),
             Callgrove.simple.print(start),
             Callgrove.simple.print(end),
+            mode == null ? "" : String.join(",", mode),
             sites == null ? null : sites
                 .stream()
                 .map(Object::toString)
@@ -97,11 +102,24 @@ public class RevenueOverTime extends AngularServlet {
                 .reduce((s1, s2) -> s1 + "|" + s2)
                 .get());
 
+
     final String cached = cache.get(q);
     if (StringFun.isEmpty(cached)) {
+      final EnumSet<SaleSource> sources =
+          mode == null || mode.length == 0 || (mode.length == 1 && "all".equals(mode[0]))
+              ? EnumSet.noneOf(SaleSource.class)
+              : Arrays.stream(mode)
+                  .map(s -> StringFun.camelCaseToEnum(SaleSource.class, s))
+                  .collect(Collectors.toCollection(() -> EnumSet.noneOf(SaleSource.class)));
+
       Query<Opportunity> query =
           Opportunity.isSold
               .and(Opportunity.soldInInterval(new Interval(start.minusWeeks(8), end)));
+
+      if(!sources.isEmpty()) {
+        query = query.and(Opportunity.withSources(sources));
+      }
+
       if (sites != null) {
         query = query.and(Opportunity.withSiteIdIn(sites));
       }
@@ -196,6 +214,12 @@ public class RevenueOverTime extends AngularServlet {
 
       final JsonMap result = new JsonMap()
           .$("rows", rows)
+          .$("sources", sources == null ? null : sources
+              .stream()
+              .map(SaleSource::getLocalizedName)
+              .map(LocalizedString::toString)
+              .map(JsonString::new)
+              .collect(JsonList.collect))
           .$("productLines", productLineNames == null ? null : productLineNames)
           .$("sites", siteAbbreviations == null ? null : siteAbbreviations);
 
