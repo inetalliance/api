@@ -2,7 +2,9 @@ package net.inetalliance.sonar.reporting;
 
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Opportunity;
+import java.util.Set;
 import javax.servlet.annotation.WebServlet;
+import net.inetalliance.beejax.messages.Category;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateTime;
@@ -27,7 +29,8 @@ public class AgentRevenue
   }
 
   @Override
-  protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Agent> allRows(final Set<Category> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }

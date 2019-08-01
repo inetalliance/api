@@ -3,7 +3,9 @@ package net.inetalliance.sonar.reporting;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
+import java.util.Set;
 import javax.servlet.annotation.WebServlet;
+import net.inetalliance.beejax.messages.Category;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateTime;
@@ -27,8 +29,10 @@ public class SiteRevenue
     return site.id.toString();
   }
 
+
   @Override
-  protected Query<Site> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Site> allRows(final Set<Category> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return Site.isActive;
   }
 }

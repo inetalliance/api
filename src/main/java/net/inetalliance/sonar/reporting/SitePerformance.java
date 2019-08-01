@@ -107,9 +107,12 @@ public class SitePerformance
   }
 
   @Override
-  protected Query<ProductLine> allRows(final Agent loggedIn, final DateTime intervalStart) {
-    // don't show bogus vehicle conversion data in reports
-    return ProductLine.withId(10045).negate();
+  protected Query<ProductLine> allRows(final Set<Site> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
+    // don't show vehicle conversion data in reports unless ATC is included in the report
+    return groups.stream().anyMatch(g -> g.id.equals(10117)) // ATC
+        ? Query.all(ProductLine.class)
+        : ProductLine.withId(10045).negate(); // Vehicle Conversions
   }
 
   @Override

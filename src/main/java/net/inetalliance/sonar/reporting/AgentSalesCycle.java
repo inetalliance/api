@@ -74,7 +74,8 @@ public class AgentSalesCycle
   }
 
   @Override
-  protected Query<ProductLine> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<ProductLine> allRows(final Set<Agent> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return Query.all(ProductLine.class);
   }
 

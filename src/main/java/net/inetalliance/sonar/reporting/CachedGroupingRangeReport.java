@@ -61,7 +61,8 @@ public abstract class CachedGroupingRangeReport<R, G>
 
   protected abstract String getId(final R row);
 
-  protected abstract Query<R> allRows(final Agent loggedIn, final DateTime intervalStart);
+  protected abstract Query<R> allRows(final Set<G> groups, final Agent loggedIn,
+      final DateTime intervalStart);
 
   static String getSingleExtra(final Map<String, String[]> extras, final String extra,
       final String defaultValue) {
@@ -98,12 +99,12 @@ public abstract class CachedGroupingRangeReport<R, G>
     final StringBuilder extra = new StringBuilder();
     for (String extraParam : extraParams) {
       final String[] extraValues = request.getParameterValues(extraParam);
-      if(extraValues != null) {
+      if (extraValues != null) {
         extra.append(",")
             .append(
-            Arrays.stream(extraValues)
-                .map(v -> extraParam + ":" + v)
-                .collect(joining(",")));
+                Arrays.stream(extraValues)
+                    .map(v -> extraParam + ":" + v)
+                    .collect(joining(",")));
       }
     }
 
@@ -155,7 +156,7 @@ public abstract class CachedGroupingRangeReport<R, G>
                     .map(s -> StringFun.camelCaseToEnum(ContactType.class, s))
                     .collect(Collectors.toCollection(() -> EnumSet.noneOf(ContactType.class)));
         ProgressHandler.$.start(authorized.getPhone(), response,
-            getJobSize(loggedIn, groupParams.length, interval.getStart()), meter -> {
+            getJobSize(loggedIn, groups, interval.getStart()), meter -> {
               final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
                   groups, callCenters, extras);
               if (end.isAfter(new DateMidnight())) {
@@ -178,7 +179,7 @@ public abstract class CachedGroupingRangeReport<R, G>
 
   protected abstract G getGroup(final String[] params, String g);
 
-  protected abstract int getJobSize(final Agent loggedIn, final int numGroups,
+  protected abstract int getJobSize(final Agent loggedIn, final Set<G> groups,
       final DateTime intervalStart);
 
   protected abstract JsonMap generate(final EnumSet<SaleSource> sources,

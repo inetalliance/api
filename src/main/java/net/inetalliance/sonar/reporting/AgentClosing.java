@@ -74,7 +74,8 @@ public class AgentClosing
   }
 
   @Override
-  protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Agent> allRows(Set<Site> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery(false).and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }
@@ -85,9 +86,9 @@ public class AgentClosing
   }
 
   @Override
-  protected int getJobSize(final Agent loggedIn, final int numGroups,
+  protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
       final DateTime intervalStart) {
-    return count(allRows(loggedIn, intervalStart));
+    return count(allRows(groups, loggedIn, intervalStart));
   }
 
   @Override

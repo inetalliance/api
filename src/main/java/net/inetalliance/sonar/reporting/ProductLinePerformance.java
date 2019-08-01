@@ -108,7 +108,8 @@ public class ProductLinePerformance
   }
 
   @Override
-  protected Query<Site> allRows(final Agent agent, final DateTime intervalStart) {
+  protected Query<Site> allRows(final Set<ProductLine> groups, final Agent agent,
+      final DateTime intervalStart) {
     return Site.isActive;
   }
 

@@ -121,7 +121,7 @@ public abstract class Revenue<R extends Named>
 
     final Interval interval = getReportingInterval(start, end);
     final ProductLine productLine = Info.$(ProductLine.class).lookup(
-        getSingleExtra(extras,"p",null));
+        getSingleExtra(extras, "p", null));
 
     final Map<Integer, Query<? super Opportunity>> categoryQueries = getCategoryQueries(meter,
         categories);
@@ -133,7 +133,7 @@ public abstract class Revenue<R extends Named>
     }
     final Query<Opportunity> finalOppQuery = oppQuery;
     final JsonList rows = new JsonList();
-    Locator.forEach(allRows(loggedIn, interval.getStart()), row -> {
+    Locator.forEach(allRows(categories, loggedIn, interval.getStart()), row -> {
       final JsonList rowData = new JsonList(categories.size());
       final Query<Opportunity> rowQuery = finalOppQuery.and(oppsForRow(row));
       int opps = 0;
@@ -201,9 +201,9 @@ public abstract class Revenue<R extends Named>
   }
 
   @Override
-  protected int getJobSize(final Agent loggedIn, final int numGroups,
+  protected int getJobSize(final Agent loggedIn, final Set<Category> categories,
       final DateTime intervalStart) {
-    return count(allRows(loggedIn, intervalStart)) + numGroups;
+    return count(allRows(categories, loggedIn, intervalStart)) + categories.size();
   }
 
   public enum CellType {

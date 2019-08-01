@@ -47,7 +47,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
   private Map<Integer, Set<String>> groupQueues;
   private Map<Integer, Set<String>> rowQueues;
 
-  protected Performance(final String groupParam) {
+  Performance(final String groupParam) {
     super(groupParam);
   }
 
@@ -59,7 +59,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
   }
 
   @Override
-  protected int getJobSize(final Agent loggedIn, final int numGroups,
+  protected int getJobSize(final Agent loggedIn, final Set<G> groups,
       final DateTime intervalStart) {
     return rowQueues.size();
   }
@@ -70,7 +70,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
       final Set<G> groups, Collection<CallCenter> callCenters, final Map<String, String[]> extras) {
-    final Query<R> allRows = allRows(loggedIn, start.toDateTime());
+    final Query<R> allRows = allRows(groups, loggedIn, start.toDateTime());
     final Map<String, Interval> intervals = new TreeMap<>();
     final Interval current = getReportingInterval(start, end);
     intervals.put("current", current);
@@ -97,9 +97,9 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     final Map<String, Currency> totalRevenue = new HashMap<>();
     final Map<String, Integer> totalOpps = new HashMap<>();
     final Query<Opportunity> groupSales = oppsWithGroup(groups).and(Opportunity.isSold);
-    Query<Opportunity> oppQuery = Opportunity.withContactTypes(contactTypes) ;
+    Query<Opportunity> oppQuery = Opportunity.withContactTypes(contactTypes);
 
-    if(!sources.isEmpty()) {
+    if (!sources.isEmpty()) {
       oppQuery = oppQuery.and(Opportunity.withSources(sources)
           .and(Opportunity.withContactTypes(contactTypes)));
     }
@@ -189,10 +189,10 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
   public void init(final ServletConfig config)
       throws ServletException {
     super.init(config);
-    log.info("Initalizing row queues for %s", getClass().getSimpleName());
+    log.info("Initializing row queues for %s", getClass().getSimpleName());
     this.rowQueues = new HashMap<>();
     addRowQueues(rowQueues);
-    log.info("Initalizing group queues for %s", getClass().getSimpleName());
+    log.info("Initializing group queues for %s", getClass().getSimpleName());
     this.groupQueues = new HashMap<>();
     addGroupQueues(groupQueues);
   }

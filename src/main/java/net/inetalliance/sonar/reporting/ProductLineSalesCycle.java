@@ -61,7 +61,8 @@ public class ProductLineSalesCycle
   }
 
   @Override
-  protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Agent> allRows(final Set<ProductLine> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }

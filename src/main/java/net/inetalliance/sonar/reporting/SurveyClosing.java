@@ -73,7 +73,8 @@ public class SurveyClosing
   }
 
   @Override
-  protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Agent> allRows(final Set<Site> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }
@@ -84,9 +85,9 @@ public class SurveyClosing
   }
 
   @Override
-  protected int getJobSize(final Agent loggedIn, final int numGroups,
+  protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
       final DateTime intervalStart) {
-    return count(allRows(loggedIn, intervalStart));
+    return count(allRows(groups, loggedIn, intervalStart));
   }
 
   @Override
@@ -94,7 +95,8 @@ public class SurveyClosing
       final EnumSet<ContactType> contactTypes,
       final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
       final DateMidnight end,
-      final Set<Site> sites, Collection<CallCenter> callCenters, final Map<String, String[]> extras) {
+      final Set<Site> sites, Collection<CallCenter> callCenters,
+      final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
           loggedIn == null ? "Nobody?" : loggedIn.key);
@@ -104,7 +106,8 @@ public class SurveyClosing
     if (productLineIds == null || productLineIds.length == 0 || isEmpty(productLineIds[0])) {
       throw new BadRequestException("Must specify product line via ?productLine=");
     }
-    final Set<ProductLine> productLines = Arrays.stream(productLineIds).map(id->Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
+    final Set<ProductLine> productLines = Arrays.stream(productLineIds)
+        .map(id -> Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
     if (productLines.isEmpty()) {
       throw new NotFoundException("Could not find product lines with ids %s",
           Arrays.toString(productLineIds));
@@ -129,10 +132,10 @@ public class SurveyClosing
             : withProductLineIn(productLines);
 
     final Set<String> queuesForProductLine =
-        productLines.stream().map(pl->ProductLineClosing.getQueues(loggedIn,pl,sites)).flatMap(
+        productLines.stream().map(pl -> ProductLineClosing.getQueues(loggedIn, pl, sites)).flatMap(
             Funky::stream).collect(toSet());
     final JsonList rows = new JsonList();
-    forEach(allRows(loggedIn, interval.getStart()), agent -> {
+    forEach(allRows(sites, loggedIn, interval.getStart()), agent -> {
       final Query<Opportunity> andAgent = base.and(Opportunity.withAgent(agent));
       final JsonMap row = new JsonMap().$("agent", agent.getLastNameFirstInitial());
       final AtomicBoolean hasOpps = new AtomicBoolean(false);

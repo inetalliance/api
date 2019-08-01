@@ -98,7 +98,8 @@ public class ProductLineClosing
   }
 
   @Override
-  protected Query<Agent> allRows(final Agent loggedIn, final DateTime intervalStart) {
+  protected Query<Agent> allRows(final Set<Site> groups, final Agent loggedIn,
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery(false).and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }
@@ -109,9 +110,9 @@ public class ProductLineClosing
   }
 
   @Override
-  protected int getJobSize(final Agent loggedIn, final int numGroups,
+  protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
       final DateTime intervalStart) {
-    return count(allRows(loggedIn, intervalStart));
+    return count(allRows(groups, loggedIn, intervalStart));
   }
 
   @Override
@@ -165,7 +166,7 @@ public class ProductLineClosing
     final Map<Integer, AtomicInteger> callCenterCount = new HashMap<>();
     final Map<Integer, DailyPerformance> callCenterTotals = new HashMap<>();
     final Query<Opportunity> finalOppQuery = oppQuery;
-    Locator.forEach(allRows(loggedIn, interval.getStart()), agent -> {
+    Locator.forEach(allRows(sites, loggedIn, interval.getStart()), agent -> {
       meter.increment(agent.getLastNameFirstInitial());
       final Query<Call> agentCallQuery = callQuery.and(Call.withBlame(agent));
       final DailyPerformance agentTotal = new DailyPerformance();
