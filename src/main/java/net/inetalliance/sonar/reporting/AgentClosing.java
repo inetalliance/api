@@ -164,7 +164,10 @@ public class AgentClosing
         productLineTotal.setOutboundCalls(count(outboundQuery));
       }
       productLineTotal.setDumps(
-          count(productLineCallQuery.and(isQueue).and(Call.isDumped).and(Call.withBlame(agent))));
+          count(productLineCallQuery.and(isQueue)
+              .and(Call.withAgent(agent).negate())
+              .and(Call.isDumped)
+              .and(Call.withBlame(agent))));
       final Query<Opportunity> agentOppQuery = oppQuery.and(
           withProductLine(productLine)
               .and(withAmountGreaterThan(productLine.getLowestReasonableAmount())));
