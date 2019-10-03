@@ -78,13 +78,21 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     intervals.put("prev", getReportingInterval(start.minusDays(days), end.minusDays(days)));
     intervals
         .put("prev2", getReportingInterval(start.minusDays(2 * days), end.minusDays(2 * days)));
-    final int dayOfWeek = current.getStart().getDayOfWeek();
-    final int lastYearDayOfWeek = start.minusYears(1).getDayOfWeek();
-    final int delta = dayOfWeek - lastYearDayOfWeek;
+    boolean adjust = Boolean.valueOf(getSingleExtra(extras,"adjust", "false"));
+    final Interval lastYear;
+    final int delta;
+    if (adjust) {
+      final int dayOfWeek = current.getStart().getDayOfWeek();
+      final int lastYearDayOfWeek = start.minusYears(1).getDayOfWeek();
+      delta = dayOfWeek - lastYearDayOfWeek;
+      lastYear =
+          getReportingInterval(start.minusYears(1).plusDays(delta),
+              end.minusYears(1).plusDays(delta));
 
-    final Interval lastYear =
-        getReportingInterval(start.minusYears(1).plusDays(delta),
-            end.minusYears(1).plusDays(delta));
+    } else {
+      delta = 0;
+      lastYear = new Interval(current.getStart().minusYears(1), current.getEnd().minusYears(1));
+    }
     intervals.put("last", lastYear);
     final Set<String> groupQueues = new HashSet<>(8);
     for (final G group : groups) {
