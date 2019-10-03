@@ -48,7 +48,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
   private Map<Integer, Set<String>> rowQueues;
 
   Performance(final String groupParam) {
-    super(groupParam);
+    super(groupParam, "adjust");
   }
 
   @Override
