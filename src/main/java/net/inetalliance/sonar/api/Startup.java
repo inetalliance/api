@@ -169,27 +169,31 @@ public class Startup
         log.error(t);
         throw new RuntimeException(t);
       }
-      log.info("Loading Product Line -> Queue map");
-      productLineQueues = Locator.execute(
-          "SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM "
-              +
-              "queueProductLine where queueProductLine.queue=q.queue)",
-          rs -> {
-            var map = new HashMap<Integer, Set<String>>();
-            try {
-              while (rs.next()) {
-                map.computeIfAbsent(rs.getInt(2), p -> new HashSet<>()).add(rs.getString(1));
-              }
-            } catch (SQLException e) {
-              throw new RuntimeException(e);
-            }
-            return map;
-          });
+      initProductLines();
 
       log.info("Context Initialized");
 
     }).start();
 
+  }
+
+  public static void initProductLines() {
+    log.info("Loading Product Line -> Queue map");
+    productLineQueues = Locator.execute(
+        "SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM "
+            +
+            "queueProductLine where queueProductLine.queue=q.queue)",
+        rs -> {
+          var map = new HashMap<Integer, Set<String>>();
+          try {
+            while (rs.next()) {
+              map.computeIfAbsent(rs.getInt(2), p -> new HashSet<>()).add(rs.getString(1));
+            }
+          } catch (SQLException e) {
+            throw new RuntimeException(e);
+          }
+          return map;
+        });
   }
 
   @Override
