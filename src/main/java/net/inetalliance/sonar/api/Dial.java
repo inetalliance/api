@@ -101,9 +101,9 @@ public class Dial
           } else {
             Pattern forAgent = Pattern.compile(String.format("SIP/%s-.*", loggedIn.key));
             if (forAgent.matcher(channel.getName()).matches()) {
-              linkedChannel.redirect("from-internal", toVM(number), 1);
+              linkedChannel.redirect(toVM(number), number, 1);
             } else {
-              channel.redirect("from-internal", toVM(number), 1);
+              channel.redirect(toVM(number), number, 1);
             }
 
           }
@@ -365,8 +365,8 @@ public class Dial
   private String toVM(final String number) {
     final Agent agent = Locator.$(new Agent(number));
     if (agent == null || (!agent.isLocked() && !agent.isPaused())) {
-      return number;
+      return "from-internal";
     }
-    return "*" + number;
+    return "macro-vm";
   }
 }
