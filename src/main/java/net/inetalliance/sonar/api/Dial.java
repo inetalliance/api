@@ -101,9 +101,9 @@ public class Dial
           } else {
             Pattern forAgent = Pattern.compile(String.format("SIP/%s-.*", loggedIn.key));
             if (forAgent.matcher(channel.getName()).matches()) {
-              linkedChannel.redirect("from-internal", number, 1);
+              linkedChannel.redirect("from-internal", toVM(number), 1);
             } else {
-              channel.redirect("from-internal", number, 1);
+              channel.redirect("from-internal", toVM(number), 1);
             }
 
           }
@@ -132,7 +132,7 @@ public class Dial
               if (productLine.equals(queue.getProductLine())) {
                 effectiveQueue = queue;
                 final Did did = Locator.$1(Did.withQueue(queue));
-                if(did != null && did.getSource().equals(opp.getSource())) {
+                if (did != null && did.getSource().equals(opp.getSource())) {
                   break;
                 }
               }
@@ -360,5 +360,13 @@ public class Dial
 
   private String printAgent(final Agent agent) {
     return agent == null ? null : agent.getLastNameFirstInitial();
+  }
+
+  private String toVM(final String number) {
+    final Agent agent = Locator.$(new Agent(number));
+    if (agent == null || (!agent.isLocked() && !agent.isPaused())) {
+      return number;
+    }
+    return "*" + number;
   }
 }
