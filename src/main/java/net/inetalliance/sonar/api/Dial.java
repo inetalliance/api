@@ -367,6 +367,6 @@ public class Dial
     if (agent == null || (!agent.isLocked() && !agent.isPaused())) {
       return "from-internal";
     }
-    return "macro-vm";
+    return "vm-direct";
   }
 }
