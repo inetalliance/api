@@ -39,7 +39,7 @@ import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
-@WebServlet("/reporting/reports/workStatus")
+@WebServlet("/api/workStatus")
 public class WorkStatus
     extends AngularServlet {
 
