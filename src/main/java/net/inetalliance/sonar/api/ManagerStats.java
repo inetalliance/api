@@ -52,6 +52,8 @@ public class ManagerStats
             .withDayOfMonth(1)
             .plusMonths(1)
     ));
+    intervals.put("lastMonth", new Interval(new DateMidnight().withDayOfMonth(1).minusMonths(1),
+        new DateMidnight().withDayOfMonth(1)));
 
     final var viewable =
         Locator.$$(manager
