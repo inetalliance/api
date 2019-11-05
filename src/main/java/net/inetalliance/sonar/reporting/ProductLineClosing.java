@@ -59,7 +59,7 @@ public class ProductLineClosing
   private final Info<Site> info;
 
   public ProductLineClosing() {
-    super("site", "productLine", "uniqueCid");
+    super("site", "productLine", "uniqueCid", "noTransfers");
     info = Info.$(Site.class);
   }
 
@@ -140,6 +140,7 @@ public class ProductLineClosing
           Arrays.toString(productLineIds));
     }
     boolean uniqueCid = Boolean.valueOf(getSingleExtra(extras, "uniqueCid", "false"));
+    boolean noTransfers = Boolean.valueOf(getSingleExtra(extras, "noTransfers", "false"));
 
     final Interval interval = getReportingInterval(start, end);
 
@@ -173,6 +174,9 @@ public class ProductLineClosing
       Query<Call> queueCallCountQuery = callQuery.and(Call.withBlame(agent)).and(isQueue);
       if (!sources.isEmpty()) {
         queueCallCountQuery = queueCallCountQuery.and(Call.withSourceIn(sources));
+      }
+      if (noTransfers) {
+        queueCallCountQuery = AgentClosing.noTransfers(queueCallCountQuery);
       }
       agentTotal.setQueueCalls(
           uniqueCid ? countDistinct(queueCallCountQuery, "callerId_number")
