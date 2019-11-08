@@ -44,6 +44,11 @@ import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.api.Startup;
+import net.inetalliance.sql.Aggregate;
+import net.inetalliance.sql.AggregateField;
+import net.inetalliance.sql.ColumnWhere;
+import net.inetalliance.sql.SqlBuilder;
+import net.inetalliance.sql.SubqueryValueWhere;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
@@ -59,7 +64,7 @@ public class AgentClosing
   private final Info<Site> info;
 
   public AgentClosing() {
-    super("site", "agent", "uniqueCid");
+    super("site", "agent", "uniqueCid", "noTransfers");
     info = Info.$(Site.class);
   }
 
@@ -125,6 +130,8 @@ public class AgentClosing
 
     boolean uniqueCid = Boolean.valueOf(
         getSingleExtra(extras, "uniqueCid", "false"));
+    boolean noTransfers = Boolean.valueOf(
+        getSingleExtra(extras, "noTransfers", "false"));
 
     final Interval interval = getReportingInterval(start, end);
 
@@ -149,8 +156,12 @@ public class AgentClosing
           productLineQueues.isEmpty() ? Query.none(Call.class)
               : callQuery.and(Call.withQueueIn(productLineQueues));
       final DailyPerformance productLineTotal = new DailyPerformance();
-      final Query<Call> queueQuery = productLineCallQuery.and(isQueue).and(callSources)
+      Query<Call> queueQuery = productLineCallQuery.and(isQueue).and(callSources)
           .and(withBlame(agent));
+      if (noTransfers) {
+        queueQuery = noTransfers(queueQuery);
+
+      }
       productLineTotal.setQueueCalls(
           uniqueCid ? countDistinct(queueQuery, "callerId_number") : count(queueQuery));
 
@@ -182,5 +193,15 @@ public class AgentClosing
     });
     return new JsonMap().$("rows", rows);
 
+  }
+  static Query<Call> noTransfers(Query<Call> queueQuery) {
+    return queueQuery.and(
+        new Query<>(Call.class,
+            c -> Locator.count(Segment.withCall(c)) == 1,
+            (namer, s) -> {
+              var sql = new SqlBuilder(namer.name(Segment.class), null, new AggregateField(Aggregate.COUNT, "*"));
+              sql.where(new ColumnWhere("call", "key", "segment", "call",false));
+              return new SubqueryValueWhere(sql.getSql(), 1);
+            }));
   }
 }
