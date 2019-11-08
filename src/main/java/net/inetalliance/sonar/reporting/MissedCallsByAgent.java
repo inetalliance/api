@@ -102,6 +102,10 @@ public class MissedCallsByAgent
         Query.and(Call.class,
           productLines.stream().map(Call::withProductLine).collect(toList())));
     }
+    if(!sites.isEmpty()) {
+      callQuery = callQuery.and(Call.withSiteIn(sites));
+    }
+
     final Query<Call> finalCallQuery = callQuery;
 
     final JsonList rows = new JsonList();
