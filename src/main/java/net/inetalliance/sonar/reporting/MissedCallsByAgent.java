@@ -121,6 +121,7 @@ public class MissedCallsByAgent
         if (count > 0) {
           totalCalls.getAndAdd(count);
           rows.add(new JsonMap()
+            .$("key", agent.key)
             .$("agent", agent.getFirstNameLastInitial())
             .$("calls", count));
         }
