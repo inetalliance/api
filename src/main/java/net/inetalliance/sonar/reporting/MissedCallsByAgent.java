@@ -122,7 +122,7 @@ public class MissedCallsByAgent
           totalCalls.getAndAdd(missedCount);
           rows.add(new JsonMap()
             .$("key", agent.key)
-            .$("agent", agent.getFirstNameLastInitial())
+            .$("agent", agent.getFullName())
             .$("missedCalls", missedCount)
             .$("total", totalCount));
         }
