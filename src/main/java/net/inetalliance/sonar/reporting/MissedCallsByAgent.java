@@ -94,8 +94,7 @@ public class MissedCallsByAgent
 
     final Interval interval = getReportingInterval(start, end);
 
-    Query<Call> callQuery = Call.inInterval(interval)
-      .and(Call.missed);
+    Query<Call> callQuery = Call.inInterval(interval);
 
     if (!productLines.isEmpty()) {
       callQuery = callQuery.and(
@@ -117,13 +116,15 @@ public class MissedCallsByAgent
     Locator.forEach(agentQuery,
       agent -> {
         meter.increment(agent.getFirstNameLastInitial());
-        final int count = count(finalCallQuery.and(Call.withAgent(agent)));
-        if (count > 0) {
-          totalCalls.getAndAdd(count);
+        final int missedCount = count(finalCallQuery.and(Call.missed).and(Call.withAgent(agent)));
+        if (missedCount > 0) {
+          final int totalCount = count(finalCallQuery.and(Call.withAgent(agent)));
+          totalCalls.getAndAdd(missedCount);
           rows.add(new JsonMap()
             .$("key", agent.key)
             .$("agent", agent.getFirstNameLastInitial())
-            .$("calls", count));
+            .$("missedCalls", missedCount)
+            .$("total", totalCount));
         }
       });
     return new JsonMap()

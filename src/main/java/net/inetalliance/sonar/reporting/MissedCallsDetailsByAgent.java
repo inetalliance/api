@@ -37,7 +37,7 @@ public class MissedCallsDetailsByAgent
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
     throws Exception {
-    final Interval interval = Callgrove.getInterval(request);
+    final Interval interval = Callgrove.getReportingInterval(request);
     final Agent agent = Locator.$(new Agent(request.getParameter("agent")));
     if (agent == null) {
       throw new NotFoundException("Agent not found");
