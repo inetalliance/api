@@ -13,8 +13,10 @@ import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
+import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
+import net.inetalliance.types.json.JsonString;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
@@ -101,7 +103,7 @@ public class MissedCallsByAgent
         Query.and(Call.class,
           productLines.stream().map(Call::withProductLine).collect(toList())));
     }
-    if(!sites.isEmpty()) {
+    if (!sites.isEmpty()) {
       callQuery = callQuery.and(Call.withSiteIn(sites));
     }
 
@@ -129,6 +131,13 @@ public class MissedCallsByAgent
       });
     return new JsonMap()
       .$("rows", rows)
+      .$("times",
+        $$(finalCallQuery.and(Call.missed))
+          .stream()
+          .map(Call::getDate)
+          .map(Json.jsDateTimeFormat::print)
+          .map(JsonString::new)
+          .collect(JsonList.collect))
       .$("total", totalCalls.get());
 
   }
