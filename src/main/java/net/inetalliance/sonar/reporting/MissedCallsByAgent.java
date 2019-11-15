@@ -99,10 +99,9 @@ public class MissedCallsByAgent
     Query<Call> callQuery = Call.inInterval(interval);
 
     if (!productLines.isEmpty()) {
-      callQuery = callQuery.and(
-        Query.and(Call.class,
-          productLines.stream().map(Call::withProductLine).collect(toList())));
+      callQuery = callQuery.and(Call.withProductLineIn(productLines));
     }
+
     if (!sites.isEmpty()) {
       callQuery = callQuery.and(Call.withSiteIn(sites));
     }
