@@ -118,20 +118,20 @@ public class RevenueOverTime
       Query<Opportunity> query =
         Opportunity.isSold
           .and(Opportunity.soldInInterval(new Interval(start.minusWeeks(8), end)));
-      Query<Call> missedCallQuery = Call.missed;
+      Query<Call> callQuery = Query.all(Call.class);
 
       if (!sources.isEmpty()) {
         query = query.and(Opportunity.withSources(sources));
-        missedCallQuery = missedCallQuery.and(Call.withSourceIn(sources));
+        callQuery = callQuery.and(Call.withSourceIn(sources));
       }
 
       if (sites != null) {
         query = query.and(Opportunity.withSiteIdIn(sites));
-        missedCallQuery = missedCallQuery.and(Call.withSiteIdIn(sites));
+        callQuery = callQuery.and(Call.withSiteIdIn(sites));
       }
       if (productLines != null) {
         query = query.and(Opportunity.withProductLineIn(productLines));
-        missedCallQuery = missedCallQuery.and(Call.withProductLineIn(productLines));
+        callQuery = callQuery.and(Call.withProductLineIn(productLines));
       }
       final Set<Opportunity> opportunities = Locator.$$(query);
       final JsonList rows = new JsonList();
@@ -142,7 +142,8 @@ public class RevenueOverTime
         rows.add(
           new JsonMap()
             .$("date", date)
-            .$("missedCalls", Locator.count(missedCallQuery.and(Call.inInterval(week))))
+            .$("missedCalls", Locator.count(callQuery.and(Call.inInterval(week))))
+            .$("calls", Locator.count(callQuery.and(Call.missed).and(Call.inInterval(week))))
             .$("revenue",
               opportunities
                 .stream()
