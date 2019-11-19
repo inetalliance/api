@@ -92,8 +92,8 @@ public class AgentClosing
 
   @Override
   protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
-      final DateTime intervalStart) {
-    return count(allRows(groups, loggedIn, intervalStart));
+      final Interval intervalStart) {
+    return count(allRows(groups, loggedIn, intervalStart.getStart()));
   }
 
   @Override

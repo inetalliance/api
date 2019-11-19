@@ -37,7 +37,6 @@ import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
 import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
 public abstract class Performance<R extends IdPo & Named, G extends IdPo>
@@ -60,7 +59,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
 
   @Override
   protected int getJobSize(final Agent loggedIn, final Set<G> groups,
-      final DateTime intervalStart) {
+      final Interval intervalStart) {
     return rowQueues.size();
   }
 

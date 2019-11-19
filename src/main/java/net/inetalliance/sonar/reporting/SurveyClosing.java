@@ -86,8 +86,8 @@ public class SurveyClosing
 
   @Override
   protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
-      final DateTime intervalStart) {
-    return count(allRows(groups, loggedIn, intervalStart));
+      final Interval interval) {
+    return count(allRows(groups, loggedIn, interval.getStart()));
   }
 
   @Override

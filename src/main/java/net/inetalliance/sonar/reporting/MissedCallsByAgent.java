@@ -1,13 +1,32 @@
 package net.inetalliance.sonar.reporting;
 
+import static com.callgrove.Callgrove.getReportingInterval;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.potion.Locator.$$;
+import static net.inetalliance.potion.Locator.count;
+import static net.inetalliance.potion.Locator.forEach;
+import static net.inetalliance.sonar.reporting.ProductLineClosing.getQueues;
+
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.CallCenter;
 import com.callgrove.obj.ProductLine;
+import com.callgrove.obj.Segment;
 import com.callgrove.obj.Site;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.atomic.AtomicInteger;
+import javax.servlet.annotation.WebServlet;
 import net.inetalliance.angular.exception.UnauthorizedException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
@@ -21,23 +40,9 @@ import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
-import javax.servlet.annotation.WebServlet;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-
-import static com.callgrove.Callgrove.*;
-import static java.util.stream.Collectors.*;
-import static net.inetalliance.log.Log.*;
-import static net.inetalliance.potion.Locator.*;
-
 @WebServlet({"/reporting/reports/missedCallsByAgent"})
 public class MissedCallsByAgent
-  extends CachedGroupingRangeReport<Agent, Site> {
+    extends CachedGroupingRangeReport<Agent, Site> {
 
   private static final transient Log log = getInstance(MissedCallsByAgent.class);
   private final Info<Site> info;
@@ -59,9 +64,9 @@ public class MissedCallsByAgent
 
   @Override
   protected Query<Agent> allRows(final Set<Site> groups, final Agent loggedIn,
-                                 final DateTime intervalStart) {
+      final DateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery(false).and(Agent.activeAfter(intervalStart))
-      .and(Agent.isSales);
+        .and(Agent.isSales);
   }
 
   @Override
@@ -71,37 +76,41 @@ public class MissedCallsByAgent
 
   @Override
   protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
-                           final DateTime intervalStart) {
-    return count(allRows(groups, loggedIn, intervalStart));
+      final Interval interval) {
+    var queueInInterval = Call.isQueue.and(Call.inInterval(interval));
+    return count(groups.isEmpty() ? queueInInterval : queueInInterval.and(Call.withSiteIn(groups)));
   }
 
   @Override
   protected JsonMap generate(final EnumSet<SaleSource> sources,
-                             final EnumSet<ContactType> contactTypes,
-                             final Agent loggedIn, final ProgressMeter meter,
-                             final DateMidnight start,
-                             final DateMidnight end,
-                             final Set<Site> sites, Collection<CallCenter> callCenters,
-                             final Map<String, String[]> extras) {
+      final EnumSet<ContactType> contactTypes,
+      final Agent loggedIn, final ProgressMeter meter,
+      final DateMidnight start,
+      final DateMidnight end,
+      final Set<Site> sites, Collection<CallCenter> callCenters,
+      final Map<String, String[]> extras) {
     if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
       log.warning("%s tried to access closing report data",
-        loggedIn == null ? "Nobody?" : loggedIn.key);
+          loggedIn == null ? "Nobody?" : loggedIn.key);
       throw new UnauthorizedException();
     }
     final String[] productLineIds = extras.get("productLine");
     final Set<ProductLine> productLines = productLineIds == null ?
-      Collections.emptySet() : Arrays.stream(productLineIds)
-      .map(id -> Locator.$(new ProductLine(Integer.valueOf(id))))
-      .collect(toSet());
+        Collections.emptySet() : Arrays.stream(productLineIds)
+        .map(id -> Locator.$(new ProductLine(Integer.valueOf(id))))
+        .collect(toSet());
 
     final Interval interval = getReportingInterval(start, end);
 
-    Query<Call> callQuery = Call.inInterval(interval);
+    var callQuery = Call.isQueue.and(Call.inInterval(interval));
 
     if (!productLines.isEmpty()) {
-      callQuery = callQuery.and(Call.withProductLineIn(productLines));
+      callQuery = callQuery.and(Call.withQueueIn(
+          productLines.stream()
+              .map(pl -> getQueues(loggedIn, pl, sites))
+              .flatMap(Funky::stream)
+              .collect(toSet())));
     }
-
     if (!sites.isEmpty()) {
       callQuery = callQuery.and(Call.withSiteIn(sites));
     }
@@ -114,30 +123,42 @@ public class MissedCallsByAgent
     if (!callCenters.isEmpty()) {
       agentQuery = agentQuery.and(Agent.withCallCenters(callCenters));
     }
-    Locator.forEach(agentQuery,
-      agent -> {
-        meter.increment(agent.getFirstNameLastInitial());
-        final int missedCount = count(finalCallQuery.and(Call.missed).and(Call.withAgent(agent)));
-        if (missedCount > 0) {
-          final int totalCount = count(finalCallQuery.and(Call.withAgent(agent)));
-          totalCalls.getAndAdd(missedCount);
-          rows.add(new JsonMap()
-            .$("key", agent.key)
-            .$("agent", agent.getFullName())
-            .$("missedCalls", missedCount)
-            .$("total", totalCount));
+    var allAgents = Locator.$$(agentQuery);
+
+    var misses = new HashMap<String, Integer>();
+    var total = new HashMap<String, Integer>();
+
+    forEach(callQuery.and(Call.missed), call -> {
+      meter.increment();
+      forEach(Segment.withCall(call), segment -> {
+        final Agent agent = segment.getAgent();
+        if (allAgents.contains(agent)) {
+          if (segment.getAnswered() == null) {
+            misses.put(agent.key, misses.getOrDefault(agent.key, 0) + 1);
+          }
         }
       });
+    });
+    allAgents.forEach(a-> {
+      total.put(a.key,Locator.count(finalCallQuery.and(Call.withAgent(a).and(Call.isAnswered))));
+    });
+    allAgents.forEach(agent -> rows.add(new JsonMap()
+        .$("key", agent.key)
+        .$("agent", agent.getFullName())
+        .$("missedCalls", misses.getOrDefault(agent.key, 0))
+        .$("total", total.getOrDefault(agent.key, 0))));
+
     return new JsonMap()
-      .$("rows", rows)
-      .$("times",
-        $$(finalCallQuery.and(Call.missed))
-          .stream()
-          .map(Call::getDate)
-          .map(Json.jsDateTimeFormat::print)
-          .map(JsonString::new)
-          .collect(JsonList.collect))
-      .$("total", totalCalls.get());
+        .$("rows", rows)
+        .$("times",
+            $$(finalCallQuery.and(Call.missed))
+                .stream()
+                .map(Call::getDate)
+                .map(Json.jsDateTimeFormat::print)
+                .map(JsonString::new)
+                .collect(JsonList.collect))
+        .$("total", totalCalls.get());
 
   }
+
 }

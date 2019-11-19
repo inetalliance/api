@@ -156,7 +156,7 @@ public abstract class CachedGroupingRangeReport<R, G>
                     .map(s -> StringFun.camelCaseToEnum(ContactType.class, s))
                     .collect(Collectors.toCollection(() -> EnumSet.noneOf(ContactType.class)));
         ProgressHandler.$.start(authorized.getPhone(), response,
-            getJobSize(loggedIn, groups, interval.getStart()), meter -> {
+            getJobSize(loggedIn, groups, interval), meter -> {
               final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
                   groups, callCenters, extras);
               if (end.isAfter(new DateMidnight())) {
@@ -180,7 +180,7 @@ public abstract class CachedGroupingRangeReport<R, G>
   protected abstract G getGroup(final String[] params, String g);
 
   protected abstract int getJobSize(final Agent loggedIn, final Set<G> groups,
-      final DateTime intervalStart);
+      final Interval intervalStart);
 
   protected abstract JsonMap generate(final EnumSet<SaleSource> sources,
       final EnumSet<ContactType> contactTypes,

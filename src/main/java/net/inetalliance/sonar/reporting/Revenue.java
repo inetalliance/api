@@ -44,7 +44,6 @@ import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
 import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
 public abstract class Revenue<R extends Named>
@@ -202,8 +201,8 @@ public abstract class Revenue<R extends Named>
 
   @Override
   protected int getJobSize(final Agent loggedIn, final Set<Category> categories,
-      final DateTime intervalStart) {
-    return count(allRows(categories, loggedIn, intervalStart)) + categories.size();
+      final Interval interval) {
+    return count(allRows(categories, loggedIn, interval.getStart())) + categories.size();
   }
 
   public enum CellType {
