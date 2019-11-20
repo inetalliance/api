@@ -136,7 +136,7 @@ public class RevenueOverTime
       final JsonList rows = new JsonList();
 
       // we start back 8 weeks to get the moving average for our start date
-      for (DateMidnight date = start.minusWeeks(8); !date.isAfter(end); date = date.plusWeeks(1)) {
+      for (DateMidnight date = start.minusWeeks(8); !date.plusWeeks(1).isAfter(end); date = date.plusWeeks(1)) {
         final Interval week = new Interval(date, date.plusWeeks(1));
         rows.add(
             new JsonMap()
