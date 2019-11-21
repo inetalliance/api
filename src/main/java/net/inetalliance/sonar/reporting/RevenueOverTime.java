@@ -161,7 +161,8 @@ public class RevenueOverTime
                 .$("date", date)
                 .$("missedCalls",
                     Locator
-                        .count(callQuery.and(Call.isAnswered.negate()).and(Call.inInterval(week))))
+                        .count(callQuery.and(Call.isBusinessHours)
+                            .and(Call.isAnswered.negate()).and(Call.inInterval(week))))
                 .$("calls", Locator.count(callQuery.and(Call.inInterval(week))))
                 .$("revenue",
                     opportunities
