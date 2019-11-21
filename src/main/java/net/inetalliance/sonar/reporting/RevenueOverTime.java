@@ -117,7 +117,7 @@ public class RevenueOverTime
       Query<Opportunity> query =
           Opportunity.isSold
               .and(Opportunity.soldInInterval(new Interval(start.minusWeeks(8), end)));
-      Query<Call> callQuery = Query.all(Call.class);
+      Query<Call> callQuery = Call.isQueue;
 
       if (!sources.isEmpty()) {
         query = query.and(Opportunity.withSources(sources));
@@ -142,7 +142,7 @@ public class RevenueOverTime
             new JsonMap()
                 .$("date", date)
                 .$("missedCalls",
-                    Locator.count(Call.isAnswered.negate().and(Call.inInterval(week))))
+                    Locator.count(callQuery.and(Call.isAnswered.negate()).and(Call.inInterval(week))))
                 .$("calls", Locator.count(callQuery.and(Call.inInterval(week))))
                 .$("revenue",
                     opportunities
