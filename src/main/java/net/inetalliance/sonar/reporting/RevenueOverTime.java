@@ -1,8 +1,11 @@
 package net.inetalliance.sonar.reporting;
 
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.sonar.reporting.ProductLineClosing.getQueues;
 import static net.inetalliance.types.www.ContentType.JSON;
 
 import com.callgrove.Callgrove;
+import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
@@ -23,6 +26,8 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
+import net.inetalliance.angular.exception.ForbiddenException;
+import net.inetalliance.funky.Funky;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.funky.math.Calculator;
 import net.inetalliance.log.Log;
@@ -35,6 +40,7 @@ import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
 import net.inetalliance.types.localized.LocalizedString;
+import net.inetalliance.util.security.auth.Authorized;
 import org.joda.time.DateMidnight;
 import org.joda.time.Interval;
 
@@ -58,7 +64,11 @@ public class RevenueOverTime
   @Override
   protected void get(HttpServletRequest request, HttpServletResponse response)
       throws Exception {
-
+    final Authorized authorized = Auth.getAuthorized(request);
+    if (authorized == null || !authorized.isAuthorized("reports")) {
+      throw new ForbiddenException("You do not have access to reports");
+    }
+    final Agent loggedIn = Locator.$(new Agent(authorized.getPhone()));
     final Interval interval = Callgrove.getInterval(request);
     final DateMidnight start = interval.getStart().toDateMidnight().withDayOfWeek(1);
     final DateMidnight end = interval.getEnd().toDateMidnight().withDayOfWeek(7);
@@ -130,19 +140,28 @@ public class RevenueOverTime
       }
       if (productLines != null) {
         query = query.and(Opportunity.withProductLineIn(productLines));
-        callQuery = callQuery.and(Call.withProductLineIn(productLines));
+
+        final Set<Site> siteObjects = sites == null ? null : sites.stream()
+            .map(id -> Locator.$(new Site(id))).collect(toSet());
+        callQuery = callQuery.and(Call.withQueueIn(
+            productLines.stream()
+                .map(pl -> getQueues(loggedIn, pl, siteObjects))
+                .flatMap(Funky::stream)
+                .collect(toSet())));
       }
       final Set<Opportunity> opportunities = Locator.$$(query);
       final JsonList rows = new JsonList();
 
       // we start back 8 weeks to get the moving average for our start date
-      for (DateMidnight date = start.minusWeeks(8); !date.plusWeeks(1).isAfter(end); date = date.plusWeeks(1)) {
+      for (DateMidnight date = start.minusWeeks(8); !date.plusWeeks(1).isAfter(end);
+          date = date.plusWeeks(1)) {
         final Interval week = new Interval(date, date.plusWeeks(1));
         rows.add(
             new JsonMap()
                 .$("date", date)
                 .$("missedCalls",
-                    Locator.count(callQuery.and(Call.isAnswered.negate()).and(Call.inInterval(week))))
+                    Locator
+                        .count(callQuery.and(Call.isAnswered.negate()).and(Call.inInterval(week))))
                 .$("calls", Locator.count(callQuery.and(Call.inInterval(week))))
                 .$("revenue",
                     opportunities
@@ -226,11 +245,11 @@ public class RevenueOverTime
       final JsonMap result = new JsonMap()
           .$("rows", rows)
           .$("sources", sources
-                        .stream()
-                        .map(SaleSource::getLocalizedName)
-                        .map(LocalizedString::toString)
-                        .map(JsonString::new)
-                        .collect(JsonList.collect))
+              .stream()
+              .map(SaleSource::getLocalizedName)
+              .map(LocalizedString::toString)
+              .map(JsonString::new)
+              .collect(JsonList.collect))
           .$("productLines", productLineNames)
           .$("sites", siteAbbreviations);
 
