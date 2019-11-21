@@ -277,7 +277,7 @@ public class Calls
     if (simulated) {
       return Call.simulated.and(Call.withAgentIn(agent.getViewableAgents()));
     } else if (todo) {
-      return Call.isTodo.and(Call.withAgent(agent)).limit(25);
+      return Call.isTodo.and(Call.withAgent(agent)).orderBy("created",DESCENDING).limit(25);
     } else if (isEmpty(request.getParameter("n"))) {
       throw new BadRequestException(
           "Sorry, but you can't ask for all the calls. There's like a bajillion of them.");
