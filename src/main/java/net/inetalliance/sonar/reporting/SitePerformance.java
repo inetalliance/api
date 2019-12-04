@@ -110,7 +110,8 @@ public class SitePerformance
   protected Query<ProductLine> allRows(final Set<Site> groups, final Agent loggedIn,
       final DateTime intervalStart) {
     // don't show vehicle conversion data in reports unless ATC is included in the report
-    return groups.stream().anyMatch(g -> g.id.equals(10117)) // ATC
+    var wavSites = Set.of(10117,10050); // ATC and AGR
+    return groups.stream().anyMatch(g -> wavSites.contains(g.id))
         ? Query.all(ProductLine.class)
         : ProductLine.withId(10045).negate(); // Vehicle Conversions
   }
