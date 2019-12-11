@@ -169,7 +169,7 @@ public class Review
           final JsonMap sMap = new JsonMap().$("created", segment.getCreated())
               .$("answered", segment.getAnswered())
               .$("ended", segment.getEnded())
-              .$("talktime", segment.getAnswered() == null
+              .$("talktime", segment.getTalkTime() == null
                   ? null
                   : new Duration(
                       segment.getTalkTime().toDurationMillis()).getAbbreviation(true))
