@@ -69,7 +69,7 @@ public class PublicWorkStatus
         .map(c -> $$(Agent.withCallCenter(c))).flatMap(Funky::stream)
         .sorted(Comparator.comparing(Agent::getFullName)).forEach
        */
-    Set.of("7220", "7501", "7108").stream()
+    Set.of("7220", "7501", "7147").stream()
         .map(key -> $(new Agent(key))).forEach(manager -> {
           /* look up initial states */
           final String cacheKey = format("%s:%s", date, manager.key);
