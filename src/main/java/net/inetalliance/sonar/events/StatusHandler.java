@@ -64,6 +64,10 @@ public class StatusHandler
     check("registered", agent, currentStatus, registered, true, map, full);
 
     final HudStatus hudStatus = HudHandler.getStatus(agent);
+    if (hudStatus == null) {
+      log.warning("could not get status for %s", agent);
+      return null;
+    }
     final String currentCall = hudStatus.callId;
     final String cachedCall = calls.get(agent);
     if (full || !Objects.equals(currentCall, cachedCall)) {
