@@ -77,7 +77,8 @@ public class MissedCallsByAgent
   protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
                            final Interval interval) {
     var queueInInterval = Call.isQueue.and(Call.inInterval(interval));
-    return count(groups.isEmpty() ? queueInInterval : queueInInterval.and(Call.withSiteIn(groups)));
+    return count(groups.isEmpty() ? queueInInterval :
+      queueInInterval.and(Call.withSiteIn(groups)));
   }
 
   @Override
@@ -125,7 +126,6 @@ public class MissedCallsByAgent
     var allAgents = Locator.$$(agentQuery);
 
     var misses = new HashMap<String, Integer>();
-    var missesBusinessHours = new HashMap<String, Integer>();
     var total = new HashMap<String, Integer>();
 
     forEach(callQuery.and(Call.missed), call -> {
@@ -133,13 +133,19 @@ public class MissedCallsByAgent
       forEach(Segment.withCall(call), segment -> {
         final Agent agent = segment.getAgent();
         if (allAgents.contains(agent)) {
-          if (segment.getAnswered() == null) {
-            misses.put(agent.key, misses.getOrDefault(agent.key, 0) + 1);
-            if (Call.isBusinessHours.test(call)) {
-              missesBusinessHours.put(agent.key,
-                missesBusinessHours.getOrDefault(agent.key, 0) + 1);
-            }
-          }
+          misses.put(agent.key, misses.getOrDefault(agent.key, 0) + 1);
+        }
+      });
+    });
+
+    var missesBusinessHours = new HashMap<String, Integer>();
+    forEach(callQuery.and(Call.missed).and(Call.isBusinessHours), call -> {
+      meter.increment();
+      forEach(Segment.withCall(call), segment -> {
+        final Agent agent = segment.getAgent();
+        if (allAgents.contains(agent)) {
+          missesBusinessHours.put(agent.key,
+            missesBusinessHours.getOrDefault(agent.key, 0) + 1);
         }
       });
     });
