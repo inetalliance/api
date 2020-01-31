@@ -102,7 +102,7 @@ public class ManagerStats
     var jsonList = new JsonList();
 
 
-    var totalAgent = new JsonMap().$("agent","Total")
+    var totalAgent = new JsonMap().$("agent","total")
         .$("intervals", totalList)
         .$("in", 0)
         .$("out",0)
@@ -129,7 +129,7 @@ public class ManagerStats
       totalAgent.put("surveys",totalAgent.getInteger("surveys")+agentJson.getInteger("surveys"));
       totalAgent.put("social",totalAgent.getInteger("social")+agentJson.getInteger("social"));
       for(int i=0; i<list.size(); i++) {
-        var iData = ((JsonMap)list.get(0));
+        var iData = ((JsonMap)list.get(i));
         var tData = (JsonMap) totalList.get(i);
         tData.put("c", tData.getInteger("c") + iData.getInteger("c"));
         tData.put("r", tData.getDouble("r") + iData.getDouble("r"));
@@ -140,6 +140,7 @@ public class ManagerStats
 
     var aMap = new JsonMap();
     viewable.forEach(a -> aMap.put(a.key, a.getFullName()));
+    aMap.put("total","Total");
 
     var json = new JsonMap();
     json.put("agents", aMap);
