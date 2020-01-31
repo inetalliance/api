@@ -20,6 +20,7 @@ import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sql.Aggregate;
 import net.inetalliance.types.Currency;
+import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
@@ -73,7 +74,9 @@ public class ManagerStats
                 .negate());
 
     Map<String, JsonList> agentIntervalData = new HashMap<>();
+    var totalList = new JsonList();
     intervals.forEach((intervalLabel, interval) -> {
+      totalList.add(new JsonMap().$("c",0).$("r",0.0d));
       var sales =
           Locator
               .$$(theQuery.and(Opportunity.soldInInterval(interval)), Aggregate.SUM, String.class,
@@ -97,6 +100,14 @@ public class ManagerStats
       });
     });
     var jsonList = new JsonList();
+
+
+    var totalAgent = new JsonMap().$("agent","Total")
+        .$("intervals", totalList)
+        .$("in", 0)
+        .$("out",0)
+        .$("surveys",0)
+        .$("social",0);
     agentIntervalData.forEach((k, list) -> {
       final Agent agent = new Agent(k);
       final Query<Opportunity> withAgent =
@@ -106,14 +117,26 @@ public class ManagerStats
       final Query<Call> todayWithAgent = Call
           .withAgent(agent)
           .and(Call.inInterval(new DateMidnight().toInterval()));
-      jsonList.add(new JsonMap()
+      JsonMap agentJson = new JsonMap()
           .$("agent", k)
           .$("intervals", list)
           .$("in", count(todayWithAgent.and(Call.isQueue).and(Call.isAnswered)))
           .$("out", count(todayWithAgent.and(Call.isOutbound)))
           .$("surveys", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SURVEY))))
-          .$("social", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SOCIAL)))));
+          .$("social", count(withAgent.and(Opportunity.withSaleSource(SaleSource.SOCIAL))));
+      totalAgent.put("in",totalAgent.getInteger("in")+agentJson.getInteger("in"));
+      totalAgent.put("out",totalAgent.getInteger("out")+agentJson.getInteger("out"));
+      totalAgent.put("surveys",totalAgent.getInteger("surveys")+agentJson.getInteger("surveys"));
+      totalAgent.put("social",totalAgent.getInteger("social")+agentJson.getInteger("social"));
+      for(int i=0; i<list.size(); i++) {
+        var iData = ((JsonMap)list.get(0));
+        var tData = (JsonMap) totalList.get(i);
+        tData.put("c", tData.getInteger("c") + iData.getInteger("c"));
+        tData.put("r", tData.getDouble("r") + iData.getDouble("r"));
+      }
+      jsonList.add(agentJson);
     });
+        jsonList.add(totalAgent);
 
     var aMap = new JsonMap();
     viewable.forEach(a -> aMap.put(a.key, a.getFullName()));
