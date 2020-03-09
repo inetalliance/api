@@ -1,17 +1,30 @@
 package net.inetalliance.sonar.api;
 
+import com.callgrove.obj.Agent;
 import com.callgrove.obj.SkillRoute;
+import com.callgrove.obj.SkilledAgent;
+import com.callgrove.types.Tier;
+import net.inetalliance.angular.Key;
+import net.inetalliance.angular.exception.BadRequestException;
+import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
+import net.inetalliance.types.json.JsonList;
+import net.inetalliance.types.json.JsonMap;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.Collection;
+import java.util.Map;
 
+import static net.inetalliance.funky.StringFun.*;
+import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.sql.OrderBy.Direction.*;
 
 @WebServlet("/api/skillRoute/*")
 public class SkillRoutes
-    extends ListableModel.Named<SkillRoute> {
+  extends ListableModel.Named<SkillRoute> {
 
   public SkillRoutes() {
     super(SkillRoute.class);
@@ -20,5 +33,68 @@ public class SkillRoutes
   @Override
   public Query<SkillRoute> all(final Class<SkillRoute> type, final HttpServletRequest request) {
     return super.all(type, request).orderBy("name", ASCENDING);
+  }
+
+  @Override
+  protected void get(final HttpServletRequest request, final HttpServletResponse response)
+    throws Exception {
+    final Key<SkillRoute> key = getKey(request);
+    if (!isEmpty(key.id)) {
+      final SkillRoute route = lookup(key, request);
+      if (route != null) {
+
+        final JsonMap result = new JsonMap();
+        final Map<Tier, Collection<Agent>> members = route.getConfiguredMembers();
+        for (final Tier tier : Tier.values()) {
+          result.$(tier.name(),
+            members.containsKey(tier) ? members.get(tier).stream().map(agent -> new JsonMap()
+              .$("name",
+                agent.getLastNameFirstInitial()).$("key", agent.key)).collect(JsonList.collect) :
+              JsonList.empty);
+        }
+        respond(response, result);
+        return;
+      }
+    }
+    super.get(request, response);
+  }
+
+  @Override
+  protected void post(final HttpServletRequest request, final HttpServletResponse response)
+    throws Exception {
+    final Key<SkillRoute> key = getKey(request);
+    if (isEmpty(key.id)) {
+      throw new BadRequestException("No key");
+    }
+    final SkillRoute route = lookup(key, request);
+    if (route == null) {
+      throw new BadRequestException("No route");
+    }
+    final JsonMap json = JsonMap.parse(request.getInputStream());
+    final Tier tier = json.getEnum("tier", Tier.class);
+    final String agent = json.get("agent");
+    if (tier == null) {
+      throw new BadRequestException("No tier");
+    }
+    if (agent == null) {
+      throw new BadRequestException("No agent");
+    }
+
+    final SkilledAgent skilledAgent = $1(SkilledAgent.withRoute(route).and(
+      SkilledAgent.withAgent(new Agent(agent))));
+    if (skilledAgent == null) {
+      // No skilled agent record. Create one.
+      final SkilledAgent newSkilledAgent = new SkilledAgent();
+      newSkilledAgent.skillRoute = route;
+      newSkilledAgent.setAgent(new Agent(agent));
+      newSkilledAgent.setTier(tier);
+      Locator.create(getRemoteUser(request), newSkilledAgent);
+    } else {
+      Locator.update(skilledAgent, getRemoteUser(request),
+        copy -> {
+          copy.setTier(tier);
+        });
+    }
+    respond(response, new JsonMap().$("success", true));
   }
 }
