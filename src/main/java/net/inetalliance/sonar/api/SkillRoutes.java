@@ -41,12 +41,12 @@ public class SkillRoutes
 
     private static final Set<String> allowedEditors = Set.of("7000", "7001", "7006", "7007");
 
-        private static final Function<Agent,Set<Integer>> visibleRoutes = Funky.memoize(10,agent ->
+    private static final Function<Agent, Set<Integer>> visibleRoutes = Funky.memoize(10, agent ->
             agent.getVisibleSites().stream()
-                        .map(s -> Locator.$$(Site.SiteQueue.withSite(s)))
-            .flatMap(Funky::stream)
-                        .distinct()
-                        .map(sq -> sq.queue.getSkillRoute().id).collect(toSet()));
+                    .map(s -> Locator.$$(Site.SiteQueue.withSite(s)))
+                    .flatMap(Funky::stream)
+                    .distinct()
+                    .map(sq -> sq.queue.getSkillRoute().id).collect(toSet()));
 
     @Override
     public Query<SkillRoute> all(final Class<SkillRoute> type, final HttpServletRequest request) {
@@ -54,7 +54,7 @@ public class SkillRoutes
         if (loggedIn == null || !allowedEditors.contains(loggedIn.key)) {
             throw new ForbiddenException();
         }
-        return Query.in(SkillRoute.class,"id",visibleRoutes.apply(loggedIn));
+        return Query.in(SkillRoute.class, "id", visibleRoutes.apply(loggedIn));
     }
 
     @Override
@@ -63,11 +63,11 @@ public class SkillRoutes
         final Key<SkillRoute> key = getKey(request);
         if (!isEmpty(key.id)) {
             var loggedIn = Startup.getAgent(request);
-            if(loggedIn == null || !visibleRoutes.apply(loggedIn).contains(Integer.valueOf(key.id))) {
-                if(loggedIn != null) {
+            if (loggedIn == null || !visibleRoutes.apply(loggedIn).contains(Integer.valueOf(key.id))) {
+                if (loggedIn != null) {
                     log.warning("%s tried to access the skill route editor for %d", loggedIn.getFullName(), key.id);
                 }
-               throw new ForbiddenException();
+                throw new ForbiddenException();
             }
             final SkillRoute route = lookup(key, request);
             if (route != null) {
@@ -76,10 +76,11 @@ public class SkillRoutes
                 final Map<Tier, Collection<Agent>> members = route.getConfiguredMembers();
                 for (final Tier tier : EnumSet.complementOf(EnumSet.of(MOBILE))) {
                     result.$(tier.name(),
-                            members.containsKey(tier) ? members.get(tier).stream().map(agent -> new JsonMap()
-                                    .$("name",
-                                            agent.getLastNameFirstInitial()).$("key", agent.key)).collect(JsonList.collect) :
-                                    JsonList.empty);
+                            members.containsKey(tier) ? members.get(tier).stream()
+                                    .filter(agent -> agent.isSales() && !agent.isLocked())
+                                    .map(agent -> new JsonMap()
+                                            .$("name", agent.getLastNameFirstInitial()).$("key", agent.key))
+                                    .collect(JsonList.collect) : JsonList.empty);
                 }
                 respond(response, result);
                 return;
@@ -100,8 +101,8 @@ public class SkillRoutes
             throw new BadRequestException("No route");
         }
         var loggedIn = Startup.getAgent(request);
-        if(loggedIn == null || !visibleRoutes.apply(loggedIn).contains(route.id)) {
-            if(loggedIn != null) {
+        if (loggedIn == null || !visibleRoutes.apply(loggedIn).contains(route.id)) {
+            if (loggedIn != null) {
                 log.warning("%s tried to access the skill route editor for %d",
                         loggedIn.getFullName(), key.id);
             }
