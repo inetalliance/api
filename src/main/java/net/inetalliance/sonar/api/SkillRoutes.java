@@ -59,7 +59,7 @@ public class SkillRoutes
     if (loggedIn == null || !allowedEditors.contains(loggedIn.key)) {
       throw new ForbiddenException();
     }
-    return Query.in(SkillRoute.class, "id", visibleRoutes.apply(loggedIn));
+    return Query.in(SkillRoute.class, "id", visibleRoutes.apply(loggedIn)).orderBy("name");
   }
 
   @Override
