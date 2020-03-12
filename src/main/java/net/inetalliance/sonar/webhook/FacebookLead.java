@@ -32,7 +32,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.mail.internet.InternetAddress;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
@@ -42,8 +41,6 @@ import net.inetalliance.potion.Locator;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
-import net.inetalliance.util.mail.MailMessage;
-import net.inetalliance.util.mail.PostOffice;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 
@@ -55,7 +52,8 @@ public class FacebookLead
   private static final transient Log log = Log.getInstance(FacebookLead.class);
   private static final Pattern phonePattern = Pattern.compile(".*(\\d{10})");
   @SuppressWarnings("SpellCheckingInspection")
-  public static final String TOKEN = "REDACTED_TOKEN";
+      public static final String IAI_TOKEN = "REDACTED";
+  public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
   private Slack slack = Slack.getInstance();
 
   private static String extractPhone(final String value) {
@@ -192,7 +190,11 @@ public class FacebookLead
 
       slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
           .channel("@" + agent.getSlackName())
-          .token(TOKEN)
+          .token(System.getenv("SLACK_API_TOKEN"))
+          .text(msg).build());
+      slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
+          .channel("@Mathieu Ouimet")
+          .token(System.getenv("SLACK_API_TOKEN"))
           .text(msg).build());
 
 
