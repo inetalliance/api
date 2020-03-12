@@ -138,11 +138,14 @@ public class FacebookLead
 
   static {
     productEmailQueue.put(6, 22); // SL = AG Stair Lifts
+    productEmailQueue.put(23, 25); // RVPL = Vertical Lifts
+    productEmailQueue.put(10045,20); // VC = Vehicle Conversion
   }
 
   @Override
   protected void post(final HttpServletRequest request, final HttpServletResponse response) {
     try {
+      log.info("Processing webhook from Zapier");
       final JsonMap json = JsonMap.parse(request.getInputStream());
 
       final String fullName = json.get("fullName");
@@ -184,7 +187,7 @@ public class FacebookLead
       opp.setReminder(date);
       opp.setEstimatedClose(new DateMidnight());
       create("FacebookLead", opp);
-      final var link = String.format("https://crm.inetalliance.net/#/lead/%d",opp.id);
+      final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
       final var msg = format("New Facebook Lead *%s* %s", contact.getFullName(), link);
 
       slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
@@ -192,17 +195,12 @@ public class FacebookLead
           .token(TOKEN)
           .text(msg).build());
 
-      var message = new MailMessage(new InternetAddress("inquiry@ameriglide.com"),
-          new InternetAddress("mathieu@atlasacces.com"));
-      message.setSubject(String.format("New Facebook Lead - %s",productLine.getName()));
-      message.setBody(msg, format("<a href=\"%s\">Opportunity</a> assigned to %s",
-          link,agent.getFullName()));
-      PostOffice.send(message);
 
       final JsonMap result =
           new JsonMap().$("contact", contact.getId()).$("agent", agent.getSlackName())
               .$("opp", opp.getId());
       respond(response, result);
+      log.info("Created opp %d via Zapier assigned to %s", opp.getId(), agent.getFullName());
     } catch (Throwable e) {
       log.error(e);
     }
