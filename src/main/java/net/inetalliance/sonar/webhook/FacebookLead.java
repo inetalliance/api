@@ -23,9 +23,9 @@ import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
 import com.callgrove.types.SalesStage;
 import com.callgrove.types.Tier;
-import com.github.seratch.jslack.Slack;
-import com.github.seratch.jslack.api.methods.request.chat.ChatPostMessageRequest;
 
+import com.slack.api.Slack;
+import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
@@ -195,7 +195,7 @@ public class FacebookLead
                     .token(System.getenv("SLACK_API_TOKEN"))
                     .text(msg).build());
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
-                    .channel("@Mathieu Ouimet")
+                    .channel("UN3BKURC0")
                     .token(System.getenv("SLACK_API_TOKEN"))
                     .text(msg).build());
 

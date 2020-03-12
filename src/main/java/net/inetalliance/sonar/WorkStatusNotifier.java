@@ -8,7 +8,7 @@ import com.callgrove.Callgrove;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Segment;
 import com.callgrove.types.EventType;
-import com.github.seratch.jslack.Slack;
+import com.slack.api.Slack;
 import java.util.stream.Stream;
 import net.inetalliance.cli.Cli;
 import net.inetalliance.cron.CronJob;
