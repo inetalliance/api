@@ -108,7 +108,7 @@ public class AgentAuth
               .$("client_secret", "f02ufhmcopkrzbc35ah6w7wto")
               .$("code", agent.getNylasCode()));
       final String token = json == null ? null : json.get("access_token");
-      if (isEmpty(token)) {
+      if (isEmpty(token) && json != null) {
         if ("api_error".equals(json.get("type")) && json.get("message")
             .startsWith("No grant with code") && !forceCodeLookup) {
           onLogin(request, authorized, true);
