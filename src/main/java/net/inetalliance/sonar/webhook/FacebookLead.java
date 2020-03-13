@@ -176,7 +176,11 @@ public class FacebookLead
             final Opportunity opp = new Opportunity();
             var agent = getAgent(productEmailQueue.getOrDefault(productLine.id, 22));
             opp.setAssignedTo(agent);
-            opp.setSource(SaleSource.SOCIAL);
+            if("form".equals(json.get("source"))) {
+                opp.setSource(SaleSource.SURVEY);
+            } else {
+                opp.setSource(SaleSource.SOCIAL);
+            }
             opp.setAmount(amount);
             opp.setStage(SalesStage.HOT);
             opp.setContact(contact);
@@ -188,7 +192,8 @@ public class FacebookLead
             opp.setEstimatedClose(new DateMidnight());
             create("FacebookLead", opp);
             final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
-            final var msg = format("New Facebook Lead *%s* %s", contact.getFullName(), link);
+            final var msg = format("New %s Lead *%s* %s", opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
+                contact.getFullName(), link);
 
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                     .channel("@" + agent.getSlackName())
@@ -203,7 +208,7 @@ public class FacebookLead
                     new JsonMap().$("contact", contact.getId()).$("agent", agent.getSlackName())
                             .$("opp", opp.getId());
             respond(response, result);
-            log.info("Created opp %d via Zapier assigned to %s", opp.getId(), agent.getFullName());
+            log.info("Created opp %d via Zapier/Form assigned to %s", opp.getId(), agent.getFullName());
         } catch (Throwable e) {
             log.error(e);
         }
