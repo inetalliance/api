@@ -137,7 +137,7 @@ public class FacebookLead
     private static final Map<Integer, Integer> productEmailQueue = new HashMap<>();
 
     static {
-        productEmailQueue.put(6, 22); // SL = AG Stair Lifts
+        productEmailQueue.put(6, 26); // SL = FB Leads
         productEmailQueue.put(23, 25); // RVPL = Vertical Lifts
         productEmailQueue.put(10045, 20); // VC = Vehicle Conversion
     }
