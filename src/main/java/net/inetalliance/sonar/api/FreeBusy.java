@@ -50,7 +50,7 @@ public class FreeBusy
         monthMode = true;
         final DateMidnight startOfMonth =
             Json.jsDateTimeFormat.parseDateTime(month).withDayOfMonth(1).toDateMidnight();
-        final DateMidnight start = startOfMonth.minusDays(startOfMonth.getDayOfWeek());
+        final DateMidnight start = startOfMonth.minusDays(startOfMonth.getDayOfWeek()%7);
         interval = new Interval(start, start.plusDays(35));
       }
     } else {
