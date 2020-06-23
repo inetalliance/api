@@ -41,7 +41,7 @@ public class SkillRoutes
   }
 
 
-  private static final Set<String> allowedEditors = Set.of("7000", "7002", "7006", "7007");
+  private static final Set<String> allowedEditors = Set.of("7000", "7002", "7006", "7007","7201");
 
   private static final Function<Agent, List<Integer>> visibleRoutes = Funky.memoize(10, agent ->
       agent.getVisibleSites().stream()
