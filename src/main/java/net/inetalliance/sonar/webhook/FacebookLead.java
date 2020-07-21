@@ -139,7 +139,7 @@ public class FacebookLead
     static {
         productEmailQueue.put(6, 26); // SL = FB Leads
         productEmailQueue.put(23, 25); // RVPL = Vertical Lifts
-        productEmailQueue.put(10045, 20); // VC = Vehicle Conversion
+        productEmailQueue.put(10045, 28); // VC = Vehicle Conversion
         productEmailQueue.put(8 ,27); // DW = FB Dumbwaiters
     }
 
