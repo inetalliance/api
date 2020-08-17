@@ -1,42 +1,11 @@
 package net.inetalliance.sonar.webhook;
 
-import static com.callgrove.types.Tier.NEVER;
-import static java.lang.String.format;
-import static java.util.Collections.shuffle;
-import static java.util.EnumSet.complementOf;
-import static java.util.EnumSet.of;
-import static net.inetalliance.potion.Locator.$1;
-import static net.inetalliance.potion.Locator.create;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Contact;
-import com.callgrove.obj.EmailQueue;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Queue;
-import com.callgrove.obj.Relation;
-import com.callgrove.obj.Site;
+import com.callgrove.obj.*;
 import com.callgrove.obj.Site.SiteQueue;
-import com.callgrove.obj.SkillRoute;
-import com.callgrove.types.Address;
-import com.callgrove.types.ContactType;
-import com.callgrove.types.SaleSource;
-import com.callgrove.types.SalesStage;
-import com.callgrove.types.Tier;
-
+import com.callgrove.types.*;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
@@ -45,6 +14,21 @@ import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
+
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import static com.callgrove.types.Tier.NEVER;
+import static java.lang.String.format;
+import static java.util.Collections.shuffle;
+import static java.util.EnumSet.complementOf;
+import static java.util.EnumSet.of;
+import static net.inetalliance.potion.Locator.$1;
+import static net.inetalliance.potion.Locator.create;
 
 
 @WebServlet("/hook/facebookLead")
