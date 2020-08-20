@@ -1,31 +1,7 @@
 package net.inetalliance.sonar.api;
 
-import static com.callgrove.types.ContactType.CUSTOMER;
-import static com.callgrove.types.SaleSource.MANUAL;
-import static com.callgrove.types.SalesStage.HOT;
-import static com.callgrove.types.SalesStage.SOLD;
-import static java.lang.System.currentTimeMillis;
-import static java.util.regex.Pattern.compile;
-import static net.inetalliance.potion.Locator.$;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
-import static net.inetalliance.types.geopolitical.Country.UNITED_STATES;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.AreaCodeTime;
-import com.callgrove.obj.Contact;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
-import com.callgrove.obj.Site;
-import com.callgrove.obj.SiteGroup;
+import com.callgrove.obj.*;
 import com.callgrove.types.Address;
-import java.io.IOException;
-import java.util.Map;
-import java.util.regex.Matcher;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.Model;
 import net.inetalliance.angular.TypeModel;
@@ -42,6 +18,25 @@ import net.inetalliance.util.security.auth.Authorized;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Map;
+import java.util.regex.Matcher;
+
+import static com.callgrove.types.ContactType.CUSTOMER;
+import static com.callgrove.types.SaleSource.MANUAL;
+import static com.callgrove.types.SalesStage.HOT;
+import static com.callgrove.types.SalesStage.SOLD;
+import static java.lang.System.currentTimeMillis;
+import static java.util.regex.Pattern.compile;
+import static net.inetalliance.potion.Locator.$;
+import static net.inetalliance.potion.Locator.forEach;
+import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
+import static net.inetalliance.types.geopolitical.Country.UNITED_STATES;
+
 public class LeadDetail
     extends TypeModel<Opportunity> {
 
@@ -52,6 +47,7 @@ public class LeadDetail
   protected static Json toJson(final Opportunity opp) {
     final JsonMap map = new JsonMap().$("purchasingFor")
         .$("notes")
+        .$("trustPilotProspect")
         .$("amount")
         .$("stage")
         .$("estimatedClose")
