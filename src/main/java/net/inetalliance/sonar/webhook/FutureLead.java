@@ -10,6 +10,7 @@ import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.daemonic.RuntimeKeeper;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.JsonMap;
 import org.jetbrains.annotations.NotNull;
@@ -58,10 +59,14 @@ public class FutureLead
             if(data == null) {
                 throw new BadRequestException("no JSON data specified");
             }
-            if(!data.containsKey("apiKey")) {
-                throw new BadRequestException("must provide apiKey");
+            var apiKey = request.getParameter("apiKey");
+            if(StringFun.isEmpty(apiKey)) {
+                if(!data.containsKey("apiKey")) {
+                    throw new BadRequestException("must provide apiKey");
+                }
+                apiKey = data.get("apiKey");
             }
-            if(!webhook.apiKey.equals(data.get("apiKey"))) {
+            if(!webhook.apiKey.equals(apiKey)) {
                 throw new ForbiddenException("incorrect apiKey");
             }
             if (data.containsKey("id")) {
