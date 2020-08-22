@@ -57,13 +57,13 @@ public class FutureLead
     private static final Log log = Log.getInstance(FutureLead.class);
     @Override
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
-        var id = reqId.getAndIncrement();
-        log.info("[%d] Future Lead: %s?%s", id, request.getRequestURI(),request.getQueryString());
+        var reqId = FutureLead.reqId.getAndIncrement();
+        log.info("[%d] Future Lead: %s?%s", reqId, request.getRequestURI(),request.getQueryString());
         final Webhook webhook =
                 $1(withApiKey("c3387588-fbf4-4372-9e31-0cbc001418b0")); // magic key for future
         try {
             var data = JsonMap.parse(request.getInputStream());
-            log.info("[%d] Future POST data: %s ", id, Json.pretty(data));
+            log.info("[%d] Future POST data: %s ", reqId, Json.pretty(data));
             if(data == null) {
                 throw new BadRequestException("no JSON data specified");
             }
