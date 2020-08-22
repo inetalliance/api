@@ -11,7 +11,9 @@ import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.daemonic.RuntimeKeeper;
 import net.inetalliance.funky.StringFun;
+import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
+import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateMidnight;
@@ -24,6 +26,7 @@ import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -45,17 +48,22 @@ public class FutureLead
 
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
     private Slack slack = Slack.getInstance();
+    private static AtomicInteger reqId = new AtomicInteger(0);
 
     public Pattern getPattern() {
         return Pattern.compile("/api/future");
     }
 
+    private static final Log log = Log.getInstance(FutureLead.class);
     @Override
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
+        var id = reqId.getAndIncrement();
+        log.info("[%d] Future Lead: %s?%s", id, request.getRequestURI(),request.getQueryString());
         final Webhook webhook =
                 $1(withApiKey("c3387588-fbf4-4372-9e31-0cbc001418b0")); // magic key for future
         try {
             var data = JsonMap.parse(request.getInputStream());
+            log.info("[%d] Future POST data: %s ", id, Json.pretty(data));
             if(data == null) {
                 throw new BadRequestException("no JSON data specified");
             }
