@@ -9,6 +9,7 @@ import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
+import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
@@ -37,10 +38,9 @@ public class FacebookLead
 
     private static final transient Log log = Log.getInstance(FacebookLead.class);
     private static final Pattern phonePattern = Pattern.compile(".*(\\d{10})");
-    @SuppressWarnings("SpellCheckingInspection")
-        public static final String IAI_TOKEN = "REDACTED";
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
-    private Slack slack = Slack.getInstance();
+    private final Slack slack = Slack.getInstance();
+    private static final RoundRobinSelector selector = RoundRobinSelector.$(Locator.$(new SkillRoute(10128)));
 
     private static String extractPhone(final String value) {
         final Matcher matcher = phonePattern.matcher(value);
@@ -118,15 +118,6 @@ public class FacebookLead
     }
 
 
-    private static final Map<Integer, Integer> productEmailQueue = new HashMap<>();
-
-    static {
-        productEmailQueue.put(6, 26); // SL = FB Leads
-        productEmailQueue.put(23, 25); // RVPL = Vertical Lifts
-        productEmailQueue.put(10045, 28); // VC = Vehicle Conversion
-        productEmailQueue.put(8 ,27); // DW = FB Dumbwaiters
-    }
-
     @Override
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
         try {
@@ -159,7 +150,7 @@ public class FacebookLead
             }
 
             final Opportunity opp = new Opportunity();
-            var agent = getAgent(productEmailQueue.getOrDefault(productLine.id, 22));
+            var agent = getAgent();
             opp.setAssignedTo(agent);
             if("form".equals(json.get("source"))) {
                 opp.setSource(SaleSource.SURVEY);
@@ -197,5 +188,9 @@ public class FacebookLead
         } catch (Throwable e) {
             log.error(e);
         }
+    }
+
+    private Agent getAgent() {
+        return Locator.$(new Agent(selector.select()));
     }
 }

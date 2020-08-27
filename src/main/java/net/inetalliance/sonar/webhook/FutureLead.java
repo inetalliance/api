@@ -1,9 +1,7 @@
 package net.inetalliance.sonar.webhook;
 
-import com.callgrove.jobs.Hud;
 import com.callgrove.obj.*;
 import com.callgrove.types.Address;
-import com.callgrove.types.Tier;
 import com.slack.api.Slack;
 import com.slack.api.methods.SlackApiException;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
@@ -14,9 +12,9 @@ import net.inetalliance.daemonic.RuntimeKeeper;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
+import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
-import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 
@@ -25,8 +23,6 @@ import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -37,7 +33,6 @@ import static com.callgrove.types.ContactType.CUSTOMER;
 import static com.callgrove.types.SaleSource.THIRD_PARTY_ONLINE;
 import static com.callgrove.types.SalesStage.HOT;
 import static java.lang.String.format;
-import static java.util.Collections.sort;
 import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.potion.obj.AddressPo.unformatPhoneNumber;
@@ -45,37 +40,35 @@ import static net.inetalliance.potion.obj.AddressPo.unformatPhoneNumber;
 @WebServlet("/hook/future")
 public class FutureLead
         extends AngularServlet {
-    private List<Slot> queue;
 
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
-    private Slack slack = Slack.getInstance();
-    private static AtomicInteger reqId = new AtomicInteger(0);
+    private final Slack slack = Slack.getInstance();
+    private static final AtomicInteger reqId = new AtomicInteger(0);
+    private RoundRobinSelector selector;
 
     public Pattern getPattern() {
         return Pattern.compile("/api/future");
     }
 
     private static final Log log = Log.getInstance(FutureLead.class);
+
     @Override
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
         var reqId = FutureLead.reqId.getAndIncrement();
-        log.info("[%d] Future Lead: %s?%s", reqId, request.getRequestURI(),request.getQueryString());
+        log.info("[%d] Future Lead: %s?%s", reqId, request.getRequestURI(), request.getQueryString());
         final Webhook webhook =
                 $1(withApiKey("c3387588-fbf4-4372-9e31-0cbc001418b0")); // magic key for future
         try {
             var data = JsonMap.parse(request.getInputStream());
             log.info("[%d] Future POST data: %s ", reqId, Json.pretty(data));
-            if(data == null) {
-                throw new BadRequestException("no JSON data specified");
-            }
             var apiKey = request.getParameter("apiKey");
-            if(StringFun.isEmpty(apiKey)) {
-                if(!data.containsKey("apiKey")) {
+            if (StringFun.isEmpty(apiKey)) {
+                if (!data.containsKey("apiKey")) {
                     throw new BadRequestException("must provide apiKey");
                 }
                 apiKey = data.get("apiKey");
             }
-            if(!webhook.apiKey.equals(apiKey)) {
+            if (!webhook.apiKey.equals(apiKey)) {
                 throw new ForbiddenException("incorrect apiKey");
             }
             if (data.containsKey("id")) {
@@ -88,7 +81,7 @@ public class FutureLead
                 c.setLastName(data.get("surname"));
                 final Address shipping = new Address();
                 var digits = unformatPhoneNumber(data.get("phone"));
-                if(digits.length()>10 && digits.startsWith("1")) {
+                if (digits.length() > 10 && digits.startsWith("1")) {
                     digits = digits.substring(1);
                 }
                 shipping.setPhone(digits);
@@ -114,7 +107,7 @@ public class FutureLead
                 o.setWebhook(webhook);
                 o.setWorked(false);
                 o.setWebhookKey(id);
-                var  agent = getAgent();
+                var agent = getAgent();
                 o.setAssignedTo(agent);
                 o.setCreated(new DateTime());
                 o.setNotes(Stream.of("site", "url", "ca1", "ca2", "ca3", "ca4", "ca5")
@@ -129,7 +122,7 @@ public class FutureLead
                 final var link = String.format("https://crm.inetalliance.net/#/lead/%d", o.id);
                 final var msg = format("New Future Publishing Lead *%s* %s", c.getFullName(), link);
 
-                if(!RuntimeKeeper.isDevelopment()) {
+                if (!RuntimeKeeper.isDevelopment()) {
                     slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                             .channel("@" + agent.getSlackName())
                             .token(System.getenv("SLACK_API_TOKEN"))
@@ -148,7 +141,7 @@ public class FutureLead
     }
 
     private String toDesc(String key) {
-        switch(key) {
+        switch (key) {
             case "ca1":
                 return "Who is this Stairlift for?";
             case "ca2":
@@ -167,63 +160,11 @@ public class FutureLead
     @Override
     public void init() throws ServletException {
         super.init();
-        var stairlifts = Locator.$(new SkillRoute(11));
-        this.queue = new ArrayList<>();
-        stairlifts.getConfiguredMembers()
-                .forEach((key, value) -> {
-                    if (key != Tier.NEVER) {
-                        value.forEach(a -> queue.add(new Slot(a, key)));
-                    }
-                });
-    }
-
-    static class Slot implements Comparable<Slot> {
-        Slot(Agent agent, Tier tier) {
-            this.agent = agent.key;
-            this.tier = tier;
-        }
-
-        @Override
-        public String toString() {
-            return String.format("%s: %s [%d]", tier, agent, lastSelection.getMillis());
-        }
-
-        String agent;
-        Tier tier;
-        DateTime lastSelection = DateTime.now().minusYears(10);
-
-        @Override
-        public int compareTo(@NotNull Slot slot) {
-            if (lastSelection.plusMinutes(5).isAfterNow() || slot.lastSelection.plusMinutes(5).isAfterNow()) {
-                return lastSelection.compareTo(slot.lastSelection);
-            }
-            var c = this.tier.compareTo(slot.tier);
-            if (c == 0) {
-                c = lastSelection.compareTo(slot.lastSelection);
-                if (c == 0) {
-                    return agent.compareTo(slot.agent);
-                }
-                return c;
-            }
-            return c;
-        }
-    }
-
-    private static String select(List<Slot> queue) {
-        return select(queue,0);
-    }
-    private static String select(List<Slot> queue, int retries) {
-        sort(queue);
-        var slot = queue.get(0);
-        slot.lastSelection = new DateTime();
-        if(retries >= queue.size() || Hud.available(slot.agent)) {
-            return slot.agent;
-        }
-        return select(queue, retries+1);
+        this.selector = RoundRobinSelector.$(Locator.$(new SkillRoute(10128)));
     }
 
     private Agent getAgent() {
-        return Locator.$(new Agent(select(queue)));
+        return Locator.$(new Agent(selector.select()));
     }
 
 

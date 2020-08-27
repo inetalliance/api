@@ -5,8 +5,6 @@ import com.callgrove.obj.Site;
 import com.callgrove.obj.SkillRoute;
 import com.callgrove.obj.SkilledAgent;
 import com.callgrove.types.Tier;
-import java.util.Comparator;
-import java.util.List;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.ForbiddenException;
@@ -15,22 +13,20 @@ import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
+import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Function;
 
 import static com.callgrove.types.Tier.MOBILE;
 import static java.util.stream.Collectors.toList;
-import static net.inetalliance.funky.StringFun.*;
-import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.potion.Locator.$1;
 
 @WebServlet("/api/skillRoute/*")
 public class SkillRoutes
@@ -139,6 +135,7 @@ public class SkillRoutes
             copy.setTier(tier);
           });
     }
+    RoundRobinSelector.refresh(route);
     respond(response, new JsonMap().$("success", true));
   }
 
