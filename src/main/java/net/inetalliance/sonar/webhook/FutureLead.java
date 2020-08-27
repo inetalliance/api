@@ -1,5 +1,6 @@
 package net.inetalliance.sonar.webhook;
 
+import com.callgrove.jobs.Hud;
 import com.callgrove.obj.*;
 import com.callgrove.types.Address;
 import com.callgrove.types.Tier;
@@ -86,7 +87,11 @@ public class FutureLead
                 c.setFirstName(data.get("firstName"));
                 c.setLastName(data.get("surname"));
                 final Address shipping = new Address();
-                shipping.setPhone(unformatPhoneNumber(data.get("phone")));
+                var digits = unformatPhoneNumber(data.get("phone"));
+                if(digits.length()>10 && digits.startsWith("1")) {
+                    digits = digits.substring(1);
+                }
+                shipping.setPhone(digits);
                 c.setEmail(data.get("email"));
                 c.setContactType(CUSTOMER);
                 if (isNotEmpty(shipping.getPhone())) {
@@ -205,11 +210,16 @@ public class FutureLead
     }
 
     private static String select(List<Slot> queue) {
-
+        return select(queue,0);
+    }
+    private static String select(List<Slot> queue, int retries) {
         sort(queue);
         var slot = queue.get(0);
         slot.lastSelection = new DateTime();
-        return slot.agent;
+        if(retries >= queue.size() || Hud.available(slot.agent)) {
+            return slot.agent;
+        }
+        return select(queue, retries+1);
     }
 
     private Agent getAgent() {
