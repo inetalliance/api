@@ -176,7 +176,7 @@ public class FacebookLead
                     .token(System.getenv("SLACK_API_TOKEN"))
                     .text(msg).build());
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
-                    .channel("#form-leads")
+                    .channel("#digital-leads")
                     .token(System.getenv("SLACK_API_TOKEN"))
                     .text(msg).build());
 
