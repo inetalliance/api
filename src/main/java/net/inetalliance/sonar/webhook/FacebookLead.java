@@ -168,8 +168,8 @@ public class FacebookLead
             opp.setEstimatedClose(new DateMidnight());
             create("FacebookLead", opp);
             final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
-            final var msg = format("New %s Lead *%s* %s", opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
-                contact.getFullName(), link);
+            final var msg = format("New %s Lead *%s* %s => %s", opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
+                contact.getFullName(), link, agent.getFirstNameLastInitial());
 
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                     .channel("@" + agent.getSlackName())

@@ -120,7 +120,8 @@ public class FutureLead
                 json.put("opportunity", o.id);
                 respond(response, json);
                 final var link = String.format("https://crm.inetalliance.net/#/lead/%d", o.id);
-                final var msg = format("New Future Publishing Lead *%s* %s", c.getFullName(), link);
+                final var msg = format("New Future Publishing Lead *%s* %s => %s", c.getFullName(), link,
+                        agent.getFirstNameLastInitial());
 
                 if (!RuntimeKeeper.isDevelopment()) {
                     slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
