@@ -23,6 +23,7 @@ public class RoundRobinSelector {
     private RoundRobinSelector(final SkillRoute route) {
         this.route = route;
         this.queue = new ArrayList<>();
+        refresh();
     }
 
     public static void refresh(SkillRoute route) {
