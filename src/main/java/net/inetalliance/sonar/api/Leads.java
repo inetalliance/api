@@ -1,11 +1,37 @@
 package net.inetalliance.sonar.api;
 
-import static com.callgrove.obj.Opportunity.isActive;
-import static com.callgrove.obj.Opportunity.isClosed;
-import static com.callgrove.obj.Opportunity.isDead;
-import static com.callgrove.obj.Opportunity.isSold;
-import static com.callgrove.obj.Opportunity.withProductLineIdIn;
-import static com.callgrove.obj.Opportunity.withSiteIdIn;
+import com.callgrove.obj.*;
+import com.callgrove.types.ContactType;
+import com.callgrove.types.SaleSource;
+import net.inetalliance.angular.Key;
+import net.inetalliance.angular.exception.ForbiddenException;
+import net.inetalliance.angular.exception.NotFoundException;
+import net.inetalliance.angular.exception.UnauthorizedException;
+import net.inetalliance.funky.Funky;
+import net.inetalliance.funky.StringFun;
+import net.inetalliance.potion.Locator;
+import net.inetalliance.potion.info.Info;
+import net.inetalliance.potion.query.*;
+import net.inetalliance.sonar.ListableModel;
+import net.inetalliance.sonar.events.ReminderHandler;
+import net.inetalliance.sql.*;
+import net.inetalliance.types.json.Json;
+import net.inetalliance.types.json.JsonMap;
+import org.joda.time.DateMidnight;
+import org.joda.time.Interval;
+
+import javax.servlet.annotation.WebServlet;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.Set;
+import java.util.function.Function;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
+
+import static com.callgrove.obj.Opportunity.*;
 import static com.callgrove.types.ContactType.DEALER;
 import static com.callgrove.types.SaleSource.ONLINE;
 import static java.lang.System.currentTimeMillis;
@@ -17,49 +43,6 @@ import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.AreaCodeTime;
-import com.callgrove.obj.Contact;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
-import com.callgrove.obj.Site;
-import com.callgrove.types.ContactType;
-import com.callgrove.types.SaleSource;
-import java.io.IOException;
-import java.util.Arrays;
-import java.util.EnumSet;
-import java.util.Set;
-import java.util.function.Function;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import net.inetalliance.angular.Key;
-import net.inetalliance.angular.exception.ForbiddenException;
-import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.angular.exception.UnauthorizedException;
-import net.inetalliance.funky.Funky;
-import net.inetalliance.funky.StringFun;
-import net.inetalliance.potion.Locator;
-import net.inetalliance.potion.info.Info;
-import net.inetalliance.potion.query.DelegatingQuery;
-import net.inetalliance.potion.query.Join;
-import net.inetalliance.potion.query.Query;
-import net.inetalliance.potion.query.Search;
-import net.inetalliance.potion.query.SortedQuery;
-import net.inetalliance.sonar.ListableModel;
-import net.inetalliance.sonar.events.ReminderHandler;
-import net.inetalliance.sql.ColumnWhere;
-import net.inetalliance.sql.DbVendor;
-import net.inetalliance.sql.Namer;
-import net.inetalliance.sql.OrderBy;
-import net.inetalliance.sql.SqlBuilder;
-import net.inetalliance.types.json.Json;
-import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.Interval;
 
 @WebServlet("/api/lead/*")
 public class Leads
@@ -208,7 +191,6 @@ public class Leads
   public Query<Opportunity> all(final Class<Opportunity> type, final HttpServletRequest request) {
     final boolean support = request.getParameter("support") != null;
     final boolean review = request.getParameter("review") != null;
-    final boolean webhook = request.getParameter("webhook") != null;
     final SortField sort = SortField.from(request);
     final Agent loggedIn = Startup.getAgent(request);
     if (loggedIn == null) {
@@ -222,7 +204,6 @@ public class Leads
         : review
             ? Query.all(Opportunity.class).orderBy(sort.field, sort.direction)
             : Opportunity.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
-    query = query.and(webhook ? Opportunity.hasWebhook : Opportunity.noWebhook);
     final String[] pls = request.getParameterValues("pl");
     if (pls != null && pls.length > 0) {
       query = query
