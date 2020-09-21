@@ -1,38 +1,8 @@
 package net.inetalliance.sonar.reporting;
 
-import static com.callgrove.Callgrove.getReportingInterval;
-import static com.callgrove.obj.Call.isOutbound;
-import static com.callgrove.obj.Call.isQueue;
-import static com.callgrove.obj.Opportunity.isOnline;
-import static com.callgrove.obj.Opportunity.soldInInterval;
-import static com.callgrove.obj.Opportunity.withAmountGreaterThan;
-import static com.callgrove.obj.Opportunity.withProductLine;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.potion.Locator.count;
-import static net.inetalliance.potion.Locator.countDistinct;
-import static net.inetalliance.sql.Aggregate.SUM;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.obj.CallCenter;
-import com.callgrove.obj.DailyPerformance;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
-import com.callgrove.obj.Segment;
-import com.callgrove.obj.Site;
+import com.callgrove.obj.*;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import javax.servlet.annotation.WebServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
@@ -51,6 +21,19 @@ import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
 
+import javax.servlet.annotation.WebServlet;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.callgrove.Callgrove.getReportingInterval;
+import static com.callgrove.obj.Call.isOutbound;
+import static com.callgrove.obj.Call.isQueue;
+import static com.callgrove.obj.Opportunity.*;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.Aggregate.SUM;
+
 @WebServlet({"/reporting/reports/productLineClosing"})
 public class ProductLineClosing
     extends CachedGroupingRangeReport<Agent, Site> {
@@ -65,7 +48,7 @@ public class ProductLineClosing
 
   static Set<String> getQueues(final Agent loggedIn, final ProductLine productLine,
       final Collection<Site> sites) {
-    final Set<String> allForProductLine = Startup.productLineQueues.get(productLine.id);
+    final Set<String> allForProductLine = Startup.productLineQueues.computeIfAbsent(productLine.id, i->new HashSet<>());
     final Set<String> queues = new HashSet<>(allForProductLine);
     retainVisible(loggedIn, sites, queues);
     return queues;
