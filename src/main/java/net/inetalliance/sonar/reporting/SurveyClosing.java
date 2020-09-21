@@ -1,41 +1,8 @@
 package net.inetalliance.sonar.reporting;
 
-import static com.callgrove.Callgrove.getReportingInterval;
-import static com.callgrove.obj.Opportunity.createdInInterval;
-import static com.callgrove.obj.Opportunity.soldInInterval;
-import static com.callgrove.obj.Opportunity.withProductLineIn;
-import static com.callgrove.obj.Opportunity.withSaleSource;
-import static com.callgrove.obj.Opportunity.withSiteIn;
-import static com.callgrove.types.SaleSource.PHONE_CALL;
-import static com.callgrove.types.SaleSource.SURVEY;
-import static java.util.Optional.ofNullable;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.funky.StringFun.enumToCamelCase;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.potion.Locator.count;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.Aggregate.SUM;
-import static net.inetalliance.types.Currency.ZERO;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.obj.CallCenter;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
-import com.callgrove.obj.Site;
+import com.callgrove.obj.*;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.concurrent.atomic.AtomicBoolean;
-import javax.servlet.annotation.WebServlet;
-import net.inetalliance.angular.exception.BadRequestException;
-import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
 import net.inetalliance.funky.Funky;
 import net.inetalliance.log.Log;
@@ -49,6 +16,23 @@ import net.inetalliance.types.json.JsonMap;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
+
+import javax.servlet.annotation.WebServlet;
+import java.util.*;
+import java.util.concurrent.atomic.AtomicBoolean;
+
+import static com.callgrove.Callgrove.getReportingInterval;
+import static com.callgrove.obj.Opportunity.*;
+import static com.callgrove.types.SaleSource.PHONE_CALL;
+import static com.callgrove.types.SaleSource.SURVEY;
+import static java.util.Optional.ofNullable;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.funky.StringFun.enumToCamelCase;
+import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.Aggregate.SUM;
+import static net.inetalliance.types.Currency.ZERO;
 
 @WebServlet({"/reporting/reports/surveyClosing"})
 public class SurveyClosing
@@ -103,16 +87,13 @@ public class SurveyClosing
       throw new UnauthorizedException();
     }
     final String[] productLineIds = extras.get("productLine");
+    final Set<ProductLine> productLines;
     if (productLineIds == null || productLineIds.length == 0 || isEmpty(productLineIds[0])) {
-      throw new BadRequestException("Must specify product line via ?productLine=");
+      productLines = new HashSet<>();
+    } else {
+       productLines = Arrays.stream(productLineIds)
+              .map(id -> Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
     }
-    final Set<ProductLine> productLines = Arrays.stream(productLineIds)
-        .map(id -> Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
-    if (productLines.isEmpty()) {
-      throw new NotFoundException("Could not find product lines with ids %s",
-          Arrays.toString(productLineIds));
-    }
-
     final Interval interval = getReportingInterval(start, end);
 
     final Set<Site> visibleSites = loggedIn.getVisibleSites();
@@ -127,9 +108,21 @@ public class SurveyClosing
 
     boolean hasSite = sites != null && !sites.isEmpty();
 
-    final Query<Opportunity> base =
-        hasSite ? withProductLineIn(productLines).and(withSiteIn(sites))
-            : withProductLineIn(productLines);
+    final Query<Opportunity>  base;
+    if(productLines.isEmpty()) {
+        productLines.addAll(Locator.$A(ProductLine.class));
+      if(hasSite) {
+        base = withSiteIn(sites);
+      } else {
+        base = Query.all(Opportunity.class);
+      }
+    } else {
+      if(hasSite) {
+        base = withProductLineIn(productLines).and(withSiteIn(sites));
+      } else {
+        base = withProductLineIn(productLines);
+      }
+    }
 
     final Set<String> queuesForProductLine =
         productLines.stream().map(pl -> ProductLineClosing.getQueues(loggedIn, pl, sites)).flatMap(
