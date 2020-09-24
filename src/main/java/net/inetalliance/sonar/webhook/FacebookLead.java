@@ -1,12 +1,12 @@
 package net.inetalliance.sonar.webhook;
 
-import com.callgrove.obj.Queue;
 import com.callgrove.obj.*;
 import com.callgrove.obj.Site.SiteQueue;
 import com.callgrove.types.*;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import net.inetalliance.angular.AngularServlet;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.sonar.RoundRobinSelector;
@@ -19,8 +19,10 @@ import org.joda.time.DateTime;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.util.*;
-import java.util.regex.Matcher;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 import java.util.regex.Pattern;
 
 import static com.callgrove.types.Tier.NEVER;
@@ -43,8 +45,15 @@ public class FacebookLead
     private static final RoundRobinSelector selector = RoundRobinSelector.$(Locator.$(new SkillRoute(10128)));
 
     private static String extractPhone(final String value) {
-        final Matcher matcher = phonePattern.matcher(value);
-        return matcher.matches() ? matcher.group(1) : null;
+        if (StringFun.isEmpty(value)) {
+            return null;
+        }
+        var s = new StringBuilder(value.length());
+        value.chars()
+                .map(i -> (char) i)
+                .filter(Character::isDigit)
+                .forEach(s::append);
+        return s.toString();
     }
 
     public Pattern getPattern() {
@@ -152,7 +161,7 @@ public class FacebookLead
             final Opportunity opp = new Opportunity();
             var agent = getAgent();
             opp.setAssignedTo(agent);
-            if("form".equals(json.get("source"))) {
+            if ("form".equals(json.get("source"))) {
                 opp.setSource(SaleSource.SURVEY);
             } else {
                 opp.setSource(SaleSource.SOCIAL);
@@ -169,7 +178,7 @@ public class FacebookLead
             create("FacebookLead", opp);
             final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
             final var msg = format("New %s Lead *%s* %s => %s", opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
-                contact.getFullName(), link, agent.getFirstNameLastInitial());
+                    contact.getFullName(), link, agent.getFirstNameLastInitial());
 
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                     .channel("@" + agent.getSlackName())
