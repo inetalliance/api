@@ -49,11 +49,14 @@ public class FacebookLead
             return null;
         }
         var s = new StringBuilder(value.length());
-        value.chars()
-                .map(i -> (char) i)
-                .filter(Character::isDigit)
-                .forEach(s::append);
+        for(int i=0; i<value.length(); i++) {
+           char c = value.charAt(i);
+           if(Character.isDigit(c)) {
+               s.append(c);
+           }
+        }
         return s.toString();
+
     }
 
     public Pattern getPattern() {
