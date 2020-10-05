@@ -1,31 +1,10 @@
 package net.inetalliance.sonar.reporting;
 
-import static java.lang.String.format;
-import static java.util.Collections.emptySet;
-import static java.util.stream.Collectors.joining;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.types.www.ContentType.JSON;
-
 import com.callgrove.Callgrove;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.CallCenter;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
-import java.io.PrintWriter;
-import java.util.Arrays;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.LinkedHashSet;
-import java.util.Map;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.events.ProgressHandler;
@@ -43,6 +22,20 @@ import net.inetalliance.util.security.auth.Authorized;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
 import org.joda.time.Interval;
+
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest;
+import javax.servlet.http.HttpServletResponse;
+import java.io.PrintWriter;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static java.lang.String.format;
+import static java.util.Collections.emptySet;
+import static java.util.stream.Collectors.joining;
+import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.types.www.ContentType.JSON;
 
 public abstract class CachedGroupingRangeReport<R, G>
     extends AngularServlet {
@@ -75,6 +68,7 @@ public abstract class CachedGroupingRangeReport<R, G>
       throws Exception {
     final Authorized authorized = Auth.getAuthorized(request);
     if (authorized == null || !authorized.isAuthorized("reports")) {
+      log.error("%s does not have access to reports", authorized == null ? "null" : authorized.getName());
       throw new ForbiddenException("You do not have access to reports");
     }
     final Agent loggedIn = Locator.$(new Agent(authorized.getPhone()));
