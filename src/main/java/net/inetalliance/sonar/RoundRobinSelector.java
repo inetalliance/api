@@ -82,7 +82,7 @@ public class RoundRobinSelector {
         sort(queue);
         var slot = queue.get(0);
         slot.lastSelection = new DateTime();
-        if (retries >= queue.size() || Hud.available(slot.agent)) {
+        if (retries > queue.size() || Hud.available(slot.agent)) {
             return slot.agent;
         }
         return select(retries + 1);
