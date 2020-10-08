@@ -11,6 +11,8 @@ import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
 import net.inetalliance.util.security.auth.Authorized;
 import org.apache.http.HttpResponse;
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
@@ -31,7 +33,8 @@ public class AgentAuth
         extends Auth {
 
     private static final transient Log log = getInstance(AgentAuth.class);
-    private final HttpClientBuilder httpClientBuilder = HttpClientBuilder.create();
+    private final HttpClientBuilder httpClientBuilder = HttpClientBuilder.create()
+            .setDefaultRequestConfig(RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build());
 
     public AgentAuth() {
         super();
