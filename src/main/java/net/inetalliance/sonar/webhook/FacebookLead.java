@@ -140,7 +140,7 @@ public class FacebookLead
             final Contact contact = new Contact();
             String[] split = fullName.split("[ ]", 2);
             contact.setFirstName(split[0]);
-            contact.setLastName(split[1]);
+            contact.setLastName(split.length == 2 ? split[1] : "");
             contact.setContactType(ContactType.CUSTOMER);
             final Address address = new Address();
             address.setPhone(extractPhone(json.get("phone")));

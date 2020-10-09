@@ -13,7 +13,7 @@
     <context-param>
         <description>dev db uri</description>
         <param-name>dev-db</param-name>
-        <param-value>jdbc:postgresql://cg2@localhost/cg2?pool=9</param-value>
+        <param-value>jdbc:postgresql://cg2@db/cg2?pool=9</param-value>
     </context-param>
     <context-param>
         <description>asterisk uri</description>
