@@ -1,10 +1,9 @@
 package net.inetalliance.sonar;
 
+import com.callgrove.Callgrove;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.log.Log;
-import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.JsonMap;
-import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
@@ -49,23 +48,23 @@ public class YouTrack {
         try {
             request.addHeader("Accept", "application/json");
             log.debug("[YouTrack] requesting " + path);
-            final HttpResponse response = Startup.http.execute(request);
+            final var response = Callgrove.http.execute(request);
             final int code = response.getStatusLine().getStatusCode();
             switch (code) {
                 case 200:
-                    log.info("[YouTrack] Got response");
+                    log.debug("[YouTrack] Got response");
                     return JsonMap.parse(response.getEntity().getContent());
                 case 401:
                     EntityUtils.consumeQuietly(response.getEntity());
-                    log.info("[YouTrack] Auth required, logging in");
+                    log.debug("[YouTrack] Auth required, logging in");
                     final HttpPost login = new HttpPost(api + "/user/login");
                     final List<NameValuePair> data = new ArrayList<>(2);
                     data.add(new BasicNameValuePair("login", "api"));
                     data.add(new BasicNameValuePair("password", "4sa7ya,o"));
                     login.setEntity(new UrlEncodedFormEntity(data));
-                    final HttpResponse authResponse = Startup.http.execute(login);
+                    final var authResponse = Callgrove.http.execute(login);
                     if (authResponse.getStatusLine().getStatusCode() == 200) {
-                        log.info("[YouTrack] Logged in successfully as api");
+                        log.debug("[YouTrack] Logged in successfully as api");
                         EntityUtils.consumeQuietly(authResponse.getEntity());
                         return get(path);
                     }

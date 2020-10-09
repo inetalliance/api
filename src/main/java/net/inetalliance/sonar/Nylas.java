@@ -1,18 +1,18 @@
 package net.inetalliance.sonar;
 
+import com.callgrove.Callgrove;
 import com.callgrove.obj.Agent;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
-import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
-import java.util.Base64;
 
 import java.io.IOException;
+import java.util.Base64;
 
 import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.funky.StringFun.isNotEmpty;
@@ -29,7 +29,7 @@ public class Nylas {
         get.addHeader("Authorization", "Basic " + Base64.getEncoder()
                 .encodeToString("f02ufhmcopkrzbc35ah6w7wto:".getBytes()));
         try {
-            final var res = Startup.http.execute(get);
+            final var res = Callgrove.http.execute(get);
             final var ipAddresses = JsonMap.parse(res.getEntity().getContent());
             if (ipAddresses == null) {
                 log.warning("Nylas did not return an IP list");
@@ -47,7 +47,7 @@ public class Nylas {
         final var post = new HttpPost(String.format("https://api.nylas.com%s", endpoint));
         post.setEntity(new StringEntity(Json.pretty(data), ContentType.APPLICATION_JSON));
         try  {
-            final var res = Startup.http.execute(post);
+            final var res = Callgrove.http.execute(post);
             return JsonMap.parse(res.getEntity().getContent());
         } catch (IOException e) {
             log.error(e);

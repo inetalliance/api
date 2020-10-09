@@ -1,10 +1,10 @@
 package net.inetalliance.sonar;
 
+import com.callgrove.Callgrove;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
 import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
-import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.CaseInsensitiveStringMultivalueMap;
@@ -56,7 +56,7 @@ public class Avochato {
       request.addHeader("Accept", "application/json");
       request.addHeader("Host", host);
 
-      final HttpResponse response = Startup.http.execute(request);
+      final HttpResponse response = Callgrove.http.execute(request);
       final int code = response.getStatusLine().getStatusCode();
       if (code != 200) {
         log.error("Avochato returned: %s", code);
