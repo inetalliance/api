@@ -1,11 +1,5 @@
 package net.inetalliance.sonar;
 
-import static net.inetalliance.log.Log.getInstance;
-import static net.inetalliance.types.json.Json.pretty;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.log.Log;
 import net.inetalliance.types.json.JsonMap;
@@ -19,6 +13,13 @@ import org.apache.http.impl.client.DefaultHttpClient;
 import org.apache.http.impl.conn.PoolingClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import static net.inetalliance.log.Log.getInstance;
+import static net.inetalliance.types.json.Json.pretty;
 
 public class YouTrack {
 
@@ -50,7 +51,7 @@ public class YouTrack {
       throws IOException {
     final HttpGet request = new HttpGet(api + path);
     request.addHeader("Accept", "application/json");
-    log.info("[YouTrack] requesting " + path);
+    log.debug("[YouTrack] requesting " + path);
     final HttpResponse response = client.execute(request);
     final int code = response.getStatusLine().getStatusCode();
     switch (code) {
