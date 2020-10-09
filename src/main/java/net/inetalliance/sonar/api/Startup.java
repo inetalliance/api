@@ -1,31 +1,10 @@
 package net.inetalliance.sonar.api;
 
-import static java.util.Arrays.asList;
-import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.angular.AngularServlet.getContextParameter;
-import static net.inetalliance.potion.Locator.$;
-
 import com.callgrove.Callgrove;
 import com.callgrove.elastix.CallRouter;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.ProductLine;
-import java.lang.reflect.Constructor;
-import java.lang.reflect.InvocationTargetException;
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.URL;
-import java.sql.SQLException;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import javax.servlet.ServletContext;
-import javax.servlet.ServletContextEvent;
-import javax.servlet.annotation.WebListener;
-import javax.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.LocatorStartup;
 import net.inetalliance.angular.auth.Auth;
 import net.inetalliance.angular.events.Events;
@@ -42,6 +21,25 @@ import net.inetalliance.types.util.LocalizedMessages;
 import net.inetalliance.util.security.auth.Authenticator;
 import net.inetalliance.util.security.auth.Authorized;
 import org.asteriskjava.live.DefaultAsteriskServer;
+
+import javax.servlet.ServletContext;
+import javax.servlet.ServletContextEvent;
+import javax.servlet.annotation.WebListener;
+import javax.servlet.http.HttpServletRequest;
+import java.lang.reflect.Constructor;
+import java.lang.reflect.InvocationTargetException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URL;
+import java.sql.SQLException;
+import java.util.*;
+import java.util.logging.Level;
+import java.util.logging.Logger;
+
+import static java.util.Arrays.asList;
+import static java.util.stream.Collectors.toSet;
+import static net.inetalliance.angular.AngularServlet.getContextParameter;
+import static net.inetalliance.potion.Locator.$;
 
 @WebListener
 public class Startup
@@ -144,6 +142,9 @@ public class Startup
   @Override
   public void contextInitialized(final ServletContextEvent sce) {
     super.contextInitialized(sce);
+    log.info("Suppressing Asterisk Logging");
+    Logger.getLogger("org.asteriskjava.live.internal").setLevel(Level.OFF);
+
     new Thread(() -> {
       final ServletContext context = sce.getServletContext();
       final String asteriskParam = getContextParameter(context, "asterisk");
