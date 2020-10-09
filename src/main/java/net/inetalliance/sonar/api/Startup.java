@@ -20,12 +20,18 @@ import net.inetalliance.sonar.events.SessionHandler;
 import net.inetalliance.types.util.LocalizedMessages;
 import net.inetalliance.util.security.auth.Authenticator;
 import net.inetalliance.util.security.auth.Authorized;
+import org.apache.http.client.HttpClient;
+import org.apache.http.client.config.CookieSpecs;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.asteriskjava.live.DefaultAsteriskServer;
 
 import javax.servlet.ServletContext;
 import javax.servlet.ServletContextEvent;
 import javax.servlet.annotation.WebListener;
 import javax.servlet.http.HttpServletRequest;
+import java.io.IOException;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
@@ -44,6 +50,11 @@ import static net.inetalliance.potion.Locator.$;
 @WebListener
 public class Startup
     extends LocatorStartup {
+
+  private static final CloseableHttpClient httpClient = HttpClientBuilder.create()
+          .setDefaultRequestConfig(
+                  RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build()).build();
+  public static final HttpClient http = httpClient;
 
   private static final transient Log log = Log.getInstance(Startup.class);
   private static final Map<Set<String>, Set<String>> queuesForProductLine = new HashMap<>();
@@ -223,6 +234,11 @@ public class Startup
     SessionHandler.destroy();
     if (pbx != null) {
       pbx.shutdown();
+    }
+    try {
+      httpClient.close();
+    } catch (IOException e) {
+      // don't care
     }
   }
 }

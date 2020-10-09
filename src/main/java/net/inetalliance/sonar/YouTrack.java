@@ -2,16 +2,13 @@ package net.inetalliance.sonar;
 
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.log.Log;
+import net.inetalliance.sonar.api.Startup;
 import net.inetalliance.types.json.JsonMap;
 import org.apache.http.HttpResponse;
 import org.apache.http.NameValuePair;
-import org.apache.http.client.config.CookieSpecs;
-import org.apache.http.client.config.RequestConfig;
 import org.apache.http.client.entity.UrlEncodedFormEntity;
 import org.apache.http.client.methods.HttpGet;
 import org.apache.http.client.methods.HttpPost;
-import org.apache.http.impl.client.HttpClientBuilder;
-import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.util.EntityUtils;
 
@@ -26,17 +23,10 @@ public class YouTrack {
 
     public static final String api = "https://youtrack.inetalliance.net/rest";
     private static final transient Log log = getInstance(YouTrack.class);
-    private final PoolingHttpClientConnectionManager cxnManager;
-    private final HttpClientBuilder clientBuilder;
 
 
     public YouTrack() {
         super();
-        cxnManager = new PoolingHttpClientConnectionManager();
-        this.clientBuilder = HttpClientBuilder.create()
-                .setDefaultRequestConfig(
-                        RequestConfig.custom().setCookieSpec(CookieSpecs.STANDARD).build())
-                .setConnectionManager(cxnManager);
     }
 
     public static void main(final String[] args) {
@@ -48,7 +38,6 @@ public class YouTrack {
             //%7D+Opportunity+ID" +
             //"%3A+" + 227433 );+ "&with=id&max=1024");
             System.out.println(pretty(jsonMap));
-            youTrack.shutdown();
         } catch (Throwable t) {
             log.error(t);
         }
@@ -57,10 +46,10 @@ public class YouTrack {
     public synchronized JsonMap get(final String path)
             throws IOException {
         final HttpGet request = new HttpGet(api + path);
-        request.addHeader("Accept", "application/json");
-        log.debug("[YouTrack] requesting " + path);
-        try (var client = clientBuilder.build()) {
-            final HttpResponse response = client.execute(request);
+        try {
+            request.addHeader("Accept", "application/json");
+            log.debug("[YouTrack] requesting " + path);
+            final HttpResponse response = Startup.http.execute(request);
             final int code = response.getStatusLine().getStatusCode();
             switch (code) {
                 case 200:
@@ -74,7 +63,7 @@ public class YouTrack {
                     data.add(new BasicNameValuePair("login", "api"));
                     data.add(new BasicNameValuePair("password", "4sa7ya,o"));
                     login.setEntity(new UrlEncodedFormEntity(data));
-                    final HttpResponse authResponse = client.execute(login);
+                    final HttpResponse authResponse = Startup.http.execute(login);
                     if (authResponse.getStatusLine().getStatusCode() == 200) {
                         log.info("[YouTrack] Logged in successfully as api");
                         EntityUtils.consumeQuietly(authResponse.getEntity());
@@ -86,11 +75,10 @@ public class YouTrack {
                     throw new BadRequestException("Got back:", response.getStatusLine().getReasonPhrase());
 
             }
+        } finally {
+            request.releaseConnection();
         }
-
     }
 
-    public void shutdown() {
-        cxnManager.shutdown();
-    }
 }
+
