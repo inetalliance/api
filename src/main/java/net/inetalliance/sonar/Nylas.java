@@ -25,7 +25,7 @@ public class Nylas {
     }
 
     private void ipAddresses() {
-        final var get = new HttpGet("https://api.nylas.com/a/ccp8e4h3wu7i4s2o5mdi3hlne/ip_addresses");
+        final var get = new HttpGet("https://crm.inetalliance.net/api/nylas/a/ccp8e4h3wu7i4s2o5mdi3hlne/ip_addresses");
         get.addHeader("Authorization", "Basic " + Base64.getEncoder()
                 .encodeToString("f02ufhmcopkrzbc35ah6w7wto:".getBytes()));
         try {
@@ -44,7 +44,7 @@ public class Nylas {
     }
 
     private JsonMap postNylas(final String endpoint, final JsonMap data) {
-        final var post = new HttpPost(String.format("https://api.nylas.com%s", endpoint));
+        final var post = new HttpPost(String.format("https://crm.inetalliance.net/api/nylas%s", endpoint));
         post.setEntity(new StringEntity(Json.pretty(data), ContentType.APPLICATION_JSON));
         try  {
             final var res = Callgrove.http.execute(post);
@@ -111,7 +111,8 @@ public class Nylas {
                 .startsWith("No grant with code")) {
             throw new InvalidGrantException();
         } else {
-            log.error("%s got an unexpected error from Nylas /connect/token: %s", Json.pretty(json));
+            log.error("%s got an unexpected error from Nylas /connect/token: %s", agent.getFullName(),
+                    Json.pretty(json));
             return null;
         }
     }
