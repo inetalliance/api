@@ -1,15 +1,7 @@
 package net.inetalliance.sonar.events;
 
-import static java.util.Collections.synchronizedMap;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static net.inetalliance.cron.Cron.interval;
-
 import com.callgrove.jobs.Hud;
 import com.callgrove.obj.Agent;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Objects;
-import javax.websocket.Session;
 import net.inetalliance.angular.events.Events;
 import net.inetalliance.cron.CronJob;
 import net.inetalliance.cron.CronStatus;
@@ -17,6 +9,15 @@ import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.LazyMap;
+
+import javax.websocket.Session;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Objects;
+
+import static java.util.Collections.synchronizedMap;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static net.inetalliance.cron.Cron.interval;
 
 public class StatusHandler
     implements MessageHandler {
@@ -122,6 +123,7 @@ public class StatusHandler
               agent.getLastNameFirstInitial(),
               agent.isPaused());
         }
+        Events.broadcast("status", agent.key, hud);
         return new JsonMap().$("paused", agent.isPaused());
       case FORWARD:
         Locator.update(agent, agent.key, copy -> {
@@ -131,6 +133,7 @@ public class StatusHandler
         if (hud != null) {
           hud.put("forwarded", agent.isForwarded());
           Hud.currentStatus.set(agent.key, hud);
+          Events.broadcast("status", agent.key, hud);
           log.info("%s changed %s to forwarded: %s", agent.getLastNameFirstInitial(),
               agent.getLastNameFirstInitial(),
               agent.isForwarded());
