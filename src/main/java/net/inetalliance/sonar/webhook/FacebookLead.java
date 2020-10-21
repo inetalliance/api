@@ -30,8 +30,7 @@ import static java.lang.String.format;
 import static java.util.Collections.shuffle;
 import static java.util.EnumSet.complementOf;
 import static java.util.EnumSet.of;
-import static net.inetalliance.potion.Locator.$1;
-import static net.inetalliance.potion.Locator.create;
+import static net.inetalliance.potion.Locator.*;
 
 
 @WebServlet("/hook/facebookLead")
@@ -49,11 +48,11 @@ public class FacebookLead
             return null;
         }
         var s = new StringBuilder(value.length());
-        for(int i=0; i<value.length(); i++) {
-           char c = value.charAt(i);
-           if(Character.isDigit(c)) {
-               s.append(c);
-           }
+        for (int i = 0; i < value.length(); i++) {
+            char c = value.charAt(i);
+            if (Character.isDigit(c) && (c != '1' || i > 0)) {
+                s.append(c);
+            }
         }
         return s.toString();
 
@@ -137,17 +136,39 @@ public class FacebookLead
             final JsonMap json = JsonMap.parse(request.getInputStream());
 
             final String fullName = json.get("fullName");
-            final Contact contact = new Contact();
-            String[] split = fullName.split("[ ]", 2);
-            contact.setFirstName(split[0]);
-            contact.setLastName(split.length == 2 ? split[1] : "");
-            contact.setContactType(ContactType.CUSTOMER);
-            final Address address = new Address();
-            address.setPhone(extractPhone(json.get("phone")));
-            contact.setBilling(address);
-            contact.setShipping(address);
-            contact.setEmail(json.get("email"));
-            create("FacebookLead", contact);
+            final Contact contact;
+            final var email = json.get("email");
+            var phone = extractPhone(json.get("phone"));
+            var existingContact = $1(Contact.withEmail(email));
+
+            if (existingContact == null) {
+                contact = new Contact();
+                String[] split = fullName.split("[ ]", 2);
+                contact.setFirstName(split[0]);
+                contact.setLastName(split.length == 2 ? split[1] : "");
+                contact.setContactType(ContactType.CUSTOMER);
+                final Address address = new Address();
+                address.setPhone(phone);
+                var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
+                if (areaCode != null) {
+                    address.setState(areaCode.getUsState());
+                }
+                contact.setBilling(address);
+                contact.setShipping(address);
+                contact.setEmail(email);
+                create("FacebookLead", contact);
+            } else {
+                if (StringFun.isEmpty(existingContact.getShipping().getPhone())) {
+                    update(existingContact, "FacebookLead", copy -> {
+                        copy.getShipping().setPhone(json.get("phone"));
+                        var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
+                        if (areaCode != null) {
+                            copy.getShipping().setState(areaCode.getUsState());
+                        }
+                    });
+                }
+                contact = existingContact;
+            }
 
             final Site site = $1(Site.withAbbreviation(json.get("site")));
             final Currency amount = new Currency(json.getDouble("amount"));
@@ -161,26 +182,48 @@ public class FacebookLead
                 return;
             }
 
-            final Opportunity opp = new Opportunity();
-            var agent = getAgent();
-            opp.setAssignedTo(agent);
-            if ("form".equals(json.get("source"))) {
-                opp.setSource(SaleSource.SURVEY);
+            final Opportunity opp;
+            var existingOpp = $1(Opportunity.withContact(contact).and(Opportunity.withProductLine(productLine)));
+            final Agent agent;
+            var reassigned = false;
+            if (existingOpp == null) {
+                opp = new Opportunity();
+                agent = getAgent();
+                opp.setAssignedTo(agent);
+                if ("form".equals(json.get("source"))) {
+                    opp.setSource(SaleSource.SURVEY);
+                } else {
+                    opp.setSource(SaleSource.SOCIAL);
+                }
+                opp.setAmount(amount);
+                opp.setStage(SalesStage.HOT);
+                opp.setContact(contact);
+                opp.setProductLine(productLine);
+                opp.setPurchasingFor(Relation.SELF);
+                opp.setSite(site);
+                opp.setCreated(date);
+                opp.setReminder(date);
+                opp.setEstimatedClose(new DateMidnight());
+                create("FacebookLead", opp);
             } else {
-                opp.setSource(SaleSource.SOCIAL);
+                Locator.update(existingOpp, "FacebookLead", copy -> {
+                    copy.setReminder(date);
+                });
+                opp = existingOpp;
+                if (opp.getAssignedTo().isLocked()) {
+                    agent = getAgent();
+                    reassigned = true;
+                    Locator.update(existingOpp, "FacebookLead", copy -> {
+                        copy.setAssignedTo(agent);
+                    });
+                } else {
+                    agent = opp.getAssignedTo();
+                }
             }
-            opp.setAmount(amount);
-            opp.setStage(SalesStage.HOT);
-            opp.setContact(contact);
-            opp.setProductLine(productLine);
-            opp.setPurchasingFor(Relation.SELF);
-            opp.setSite(site);
-            opp.setCreated(date);
-            opp.setReminder(date);
-            opp.setEstimatedClose(new DateMidnight());
-            create("FacebookLead", opp);
             final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
-            final var msg = format("New %s Lead *%s* %s => %s", opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
+            final var msg = format("%s %s Lead *%s* %s => %s",
+                    reassigned ? "Reassigned " : (existingOpp == null ? "New" : "Updated"),
+                    opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
                     contact.getFullName(), link, agent.getFirstNameLastInitial());
 
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
@@ -192,11 +235,10 @@ public class FacebookLead
                     .token(System.getenv("SLACK_API_TOKEN"))
                     .text(msg).build());
 
-            final JsonMap result =
+            respond(response,
                     new JsonMap().$("contact", contact.getId()).$("agent", agent.getSlackName())
-                            .$("opp", opp.getId());
-            respond(response, result);
-            log.info("Created opp %d via Zapier/Form assigned to %s", opp.getId(), agent.getFullName());
+                            .$("opp", opp.getId()));
+            log.info(msg);
         } catch (Throwable e) {
             log.error(e);
         }
