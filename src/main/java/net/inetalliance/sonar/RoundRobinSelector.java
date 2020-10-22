@@ -82,7 +82,9 @@ public class RoundRobinSelector {
         sort(queue);
         var slot = queue.get(0);
         slot.lastSelection = new DateTime();
-        if (retries > queue.size() || Hud.available(slot.agent)) {
+        var hour = new DateTime().getHourOfDay();
+        var afterHours = hour < 7 || hour > 19 ;
+        if (afterHours || retries > queue.size() || Hud.available(slot.agent)) {
             return slot.agent;
         }
         return select(retries + 1);
