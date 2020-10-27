@@ -9,20 +9,22 @@ import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.DbCli;
 import org.joda.time.DateMidnight;
+import org.joda.time.Interval;
 
 import static java.lang.System.out;
 import static net.inetalliance.potion.Locator.*;
 
-public class DisqualifyDead extends DbCli {
+public class Requalify extends DbCli {
     @Override
     protected void exec() {
         Callgrove.register();
         var amg = $(new Site(42));
         var query = Opportunity.isDead.and(
-                Opportunity.createdAfter(new DateMidnight(2020,10,19))).and(
-                Opportunity.notesStartWith("wrong").or(Opportunity.notesStartWith("dead"))).and(
-                Opportunity.withSite(amg)).and(
-                Opportunity.createdAfter(new DateMidnight().withDayOfYear(1)));
+                Opportunity.createdInInterval(
+                        new Interval(
+                                new DateMidnight(2020, 10, 1),
+                                new DateMidnight(2020, 10, 16))))
+                .and(Opportunity.withSite(amg));
         var count = count(query);
         var meter = new ProgressMeter(count);
         out.printf("There are %d%n", count);
@@ -39,8 +41,8 @@ public class DisqualifyDead extends DbCli {
     }
 
     public static void main(String[] args) {
-        Cli.run(new DisqualifyDead(), args);
+        Cli.run(new Requalify(), args);
     }
 
-    private static final transient Log log = Log.getInstance(DisqualifyDead.class);
+    private static final transient Log log = Log.getInstance(Requalify.class);
 }
