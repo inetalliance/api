@@ -22,8 +22,8 @@ public class Requalify extends DbCli {
         var query = Opportunity.isDead.and(
                 Opportunity.createdInInterval(
                         new Interval(
-                                new DateMidnight(2020, 8, 1),
-                                new DateMidnight(2020, 9, 1))))
+                                new DateMidnight(2020, 1, 1),
+                                new DateMidnight(2020, 4, 1))))
                 .and(Opportunity.withSite(amg));
         var count = count(query);
         var meter = new ProgressMeter(count);
