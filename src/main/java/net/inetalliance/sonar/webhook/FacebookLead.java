@@ -138,6 +138,7 @@ public class FacebookLead
             final String fullName = json.get("fullName");
             final Contact contact;
             final var email = json.get("email");
+            final var zip = json.get("zip");
             var phone = extractPhone(json.get("phone"));
             var existingContact = $1(Contact.withEmail(email));
 
@@ -149,6 +150,7 @@ public class FacebookLead
                 contact.setContactType(ContactType.CUSTOMER);
                 final Address address = new Address();
                 address.setPhone(phone);
+                address.setPostalCode(zip);
                 var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
                 if (areaCode != null) {
                     address.setState(areaCode.getUsState());
@@ -164,6 +166,9 @@ public class FacebookLead
                         var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
                         if (areaCode != null) {
                             copy.getShipping().setState(areaCode.getUsState());
+                        }
+                        if(StringFun.isNotEmpty(zip)) {
+                            copy.getShipping().setPostalCode(zip);
                         }
                     });
                 }
