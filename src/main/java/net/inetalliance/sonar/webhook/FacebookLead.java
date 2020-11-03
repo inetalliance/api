@@ -151,7 +151,7 @@ public class FacebookLead
                 final Address address = new Address();
                 address.setPhone(phone);
                 address.setPostalCode(zip);
-                var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
+                var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                 if (areaCode != null) {
                     address.setState(areaCode.getUsState());
                 }
@@ -162,8 +162,8 @@ public class FacebookLead
             } else {
                 if (StringFun.isEmpty(existingContact.getShipping().getPhone())) {
                     update(existingContact, "FacebookLead", copy -> {
-                        copy.getShipping().setPhone(json.get("phone"));
-                        var areaCode = AreaCodeTime.getAreaCodeTime(json.get("phone"));
+                        copy.getShipping().setPhone(phone);
+                        var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                         if (areaCode != null) {
                             copy.getShipping().setState(areaCode.getUsState());
                         }
