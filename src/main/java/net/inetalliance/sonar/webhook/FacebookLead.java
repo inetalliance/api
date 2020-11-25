@@ -2,35 +2,46 @@ package net.inetalliance.sonar.webhook;
 
 import com.callgrove.obj.*;
 import com.callgrove.obj.Site.SiteQueue;
-import com.callgrove.types.*;
+import com.callgrove.types.Address;
+import com.callgrove.types.ContactType;
+import com.callgrove.types.SaleSource;
+import com.callgrove.types.SalesStage;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
+import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
+import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.Currency;
-import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
+import net.inetalliance.types.struct.maps.LazyMap;
 import org.joda.time.DateMidnight;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeConstants;
 
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.util.ArrayList;
-import java.util.Collection;
-import java.util.List;
+import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import static com.callgrove.obj.ProductLine.withNameLike;
+import static com.callgrove.obj.Site.withAbbreviation;
 import static com.callgrove.types.Tier.NEVER;
+import static java.lang.Character.isDigit;
 import static java.lang.String.format;
 import static java.util.Collections.shuffle;
 import static java.util.EnumSet.complementOf;
 import static java.util.EnumSet.of;
+import static net.inetalliance.funky.StringFun.isEmpty;
 import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.types.json.Json.dateTimeFormat2;
 
 
 @WebServlet("/hook/facebookLead")
@@ -38,19 +49,21 @@ public class FacebookLead
         extends AngularServlet {
 
     private static final transient Log log = Log.getInstance(FacebookLead.class);
-    private static final Pattern phonePattern = Pattern.compile(".*(\\d{10})");
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
     private final Slack slack = Slack.getInstance();
-    private static final RoundRobinSelector selector = RoundRobinSelector.$(Locator.$(new SkillRoute(10128)));
+    private final Map<Integer, RoundRobinSelector> selectors = new LazyMap<>(
+            new HashMap<>(), id -> RoundRobinSelector.$($(new SkillRoute(id))));
+
+    private static final RoundRobinSelector selector = RoundRobinSelector.$($(new SkillRoute(10128)));
 
     private static String extractPhone(final String value) {
-        if (StringFun.isEmpty(value)) {
+        if (isEmpty(value)) {
             return null;
         }
         var s = new StringBuilder(value.length());
         for (int i = 0; i < value.length(); i++) {
             char c = value.charAt(i);
-            if (Character.isDigit(c) && (c != '1' || i > 0)) {
+            if (isDigit(c) && (c != '1' || i > 0)) {
                 s.append(c);
             }
         }
@@ -69,38 +82,38 @@ public class FacebookLead
     }
 
     public Agent getAgent(final int emailQueueId) {
-        final EmailQueue emailQueue = Locator.$(new EmailQueue(emailQueueId));
+        final var emailQueue = $(new EmailQueue(emailQueueId));
         if (emailQueue == null) {
             throw new NullPointerException();
         }
-        final Queue queue = Locator.$(emailQueue.getQueue());
+        final var queue = $(emailQueue.getQueue());
         if (queue == null) {
             throw new NullPointerException(
                     format("Email queue \"%s\" does not have a call queue associated with it!",
                             emailQueue.getName()));
         }
-        final SkillRoute skillRoute = Locator.$(queue.getSkillRoute());
+        final var skillRoute = $(queue.getSkillRoute());
         if (skillRoute == null) {
             throw new NullPointerException(
                     format("Email queue \"%s\" has a call queue (%s), but no skill route!",
                             emailQueue.getName(),
                             queue.getName()));
         }
-        final SiteQueue siteQueue = $1(SiteQueue.withQueue(queue));
+        final var siteQueue = $1(SiteQueue.withQueue(queue));
         if (siteQueue != null) {
-            final Site site = siteQueue.site;
+            final var site = siteQueue.site;
             if (site.isDistributor()) {
-                return Locator.$(new Agent("7006")); // mat
+                return $(new Agent("7006")); // mat
             } else {
-                final Map<Tier, Collection<Agent>> members = skillRoute.getConfiguredMembers();
+                final var members = skillRoute.getConfiguredMembers();
                 members.remove(NEVER);
-                for (final Tier tier : complementOf(of(NEVER))) {
+                for (final var tier : complementOf(of(NEVER))) {
                     if (!members.containsKey(tier)) {
                         continue;
                     }
-                    final List<Agent> agents = new ArrayList<>(members.get(tier));
+                    final var agents = new ArrayList<>(members.get(tier));
                     shuffle(agents);
-                    for (final Agent agent : agents) {
+                    for (final var agent : agents) {
                         if (!agent.isPaused() && !agent.isForwarded()) {
                             return agent;
                         }
@@ -112,11 +125,11 @@ public class FacebookLead
                 } else {
                     log.warning("No agent logged in to %s, defaulting to random agents by priority",
                             queue.key);
-                    for (final Tier tier : complementOf(of(NEVER))) {
+                    for (final var tier : complementOf(of(NEVER))) {
                         if (!members.containsKey(tier)) {
                             continue;
                         }
-                        final List<Agent> agents = new ArrayList<>(members.get(tier));
+                        final var agents = new ArrayList<>(members.get(tier));
                         shuffle(agents);
                         return agents.iterator().next();
                     }
@@ -133,9 +146,9 @@ public class FacebookLead
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
         try {
             log.info("Processing webhook from Zapier");
-            final JsonMap json = JsonMap.parse(request.getInputStream());
+            final var json = JsonMap.parse(request.getInputStream());
 
-            final String fullName = json.get("fullName");
+            final var fullName = json.get("fullName");
             final Contact contact;
             final var email = json.get("email");
             final var zip = json.get("zip");
@@ -144,7 +157,7 @@ public class FacebookLead
 
             if (existingContact == null) {
                 contact = new Contact();
-                String[] split = fullName.split("[ ]", 2);
+                var split = fullName.split("[ ]", 2);
                 contact.setFirstName(split[0]);
                 contact.setLastName(split.length == 2 ? split[1] : "");
                 contact.setContactType(ContactType.CUSTOMER);
@@ -160,14 +173,14 @@ public class FacebookLead
                 contact.setEmail(email);
                 create("FacebookLead", contact);
             } else {
-                if (StringFun.isEmpty(existingContact.getShipping().getPhone())) {
+                if (isEmpty(existingContact.getShipping().getPhone())) {
                     update(existingContact, "FacebookLead", copy -> {
                         copy.getShipping().setPhone(phone);
                         var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                         if (areaCode != null) {
                             copy.getShipping().setState(areaCode.getUsState());
                         }
-                        if(StringFun.isNotEmpty(zip)) {
+                        if (StringFun.isNotEmpty(zip)) {
                             copy.getShipping().setPostalCode(zip);
                         }
                     });
@@ -175,11 +188,11 @@ public class FacebookLead
                 contact = existingContact;
             }
 
-            final Site site = $1(Site.withAbbreviation(json.get("site")));
-            final Currency amount = new Currency(json.getDouble("amount"));
-            final String fullDate = json.get("date");
-            final DateTime date = Json.dateTimeFormat2.parseDateTime(fullDate.split("[+]", 2)[0]);
-            final ProductLine productLine = $1(ProductLine.withNameLike(json.get("productLine")));
+            final var site = $1(withAbbreviation(json.get("site")));
+            final var amount = new Currency(json.getDouble("amount"));
+            final var fullDate = json.get("date");
+            final var date = dateTimeFormat2.parseDateTime(fullDate.split("[+]", 2)[0]);
+            final var productLine = $1(withNameLike(json.get("productLine")));
 
             if (productLine == null) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -193,7 +206,7 @@ public class FacebookLead
             var reassigned = false;
             if (existingOpp == null) {
                 opp = new Opportunity();
-                agent = getAgent();
+                agent = getAgent(productLine.id);
                 opp.setAssignedTo(agent);
                 if ("form".equals(json.get("source"))) {
                     opp.setSource(SaleSource.SURVEY);
@@ -216,7 +229,7 @@ public class FacebookLead
                 });
                 opp = existingOpp;
                 if (opp.getAssignedTo().isLocked()) {
-                    agent = getAgent();
+                    agent = getAgent(productLine.id);
                     reassigned = true;
                     Locator.update(existingOpp, "FacebookLead", copy -> {
                         copy.setAssignedTo(agent);
@@ -249,7 +262,38 @@ public class FacebookLead
         }
     }
 
-    private Agent getAgent() {
-        return Locator.$(new Agent(selector.select()));
+    private boolean isAfterHours() {
+        var now = new DateTime();
+        switch (now.getDayOfWeek()) {
+            case DateTimeConstants.SATURDAY:
+            case DateTimeConstants.SUNDAY:
+                return true;
+            default:
+                var h = now.getHourOfDay();
+                return h >= 7 && h <= 20;
+        }
+    }
+
+    private Agent getAgent(final Integer product) {
+        return $(new Agent((isAfterHours() ? selector : selectors.get(product)).select()));
+    }
+
+    public static void main(String[] args) {
+        var q = Query.eq(Contact.class, "state", null)
+                .and(Query.eq(Contact.class, "shipping_phone", null).negate());
+        var total = count(q);
+        var meter = new ProgressMeter(total);
+        var updated = new AtomicInteger(0);
+        Locator.forEach(q, c -> {
+            var areaCode = AreaCodeTime.getAreaCodeTime(extractPhone(c.getShipping().getPhone()));
+            if (areaCode != null) {
+                Locator.update(c, "FacebookLead", copy -> {
+                    var shipping = copy.getShipping();
+                    shipping.setState(areaCode.getUsState());
+                    shipping.setCountry(areaCode.getCountry());
+                });
+            }
+            meter.increment("%d/%d", updated.incrementAndGet(), total);
+        });
     }
 }
