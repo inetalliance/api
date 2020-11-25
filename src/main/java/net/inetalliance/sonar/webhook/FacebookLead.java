@@ -51,10 +51,12 @@ public class FacebookLead
     private static final transient Log log = Log.getInstance(FacebookLead.class);
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
     private final Slack slack = Slack.getInstance();
-    private final Map<Integer, RoundRobinSelector> selectors = new LazyMap<>(
-            new HashMap<>(), id -> RoundRobinSelector.$($(new SkillRoute(id))));
 
+    private final Map<Integer,SkillRoute> routes = new HashMap<>();
+    private final Map<Integer, RoundRobinSelector> selectors = new LazyMap<>(
+            new HashMap<>(), id -> RoundRobinSelector.$(routes.get(id)));
     private static final RoundRobinSelector selector = RoundRobinSelector.$($(new SkillRoute(10128)));
+
 
     private static String extractPhone(final String value) {
         if (isEmpty(value)) {
@@ -276,6 +278,15 @@ public class FacebookLead
 
     private Agent getAgent(final Integer product) {
         return $(new Agent((isAfterHours() ? selector : selectors.get(product)).select()));
+    }
+
+    @Override
+    public void init() {
+        var ag = Locator.$(new Site(42));
+        ag.getQueues().forEach(q-> routes.put(q.getProductLine().id,q.getSkillRoute()));
+        routes.forEach((p,s)-> {
+            log.info("DigiLead %s -> %s", Locator.$(new ProductLine(p)).getName(), s.getName());
+        });
     }
 
     public static void main(String[] args) {
