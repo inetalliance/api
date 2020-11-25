@@ -272,7 +272,7 @@ public class FacebookLead
                 return true;
             default:
                 var h = now.getHourOfDay();
-                return h >= 7 && h <= 20;
+                return h <= 7 || h >= 20;
         }
     }
 
