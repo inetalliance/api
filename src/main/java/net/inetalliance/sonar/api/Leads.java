@@ -150,7 +150,7 @@ public class Leads
 
   }
 
-  private static Query<Opportunity> buildSearchQuery(final Query<Opportunity> query,
+  public static Query<Opportunity> buildSearchQuery(final Query<Opportunity> query,
       String searchQuery) {
     searchQuery = searchQuery.replaceAll("[-()]", "");
     searchQuery = spaces.matcher(searchQuery).replaceAll(" ");

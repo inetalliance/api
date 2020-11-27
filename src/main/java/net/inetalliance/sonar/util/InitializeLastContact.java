@@ -36,7 +36,6 @@ public class InitializeLastContact extends DbCli {
             var today = Opportunity.createdInInterval(day.toInterval());
             var count = Locator.count(today);
             String dayLabel = dateFormat.print(day);
-            meter.increment("%s - %d", dayLabel, count);
             var i = new AtomicInteger(0);
             forEach(today, o -> {
                 meter.setLabel("%s - %d/%d", dayLabel, i.incrementAndGet(),count);
@@ -49,6 +48,7 @@ public class InitializeLastContact extends DbCli {
                     });
                 }
             });
+            meter.increment();
             day = day.plusDays(1);
         }
 
