@@ -9,13 +9,13 @@ import com.callgrove.types.SalesStage;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.Currency;
+import net.inetalliance.types.geopolitical.canada.Division;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.LazyMap;
 import org.joda.time.DateMidnight;
@@ -40,6 +40,7 @@ import static java.util.Collections.shuffle;
 import static java.util.EnumSet.complementOf;
 import static java.util.EnumSet.of;
 import static net.inetalliance.funky.StringFun.isEmpty;
+import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.potion.Locator.*;
 import static net.inetalliance.types.json.Json.dateTimeFormat2;
 
@@ -52,7 +53,7 @@ public class FacebookLead
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
     private final Slack slack = Slack.getInstance();
 
-    private final Map<Integer,SkillRoute> routes = new HashMap<>();
+    private final Map<Integer, SkillRoute> routes = new HashMap<>();
     private final Map<Integer, RoundRobinSelector> selectors = new LazyMap<>(
             new HashMap<>(), id -> RoundRobinSelector.$(routes.get(id)));
     private static final RoundRobinSelector selector = RoundRobinSelector.$($(new SkillRoute(10128)));
@@ -156,6 +157,7 @@ public class FacebookLead
             final var zip = json.get("zip");
             var phone = extractPhone(json.get("phone"));
             var existingContact = $1(Contact.withEmail(email));
+            var provinceAbbrevitaion = json.get("province");
 
             if (existingContact == null) {
                 contact = new Contact();
@@ -166,9 +168,21 @@ public class FacebookLead
                 final Address address = new Address();
                 address.setPhone(phone);
                 address.setPostalCode(zip);
+                if (isNotEmpty(provinceAbbrevitaion)) {
+                    address.setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
+                }
                 var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                 if (areaCode != null) {
-                    address.setState(areaCode.getUsState());
+                    switch (areaCode.getCountry()) {
+                        case UNITED_STATES:
+                            address.setState(areaCode.getUsState());
+                            break;
+                        case CANADA:
+                            if(address.getCanadaDivision() == null) {
+                                address.setCanadaDivision(areaCode.getCaDivision());
+                            }
+                            break;
+                    }
                 }
                 contact.setBilling(address);
                 contact.setShipping(address);
@@ -180,9 +194,21 @@ public class FacebookLead
                         copy.getShipping().setPhone(phone);
                         var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                         if (areaCode != null) {
-                            copy.getShipping().setState(areaCode.getUsState());
+                            switch (areaCode.getCountry()) {
+                                case UNITED_STATES:
+                                    copy.getShipping().setState(areaCode.getUsState());
+                                    break;
+                                case CANADA:
+                                    if(copy.getShipping().getCanadaDivision() == null) {
+                                        copy.getShipping().setCanadaDivision(areaCode.getCaDivision());
+                                    }
+                                    break;
+                            }
                         }
-                        if (StringFun.isNotEmpty(zip)) {
+                        if(isNotEmpty(provinceAbbrevitaion)) {
+                            copy.getShipping().setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
+                        }
+                        if (isNotEmpty(zip)) {
                             copy.getShipping().setPostalCode(zip);
                         }
                     });
@@ -283,8 +309,8 @@ public class FacebookLead
     @Override
     public void init() {
         var ag = Locator.$(new Site(42));
-        ag.getQueues().forEach(q-> routes.put(q.getProductLine().id,q.getSkillRoute()));
-        routes.forEach((p,s)-> {
+        ag.getQueues().forEach(q -> routes.put(q.getProductLine().id, q.getSkillRoute()));
+        routes.forEach((p, s) -> {
             log.info("DigiLead %s -> %s", Locator.$(new ProductLine(p)).getName(), s.getName());
         });
     }
