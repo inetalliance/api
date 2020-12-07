@@ -158,12 +158,14 @@ public class FacebookLead
             var phone = extractPhone(json.get("phone"));
             var existingContact = $1(Contact.withEmail(email));
             var provinceAbbrevitaion = json.get("province");
+            var company = json.get("company");
 
             if (existingContact == null) {
                 contact = new Contact();
                 var split = fullName.split("[ ]", 2);
                 contact.setFirstName(split[0]);
                 contact.setLastName(split.length == 2 ? split[1] : "");
+                contact.setCompany(company);
                 contact.setContactType(ContactType.CUSTOMER);
                 final Address address = new Address();
                 address.setPhone(phone);
@@ -205,6 +207,7 @@ public class FacebookLead
                                     break;
                             }
                         }
+                        copy.setCompany(company);
                         if(isNotEmpty(provinceAbbrevitaion)) {
                             copy.getShipping().setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
                         }
