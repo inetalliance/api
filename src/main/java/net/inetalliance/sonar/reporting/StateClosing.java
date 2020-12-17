@@ -130,9 +130,9 @@ public class StateClosing
         productLines.stream().map(pl -> ProductLineClosing.getQueues(loggedIn, pl, sites)).flatMap(
             Funky::stream).collect(toSet());
     final JsonList rows = new JsonList();
-    Stream.of(State.values()).forEach(state -> {
+    Stream.concat(Stream.ofNullable(null), Stream.of(State.values())).forEach(state -> {
       final Query<Opportunity> andAgent = base.and(Opportunity.withState(state));
-      final JsonMap row = new JsonMap().$("state", state.getAbbreviation());
+      final JsonMap row = new JsonMap().$("state", state == null ? "None" : state.getAbbreviation());
       final AtomicBoolean hasOpps = new AtomicBoolean(false);
       EnumSet.of(SURVEY, PHONE_CALL).forEach(source -> {
         final Query<Opportunity> andSource = andAgent.and(withSaleSource(source));
@@ -155,7 +155,7 @@ public class StateClosing
               .and(Call.withQueueIn(queuesForProductLine))
               .and(Call.withState(state))));
 
-      meter.increment(state.getAbbreviation());
+      meter.increment(state == null ? "None" : state.getAbbreviation());
       if (hasOpps.get()) {
         rows.add(row);
       }
