@@ -33,7 +33,6 @@ import java.util.stream.Collectors;
 
 import static com.callgrove.obj.Opportunity.*;
 import static com.callgrove.types.ContactType.DEALER;
-import static com.callgrove.types.SaleSource.ONLINE;
 import static java.lang.System.currentTimeMillis;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static java.util.regex.Pattern.compile;
@@ -72,9 +71,10 @@ public class Leads
               .$("uri", o.getSite()
                   .getWebpages()
                   .get(o.getProductLine())))
-          .$("assignedTo", new JsonMap().$("name", o.getSource() == ONLINE
-              ? "Web Order"
-              : o.getAssignedTo().getFirstNameLastInitial()))
+          .$("assignedTo", new JsonMap()
+                  .$("name",o.getAssignedTo().getFullName())
+                  .$("key", o.getAssignedTo().key)
+          )
           .$("site", new JsonMap().$("name", o.getSite().getName())
               .$("abbreviation", o.getSite().getAbbreviation())
               .$("uri", o.getSite().getUri())));
