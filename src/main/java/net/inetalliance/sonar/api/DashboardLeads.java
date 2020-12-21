@@ -30,18 +30,21 @@ public class DashboardLeads extends AngularServlet {
         if (loggedIn == null) {
             throw new ForbiddenException();
         }
+        var manage = "manager".equals(request.getParameter("mode"));
+        var withAgent = manage ? Opportunity.withAgentIn(loggedIn.getViewableAgents())
+                : Opportunity.withAgent(loggedIn);
         int page;
         Query<Opportunity> q;
         switch (request.getRequestURI()) {
             case "/api/asap":
-                q = Opportunity.withAgent(loggedIn)
+                q = withAgent
                         .and(Opportunity.withoutReminder)
                         .and(Opportunity.uncontacted)
                         .and(Opportunity.createdAfter(new DateMidnight().minusDays(14)))
                         .orderBy("created");
                 break;
             case "/api/pipeline":
-                q = Opportunity.withAgent(loggedIn);
+                q = withAgent;
                 var pls = request.getParameterValues("pl");
                 if (pls != null && pls.length > 0) {
                     q = q.and(Opportunity.withProductLineIdIn(Stream.of(pls)
@@ -71,12 +74,16 @@ public class DashboardLeads extends AngularServlet {
                 .$("leads", list);
         if (pages > 0) {
             forEach(q.limit((page - 1) * 10, 10), o -> {
+                var a = o.getAssignedTo();
                 var c = o.getContact();
                 var p = o.getProductLine();
                 var localTime = AreaCodeTime.getAreaCodeTime(c.getShipping().getPhone());
                 list.add(new JsonMap()
                         .$("id", o.id)
                         .$("stage", o.getStage())
+                        .$("assignedTo", new JsonMap()
+                                .$("key", a.key)
+                                .$("name", a.getFirstNameLastInitial()))
                         .$("lastContact", o.getLastContact())
                         .$("source", o.getSource())
                         .$("created", o.getCreated())

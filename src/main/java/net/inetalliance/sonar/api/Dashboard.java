@@ -42,8 +42,12 @@ public class Dashboard extends AngularServlet {
                 "Last", new Interval(today.withDayOfMonth(1).minusMonths(1), today.withDayOfMonth(1))
         );
 
+        var manage = "manager".equals(request.getParameter("mode"));
+
         var callCount = Call.withAgent(loggedIn);
-        var withAgent = Opportunity.withAgent(loggedIn);
+        var withAgent = manage ?
+                Opportunity.withAgentIn(loggedIn.getViewableAgents()) :
+                Opportunity.withAgent(loggedIn);
 
         var sources = new LinkedHashMap<String, Query<Opportunity>>();
         sources.put("Phone", withAgent.and(withSaleSource(PHONE_CALL)));
@@ -66,6 +70,7 @@ public class Dashboard extends AngularServlet {
         });
         respond(response, new JsonMap().$("intervals", json));
     }
+
     private static Double n2z(Currency c) {
         return (c == null ? Currency.ZERO : c).doubleValue();
     }

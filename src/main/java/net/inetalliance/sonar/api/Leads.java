@@ -191,6 +191,7 @@ public class Leads
   public Query<Opportunity> all(final Class<Opportunity> type, final HttpServletRequest request) {
     final boolean support = request.getParameter("support") != null;
     final boolean review = request.getParameter("review") != null;
+    final boolean asap = request.getParameter("asap") != null;
     final SortField sort = SortField.from(request);
     final Agent loggedIn = Startup.getAgent(request);
     if (loggedIn == null) {
@@ -231,7 +232,7 @@ public class Leads
 
     boolean onlySold = false;
 
-    if (support || review) {
+    if (support || review || asap) {
       final String stage = request.getParameter("st");
       if (StringFun.isNotEmpty(stage)) {
 
@@ -266,6 +267,9 @@ public class Leads
         query = query.and(Opportunity.withAgentKeyIn(Arrays.asList(as)));
       } else if (review) {
         query = query.and(Opportunity.withAgentIn(loggedIn.getViewableAgents()));
+      }
+      if(asap) {
+        query = query.and(uncontacted).orderBy("created", ASCENDING);
       }
     }
     final Range ec = getParameter(request, Range.class, "ec");
