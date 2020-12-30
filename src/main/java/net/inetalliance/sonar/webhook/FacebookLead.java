@@ -312,7 +312,8 @@ public class FacebookLead
     @Override
     public void init() {
         var ag = Locator.$(new Site(42));
-        ag.getQueues().forEach(q -> routes.put(q.getProductLine().id, q.getSkillRoute()));
+        var digi = Locator.$(new SkillRoute(10128));
+        ag.getQueues().forEach(q -> routes.put(q.getProductLine().id, digi));
         routes.forEach((p, s) -> {
             log.info("DigiLead %s -> %s", Locator.$(new ProductLine(p)).getName(), s.getName());
         });
