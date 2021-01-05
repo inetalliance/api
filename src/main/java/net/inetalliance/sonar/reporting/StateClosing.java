@@ -129,7 +129,8 @@ public class StateClosing
                 productLines.stream().map(pl -> ProductLineClosing.getQueues(loggedIn, pl, sites)).flatMap(
                         Funky::stream).collect(toSet());
         final JsonList rows = new JsonList();
-        var states = Arrays.asList(State.values());
+        var states = new ArrayList<State>(State.values().length +1);
+        states.addAll(Arrays.asList(State.values()));
         states.add(null);
         states.forEach(state -> {
             final var andAgent = base.and(Opportunity.withState(state));
