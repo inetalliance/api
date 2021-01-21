@@ -16,6 +16,7 @@ import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.geopolitical.canada.Division;
+import net.inetalliance.types.geopolitical.us.State;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.LazyMap;
 import org.joda.time.DateMidnight;
@@ -159,6 +160,9 @@ public class FacebookLead
             var existingContact = $1(Contact.withEmail(email));
             var provinceAbbrevitaion = json.get("province");
             var company = json.get("company");
+            var state = json.get("state");
+            var city = json.get("city");
+
 
             if (existingContact == null) {
                 contact = new Contact();
@@ -173,8 +177,12 @@ public class FacebookLead
                 if (isNotEmpty(provinceAbbrevitaion)) {
                     address.setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
                 }
+                if(state != null) {
+                    address.setState(State.fromAbbreviation(state));
+                }
+                address.setCity(city);
                 var areaCode = AreaCodeTime.getAreaCodeTime(phone);
-                if (areaCode != null) {
+                if (address.getState() == null && address.getCanadaDivision() == null && areaCode != null) {
                     switch (areaCode.getCountry()) {
                         case UNITED_STATES:
                             address.setState(areaCode.getUsState());
@@ -193,9 +201,14 @@ public class FacebookLead
             } else {
                 if (isEmpty(existingContact.getShipping().getPhone())) {
                     update(existingContact, "FacebookLead", copy -> {
-                        copy.getShipping().setPhone(phone);
+                        var address = copy.getShipping();
+                        address.setPhone(phone);
+                        if(state != null) {
+                            address.setState(State.fromAbbreviation(state));
+                        }
+                        address.setCity(city);
                         var areaCode = AreaCodeTime.getAreaCodeTime(phone);
-                        if (areaCode != null) {
+                        if (address.getState() == null && address.getCanadaDivision() == null && areaCode != null) {
                             switch (areaCode.getCountry()) {
                                 case UNITED_STATES:
                                     copy.getShipping().setState(areaCode.getUsState());
