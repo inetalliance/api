@@ -1,31 +1,8 @@
 package net.inetalliance.sonar.reporting;
 
-import static com.callgrove.Callgrove.getReportingInterval;
-import static java.util.concurrent.TimeUnit.SECONDS;
-import static net.inetalliance.potion.Locator.$$;
-import static net.inetalliance.potion.Locator.count;
-import static net.inetalliance.potion.Locator.forEach;
-import static net.inetalliance.sql.Aggregate.SUM;
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
-import static org.joda.time.DateTimeConstants.MILLIS_PER_DAY;
-
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.obj.CallCenter;
-import com.callgrove.obj.DailyProductLineVisits;
-import com.callgrove.obj.Opportunity;
+import com.callgrove.obj.*;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
-import java.util.Collection;
-import java.util.EnumSet;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.TreeMap;
-import java.util.stream.Collectors;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
 import net.inetalliance.funky.math.NumberMath;
 import net.inetalliance.log.Log;
 import net.inetalliance.log.progress.ProgressMeter;
@@ -38,6 +15,18 @@ import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.JsonString;
 import org.joda.time.DateMidnight;
 import org.joda.time.Interval;
+
+import javax.servlet.ServletConfig;
+import javax.servlet.ServletException;
+import java.util.*;
+import java.util.stream.Collectors;
+
+import static com.callgrove.Callgrove.getReportingInterval;
+import static java.util.concurrent.TimeUnit.SECONDS;
+import static net.inetalliance.potion.Locator.*;
+import static net.inetalliance.sql.Aggregate.SUM;
+import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
+import static org.joda.time.DateTimeConstants.MILLIS_PER_DAY;
 
 public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     extends CachedGroupingRangeReport<R, G> {
@@ -73,7 +62,7 @@ public abstract class Performance<R extends IdPo & Named, G extends IdPo>
     final Map<String, Interval> intervals = new TreeMap<>();
     final Interval current = getReportingInterval(start, end);
     intervals.put("current", current);
-    final int days = (int) (current.toDurationMillis() / MILLIS_PER_DAY);
+    final int days =  (int) Math.ceil((float)current.toDurationMillis() / MILLIS_PER_DAY);
     intervals.put("prev", getReportingInterval(start.minusDays(days), end.minusDays(days)));
     intervals
         .put("prev2", getReportingInterval(start.minusDays(2 * days), end.minusDays(2 * days)));
