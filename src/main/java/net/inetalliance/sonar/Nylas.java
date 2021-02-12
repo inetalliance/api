@@ -96,7 +96,7 @@ public class Nylas {
         }
     }
 
-    public String token(final Agent agent) throws InvalidGrantException {
+    public String tndoken(final Agent agent) throws InvalidGrantException {
         final var json = postNylas("/connect/token",
                 new JsonMap().$("client_id", "ccp8e4h3wu7i4s2o5mdi3hlne")
                         .$("client_secret", "f02ufhmcopkrzbc35ah6w7wto")
