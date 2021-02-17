@@ -153,7 +153,7 @@ public abstract class CachedGroupingRangeReport<R, G>
             getJobSize(loggedIn, groups, interval), meter -> {
               final JsonMap map = generate(sources, contactTypes, loggedIn, meter, start, end,
                   groups, callCenters, extras);
-              if (end.plusDays(1).isAfter(new DateMidnight())) {
+              if (end.plusDays(2).isAfter(new DateMidnight().toDateTime())) {
                 log.debug("Not caching report %s because end is after midnight today", q);
               } else {
                 cache.set(q, map);
