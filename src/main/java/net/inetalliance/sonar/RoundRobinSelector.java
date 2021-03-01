@@ -6,6 +6,7 @@ import com.callgrove.obj.SkillRoute;
 import com.callgrove.types.Tier;
 import org.jetbrains.annotations.NotNull;
 import org.joda.time.DateTime;
+import org.joda.time.DateTimeConstants;
 
 import java.util.*;
 
@@ -82,8 +83,11 @@ public class RoundRobinSelector {
         sort(queue);
         var slot = queue.get(0);
         slot.lastSelection = new DateTime();
-        var hour = new DateTime().getHourOfDay();
-        var afterHours = hour < 7 || hour > 19 ;
+        var today = new DateTime();
+        var hour = today.getHourOfDay();
+        var afterHours = hour < 7 || hour > 19  ||
+                today.getDayOfWeek() == DateTimeConstants.SATURDAY ||
+                today.getDayOfWeek() == DateTimeConstants.SUNDAY;
         if (afterHours || retries > queue.size() || Hud.available(slot.agent)) {
             return slot.agent;
         }
