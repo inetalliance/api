@@ -139,9 +139,9 @@ public class Dial
             }
           }
           final String effectivePhone =
-              effectiveQueue != null && isNotEmpty(effectiveQueue.getTollfree())
+              site != null && site.getId() == 10117 ? "9193907322" : (effectiveQueue != null && isNotEmpty(effectiveQueue.getTollfree())
                   ? effectiveQueue.getTollfree()
-                  : site.getTollfree();
+                  : site.getTollfree());
           final CallerId callerId = new CallerId(loggedIn.getLastNameFirstInitial(),
               effectivePhone.charAt(0) == '1'
                   ? effectivePhone.substring(1)
