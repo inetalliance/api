@@ -233,6 +233,9 @@ public class FacebookLead
             }
 
             final var site = $1(withAbbreviation(json.get("site")));
+            if(site.id == 42) {
+
+            }
             final var amount = new Currency(json.getDouble("amount"));
             final var fullDate = json.get("date");
             final var date = dateTimeFormat2.parseDateTime(fullDate.split("[+]", 2)[0]);

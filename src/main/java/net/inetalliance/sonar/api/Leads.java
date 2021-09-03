@@ -230,6 +230,7 @@ public class Leads
                             () -> EnumSet.noneOf(SaleSource.class)))));
         }
 
+        final String q = request.getParameter("q");
         boolean onlySold = false;
 
         final String stage = request.getParameter("st");
@@ -250,7 +251,7 @@ public class Leads
                     query = query.and(isActive);
                     break;
             }
-        } else if (!(support || review)) {
+        } else if (isEmpty(q) && !(support || review)) {
             query = query.and(isActive);
         }
 
@@ -290,7 +291,6 @@ public class Leads
         if (c != null) {
             query = query.and(Opportunity.createdInInterval(c.toInterval()));
         }
-        final String q = request.getParameter("q");
         if (isEmpty(q)) {
             return query;
         }
