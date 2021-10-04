@@ -143,15 +143,14 @@ public class Dial
                   ? effectiveQueue.getTollfree()
                   : site.getTollfree());
           final CallerId callerId = new CallerId(loggedIn.getLastNameFirstInitial(),
-              effectivePhone.charAt(0) == '1'
+              "+1" + (effectivePhone.charAt(0) == '1'
                   ? effectivePhone.substring(1)
-                  : effectivePhone);
+                  : effectivePhone));
           log.info("Dialing %s for %s on %s/%s [%s]", AddressPo.formatPhoneNumber(number),
               loggedIn.getLastNameFirstInitial(), site.getAbbreviation(), callerId.getNumber(),
               effectiveQueue == null ? "main" : effectiveQueue.getAbbreviation());
 
-          final String dial = format("%s/%s", loggedIn.isForwarded() ? "Zap/g0" : "SIP",
-              loggedInNumber);
+          final String dial = format("%s/%s", "SIP", loggedInNumber);
 
           final Map<String, String> variables = new HashMap<>(2);
           variables.put("INTRACOMPANYROUTE", "YES");
