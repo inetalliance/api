@@ -22,54 +22,15 @@ public class AgentAuth
         extends Auth {
 
     private static final transient Log log = getInstance(AgentAuth.class);
-    private final Nylas nylas = new Nylas();
 
     public AgentAuth() {
         super();
     }
 
     protected Json toJson(final HttpServletRequest request, final Authorized authorized) {
-        final Object nylasAccount = request.getSession().getAttribute("nylasAccount");
-        if (nylasAccount == null) {
-            log.warning("No mail account for %s (sudo?)", authorized.getName());
-        }
         return Info.$(Agent.class)
                 .toJson($(new Agent(authorized.getPhone())))
-                .$("nylasAccount", nylasAccount == null ? null : nylasAccount.toString())
                 .$("roles", JsonList.collect(authorized.getRoles(), JsonString::new));
-    }
-
-
-    @Override
-    protected void onLogin(final HttpServletRequest request, final Authorized authorized) {
-        final var password = request.getParameter("password");
-        final var agent = Locator.$(new Agent(authorized.getPhone()));
-        String grant = null;
-        if(isNotEmpty(agent.getNylasCode())) {
-            try {
-                grant = nylas.token(agent);
-            } catch (Nylas.InvalidGrantException e) {
-                nylas.authorize(agent,password);
-                try {
-                    grant = nylas.token(agent);
-                } catch (Nylas.InvalidGrantException invalidGrantException) {
-                    log.error("Received invalid grant from Nylas on retry for %s",agent.getFullName());
-                }
-            }
-        } else {
-            nylas.authorize(agent, password);
-            try {
-                grant = nylas.token(agent);
-            } catch (Nylas.InvalidGrantException e) {
-                log.error("Received invalid grant from Nylas on new account for %s",agent.getFullName());
-            }
-        }
-        if(isNotEmpty(grant)) {
-            log.info("%s logged in with valid Nylas grant", agent.getFullName());
-        } else {
-            log.info("%s logged in without valid Nylas grant", agent.getFullName());
-        }
-        request.getSession().setAttribute("nylasAccount",grant);
     }
 
 }
