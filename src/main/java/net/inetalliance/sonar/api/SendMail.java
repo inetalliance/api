@@ -3,6 +3,7 @@ package net.inetalliance.sonar.api;
 import com.callgrove.obj.Agent;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.ForbiddenException;
+import net.inetalliance.funky.StringFun;
 import net.inetalliance.log.Log;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
@@ -44,9 +45,12 @@ public class SendMail extends AngularServlet {
             bcc.stream().map(j -> (JsonMap) j).map(SendMail::toAddress).forEach(msg::addBcc);
         }
         msg.setSubject(email.get("subject"));
-        msg.setBody(null, email.get("body"));
+        var html = email.get("body");
+        msg.setBody(StringFun.stripTags(html), html);
         try {
-            PostOffice.send(msg);
+            PostOffice.send(msg,
+                    msg.getFrom().getAddress().endsWith("atconversions.com")
+                            ? "atconversions.com" : "inetalliance.net");
         } catch (Throwable t) {
             log.error(t);
             response.sendError(500, t.getMessage());
