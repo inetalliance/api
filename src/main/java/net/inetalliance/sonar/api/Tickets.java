@@ -5,6 +5,7 @@ import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.sonar.YouTrack;
+import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.json.Pretty;
 import net.inetalliance.types.www.ContentType;
@@ -26,7 +27,6 @@ public class Tickets
 
   public static final Pattern pattern = compile("/api/tickets/(.*)");
   public static final String api = "https://youtrack.inetalliance.net/rest";
-  private YouTrack youTrack;
 
   public Pattern getPattern() {
     return pattern;
@@ -34,28 +34,14 @@ public class Tickets
 
   @Override
   public void init(final ServletConfig config) {
-    youTrack = new YouTrack();
   }
 
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
-    final Matcher matcher = pattern.matcher(request.getRequestURI());
-    if (matcher.matches()) {
-      final Opportunity opp = $(new Opportunity(valueOf(matcher.group(1))));
-      if (opp == null) {
-        throw new NotFoundException();
-      }
-      final JsonMap json =
-          youTrack.get(
-              "/issue?filter=project%3A%7BAmeriGlide+Customer+Service%7D+Opportunity+ID%3A+" + opp
-                  .getId());
-      response.setContentType(ContentType.JSON.toString());
-      Pretty.$(json, response.getWriter());
-      response.flushBuffer();
-      response.setStatus(200);
-    } else {
-      throw new BadRequestException("request URI should match %s", pattern.pattern());
-    }
+    response.setContentType(ContentType.JSON.toString());
+    Pretty.$(new JsonMap().$("issue", JsonList.empty),response.getWriter());
+    response.flushBuffer();
+    response.setStatus(200);
   }
 }
