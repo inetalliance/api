@@ -2,6 +2,7 @@ description = "CG2 Sonar"
 plugins {
   war
   id("com.bmuschko.cargo") version "2.5"
+	id("com.github.johnrengelman.shadow") version "7.1.2"
 }
 dependencies {
   implementation(project(":obj"))
