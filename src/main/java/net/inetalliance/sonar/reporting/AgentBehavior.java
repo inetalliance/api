@@ -143,7 +143,6 @@ public class AgentBehavior
             return schema(DSL.name("public"));
         }
 
-        @SuppressWarnings("SpellCheckingInspection")
         @Override
         public String getName() {
             return "calldirection";
