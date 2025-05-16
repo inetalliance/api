@@ -81,7 +81,7 @@ public class AgentBehavior
                         final int calls = row.get(field("calls"), Integer.class);
                         final int talktime = row.get(field("talktime"), Integer.class);
                         badOutbounds
-                                .computeIfAbsent(agent, _ -> new JsonList())
+                                .computeIfAbsent(agent, a -> new JsonList())
                                 .add(
                                         new JsonMap()
                                                 .$("cid", Address.formatPhoneNumber(cid))

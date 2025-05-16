@@ -47,7 +47,7 @@ public class ValueAnalyzer extends DbCli {
         var m = new ProgressMeter(n);
         var allCalc = new Calculator<>(Currency.math);
 
-        var allMeter = allCalc.andThen(_ -> m.increment());
+        var allMeter = allCalc.andThen(c -> m.increment());
         forEach(q, o -> allMeter.accept(o.getAmount()));
 
         val allStats = allCalc.getStats();

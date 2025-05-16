@@ -4,9 +4,9 @@ plugins {
     id("com.github.johnrengelman.shadow") version "8.1.1"
 }
 dependencies {
-    api(project(":api:angular"))
-    api(project(":msg:aj"))
-    implementation(project(":api:obj"))
+    implementation(project(":sonar:angular"))
+    implementation(project(":msg:aj"))
+    implementation(project(":sonar:obj"))
     implementation(libs.bundles.mail)
     implementation(libs.hikariCP)
     implementation(libs.slack)

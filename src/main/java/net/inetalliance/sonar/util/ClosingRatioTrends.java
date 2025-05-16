@@ -64,7 +64,7 @@ public class ClosingRatioTrends extends DbCli {
                 val calls = count(Call.isBusinessHours.and(Call.withQueueIn(siteQueues.get(site)).and(Call.isQueue).and(Call.inInterval(interval))));
 
                 val ratio = (double) sales / calls;
-                data.computeIfAbsent(site, _ -> new LinkedList<>()).add(ratio);
+                data.computeIfAbsent(site, s -> new LinkedList<>()).add(ratio);
             }
             current = current.plusDays(1);
             meter.increment(DateTimeFormats.ofDate(SHORT).format(current));

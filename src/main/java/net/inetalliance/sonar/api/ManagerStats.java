@@ -74,7 +74,7 @@ public class ManagerStats
 
         Map<String, JsonList> agentIntervalData = new HashMap<>();
         var totalList = new JsonList();
-        intervals.forEach((_, interval) -> {
+        intervals.forEach((i, interval) -> {
             totalList.add(new JsonMap().$("c", 0).$("r", 0.0d));
             var sales =
                     Locator
@@ -92,7 +92,7 @@ public class ManagerStats
                 final int c = closes.getOrDefault(a.key, 0);
                 val r = sales.getOrDefault(a.key, Currency.ZERO);
                 agentIntervalData
-                        .computeIfAbsent(a.key, _ -> new JsonList())
+                        .computeIfAbsent(a.key, s -> new JsonList())
                         .add(new JsonMap()
                                 .$("c", c)
                                 .$("r", r.doubleValue()));

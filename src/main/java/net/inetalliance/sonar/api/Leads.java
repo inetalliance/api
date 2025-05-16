@@ -165,7 +165,7 @@ public class Leads
         val terms = space.split(searchQuery);
         val delegate = query
                 .and(new Query<>(Opportunity.class,
-                        _ -> {
+                        o -> {
                             throw new UnsupportedOperationException();
                         },
                         (namer, table) -> new ColumnWhere(table, "contact",

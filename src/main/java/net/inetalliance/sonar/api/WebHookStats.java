@@ -47,7 +47,7 @@ public class WebHookStats
         val uncontacted = new HashSet<Integer>();
 
         val stats = new LazyMap<String, Statistics>(new HashMap<>(),
-                _ -> new Statistics());
+                s -> new Statistics());
 
         val todayStats = new Statistics();
         forEach(webhook, opportunity -> {

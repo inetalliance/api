@@ -33,7 +33,7 @@ public class ProductLinePerformance
     @Override
     protected void addRowQueues(final Map<Integer, Set<String>> groupQueues) {
         forEach(Query.all(Site.class), site -> {
-            val siteQueues = groupQueues.computeIfAbsent(site.id, _ -> new HashSet<>());
+            val siteQueues = groupQueues.computeIfAbsent(site.id, i -> new HashSet<>());
             site.getQueues().forEach(s -> siteQueues.add(s.key));
         });
     }
@@ -43,7 +43,7 @@ public class ProductLinePerformance
         forEach(Query.all(Queue.class), queue -> {
             val productLine = queue.getProductLine();
             if (productLine != null) {
-                rowQueues.computeIfAbsent(productLine.id, _ -> new HashSet<>()).add(queue.key);
+                rowQueues.computeIfAbsent(productLine.id, i -> new HashSet<>()).add(queue.key);
             }
         });
 

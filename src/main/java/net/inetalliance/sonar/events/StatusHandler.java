@@ -23,12 +23,12 @@ public class StatusHandler
         implements MessageHandler {
 
     private static final Map<String, Boolean> paused = synchronizedMap(
-            new LazyMap<>(new HashMap<>(), _ -> false));
+            new LazyMap<>(new HashMap<>(), k -> false));
     private static final Map<String, Boolean> forwarded = synchronizedMap(
-            new LazyMap<>(new HashMap<>(), _ -> false));
+            new LazyMap<>(new HashMap<>(), k -> false));
 
     private static final Map<String, Boolean> registered = synchronizedMap(
-            new LazyMap<>(new HashMap<>(), _ -> false));
+            new LazyMap<>(new HashMap<>(), k -> false));
     private static final Map<String, String> calls = synchronizedMap(new HashMap<>());
     private static final Log log = new Log();
 

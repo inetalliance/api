@@ -178,7 +178,7 @@ public class AgentClosing
         return queueQuery.and(
                 new Query<>(Call.class,
                         c -> Locator.count(Segment.withCall(c)) == 1,
-                        (namer, _) -> {
+                        (namer, table) -> {
                             var sql = new SqlBuilder(namer.name(Segment.class), null, new AggregateField(Aggregate.COUNT, "*"));
                             sql.where(new ColumnWhere("call", "key", "segment", "call", false));
                             return new SubqueryValueWhere(sql.getSql(), 1);

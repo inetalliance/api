@@ -3,8 +3,6 @@ package net.inetalliance.sonar.api;
 import com.ameriglide.phenix.core.Strings;
 import com.callgrove.obj.*;
 import com.callgrove.types.Address;
-import jakarta.servlet.ServletConfig;
-import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.val;
@@ -128,12 +126,6 @@ public class LeadDetail
     @Override
     protected Key<Opportunity> getKey(final Matcher m) {
         return Key.$(Opportunity.class, m.group(1));
-    }
-
-    @Override
-    public void init(final ServletConfig config)
-            throws ServletException {
-        super.init(config);
     }
 
     @Override

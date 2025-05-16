@@ -38,7 +38,7 @@ public class ReminderHandler
     ReminderHandler() {
         $ = this;
         lock = new ReentrantLock();
-        msgs = new LazyMap<>(new HashMap<>(8), _ -> new JsonList());
+        msgs = new LazyMap<>(new HashMap<>(8), s -> new JsonList());
         scheduler.scheduleWithFixedDelay(this, 0, 1, MINUTES);
     }
 

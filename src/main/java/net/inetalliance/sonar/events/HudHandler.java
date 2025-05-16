@@ -139,7 +139,7 @@ public class HudHandler
 
     private void updateAvailability() {
         forEach(isActive, agent -> {
-            var hudStatus = status.computeIfAbsent(agent.key, _ -> new HudStatus());
+            var hudStatus = status.computeIfAbsent(agent.key, k -> new HudStatus());
             if (agent.isPaused() == hudStatus.available) {
                 hudStatus.available = !agent.isPaused();
             }
@@ -149,7 +149,7 @@ public class HudHandler
     private void updateSimulated() {
         forEach(Call.simulated.and(Call.isActive), call -> {
             val agent = call.getActiveAgent();
-            val agentStatus = status.computeIfAbsent(agent.key, _ -> new HudStatus());
+            val agentStatus = status.computeIfAbsent(agent.key, s -> new HudStatus());
             agentStatus.direction = QUEUE;
             agentStatus.callId = call.key;
             agentStatus.available = !agent.isPaused();
@@ -172,7 +172,7 @@ public class HudHandler
                 if (direction == INTERNAL) // add both sides of internal calls
                 {
                     val otherAgent = dM.group(1);
-                    val agentStatus = status.computeIfAbsent(otherAgent, _ -> new HudStatus());
+                    val agentStatus = status.computeIfAbsent(otherAgent, a -> new HudStatus());
                     agentStatus.direction = INTERNAL;
                     agentStatus.callId = dialedChannel.getId();
                 }
@@ -186,7 +186,7 @@ public class HudHandler
             direction = null;
         }
         if (agent != null) {
-            val agentStatus = status.computeIfAbsent(agent, _ -> new HudStatus());
+            val agentStatus = status.computeIfAbsent(agent,  a-> new HudStatus());
             agentStatus.direction = direction;
             agentStatus.callId = originatingChannel.getId();
         }

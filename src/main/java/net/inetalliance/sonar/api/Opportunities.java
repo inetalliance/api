@@ -60,7 +60,7 @@ public class Opportunities
     }
 
     public static Set<Integer> relatedSites(Integer id) {
-        return relatedSites.computeIfAbsent(id, _ -> Locator.$(new Site(id))
+        return relatedSites.computeIfAbsent(id, i -> Locator.$(new Site(id))
                 .getSiteGroups()
                 .stream()
                 .map(SiteGroup::getSites)

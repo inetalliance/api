@@ -12,6 +12,7 @@ import jakarta.servlet.ServletContext;
 import jakarta.servlet.ServletContextEvent;
 import jakarta.servlet.annotation.WebListener;
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.SneakyThrows;
 import lombok.val;
 import net.inetalliance.angular.LocatorStartup;
 import net.inetalliance.angular.auth.Auth;
@@ -29,6 +30,7 @@ import org.asteriskjava.live.DefaultAsteriskServer;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.Paths;
 import java.sql.SQLException;
 import java.util.*;
 import java.util.logging.Level;
@@ -125,12 +127,13 @@ public class Startup
         return set;
     }
 
+    @SneakyThrows
     @Override
     protected void register() {
         Callgrove.register();
         val url = Startup.class.getResource("/LocalizedMessages.xml");
         if (url != null) {
-            LocalizedMessages.add(Locale.US, url);
+            LocalizedMessages.add(Locale.US, Paths.get(url.toURI()));
         } else {
             log.warn(() -> "could not locate localized messages");
         }
@@ -178,9 +181,12 @@ public class Startup
     public static void initProductLines() {
         log.info("Loading Product Line -> Queue map");
         productLineQueues = Locator.execute(
-                "SELECT q.queue,q.productline FROM QueueProductLine as q WHERE q.position = (SELECT MIN(position) FROM "
-                        +
-                        "queueProductLine where queueProductLine.queue=q.queue)",
+                """
+                        SELECT q.queue,q.productLine
+                        FROM QueueProductLine as q
+                        WHERE q.position = (
+                            SELECT MIN(position) FROM queueProductLine where queueProductLine.queue=q.queue
+                            )""",
                 rs -> {
                     var map = new HashMap<Integer, Set<String>>();
                     try {

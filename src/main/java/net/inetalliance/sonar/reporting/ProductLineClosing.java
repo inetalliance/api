@@ -48,7 +48,7 @@ public class ProductLineClosing
 
     static Set<String> getQueues(final Agent loggedIn, final ProductLine productLine,
                                  final Collection<Site> sites) {
-        val allForProductLine = Startup.productLineQueues.computeIfAbsent(productLine.id, _ -> new HashSet<>());
+        val allForProductLine = Startup.productLineQueues.computeIfAbsent(productLine.id, p -> new HashSet<>());
         final Set<String> queues = new HashSet<>(allForProductLine);
         retainVisible(loggedIn, sites, queues);
         return queues;
@@ -186,9 +186,9 @@ public class ProductLineClosing
             agentTotal.setCloses(closes);
             agentTotal.setSales(sales);
             if (agentTotal.getCloses() > 0 || agentTotal.getQueueCalls() > 0) {
-                callCenterTotals.computeIfAbsent(agent.getCallCenter().id, _ -> new DailyPerformance())
+                callCenterTotals.computeIfAbsent(agent.getCallCenter().id, i -> new DailyPerformance())
                         .add(agentTotal);
-                callCenterCount.computeIfAbsent(agent.getCallCenter().id, _ -> new AtomicInteger(0))
+                callCenterCount.computeIfAbsent(agent.getCallCenter().id, i -> new AtomicInteger(0))
                         .incrementAndGet();
                 totalAgents.incrementAndGet();
                 totalCalls.addAndGet(agentTotal.getQueueCalls());
@@ -199,7 +199,7 @@ public class ProductLineClosing
         });
         for (val callCenter : loggedIn.getViewableCallCenters()) {
             val callCenterTotal =
-                    callCenterTotals.computeIfAbsent(callCenter.id, _ -> new DailyPerformance());
+                    callCenterTotals.computeIfAbsent(callCenter.id, i -> new DailyPerformance());
             if (callCenterTotal.getCloses() > 0 && callCenterTotal.getQueueCalls() > 0) {
                 rows.add(info.toJson(callCenterTotal)
                         .$("callCenter",

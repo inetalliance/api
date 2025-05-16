@@ -139,7 +139,7 @@ public class Review
                     contacts.add(map1);
                     forEach(
                             Opportunity.withContact(contact).and(createdBefore(call.getCreated().plusHours(1))),
-                            o -> opps.computeIfAbsent(o.getAssignedTo(), _ -> new ArrayList<>()).add(o));
+                            o -> opps.computeIfAbsent(o.getAssignedTo(), a -> new ArrayList<>()).add(o));
                 });
                 map.$("contacts", contacts);
                 val sQ = Segment.withCall(call);

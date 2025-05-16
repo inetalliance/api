@@ -23,7 +23,7 @@ public class RoundRobinSelector {
     private final SkillRoute route;
 
     public static RoundRobinSelector $(final SkillRoute route) {
-        return selectors.computeIfAbsent(route.id, _ -> new RoundRobinSelector(route));
+        return selectors.computeIfAbsent(route.id, i -> new RoundRobinSelector(route));
     }
 
     private RoundRobinSelector(final SkillRoute route) {

@@ -43,7 +43,7 @@ public class SessionHandler
     }
 
     private static MessageHandler getHandler(final String type) {
-        return handlers.computeIfAbsent(type, key -> (_, msg) -> {
+        return handlers.computeIfAbsent(type, key -> (s, msg) -> {
             log.warn(() -> "received message of unknown type %s: %s".formatted(key, Json.pretty(msg)));
             return null;
         });
