@@ -3,10 +3,11 @@ package net.inetalliance.sonar;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 import java.util.regex.Pattern;
-import javax.servlet.http.HttpServletRequest;
+
+import com.ameriglide.phenix.core.Classes;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.TypeModel;
 import net.inetalliance.angular.list.Listable;
-import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.obj.IdPo;
 import net.inetalliance.potion.query.Query;
@@ -20,7 +21,7 @@ public class ListableModel<T>
 
   protected ListableModel(final Class<T> type) {
     this(type, Pattern.compile(
-        "/(?:api|reporting)/" + StringFun.camel(type.getSimpleName()) + "(?:/(" + getKeyPattern(
+        "/(?:api|reporting)/" + Classes.camel(type) + "(?:/(" + getKeyPattern(
             type) + "))?"));
   }
 
@@ -29,7 +30,7 @@ public class ListableModel<T>
     info = Info.$(type);
   }
 
-  private static String getKeyPattern(final Class type) {
+  private static String getKeyPattern(final Class<?> type) {
     return IdPo.class.isAssignableFrom(type) ? "\\d+" : ".+";
   }
 

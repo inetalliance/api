@@ -1,9 +1,9 @@
 package net.inetalliance.sonar.reporting;
 
 import com.callgrove.obj.Agent;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.sonar.api.Startup;

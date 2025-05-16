@@ -1,23 +1,24 @@
 package net.inetalliance.sonar.api;
 
+import com.ameriglide.phenix.core.Optionals;
 import com.callgrove.obj.AreaCodeTime;
 import com.callgrove.obj.Opportunity;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.ForbiddenException;
-import net.inetalliance.funky.Funky;
-import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.geopolitical.us.State;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Stream;
 
-import static java.lang.System.currentTimeMillis;
+import static com.ameriglide.phenix.core.Strings.isNotEmpty;
 import static java.util.stream.Collectors.toList;
 import static net.inetalliance.potion.Locator.count;
 import static net.inetalliance.potion.Locator.forEach;
@@ -40,7 +41,7 @@ public class DashboardLeads extends AngularServlet {
                 q = withAgent
                         .and(Opportunity.withoutReminder)
                         .and(Opportunity.uncontacted)
-                        .and(Opportunity.createdAfter(new DateMidnight().minusDays(14)))
+                        .and(Opportunity.createdAfter(LocalDate.now().minusDays(14).atStartOfDay()))
                         .orderBy("created");
                 break;
             case "/api/pipeline":
@@ -51,7 +52,7 @@ public class DashboardLeads extends AngularServlet {
                             .map(Integer::valueOf).collect(toList())));
                 }
                 var search = request.getParameter("q");
-                if (StringFun.isNotEmpty(search)) {
+                if (isNotEmpty(search)) {
                     q = Leads.buildSearchQuery(q, search);
                 } else {
                     q = q.and(Opportunity.isActive)
@@ -62,7 +63,7 @@ public class DashboardLeads extends AngularServlet {
             default:
                 throw new IllegalArgumentException();
         }
-        page = Funky.of(request.getParameter("page")).map(Integer::valueOf).orElse(1);
+        page = Optionals.of(request.getParameter("page")).map(Integer::valueOf).orElse(1);
         var pages = (int) Math.ceil(count(q) / 10.0d);
         if (page > pages) {
             page = pages;
@@ -96,10 +97,10 @@ public class DashboardLeads extends AngularServlet {
                                 .$("id", c.id)
                                 .$("name", c.getFullName())
                                 .$("state", new JsonMap()
-                                        .$("name", Funky.of(c.getShipping().getState()).map(s -> s.getLocalizedName().toString()).orElse(""))
-                                        .$("abbreviation", Funky.of(c.getShipping().getState()).map(State::getAbbreviation).orElse("")))
+                                        .$("name", Optionals.of(c.getShipping().getState()).map(s -> s.getLocalizedName().toString()).orElse(""))
+                                        .$("abbreviation", Optionals.of(c.getShipping().getState()).map(State::getAbbreviation).orElse("")))
                                 .$("phone", c.getShipping().getPhone())
-                                .$("localTime", localTime == null ? null : localTime.getDateTimeZone().getOffset(currentTimeMillis()))
+                                .$("localTime", localTime == null ? null : TimeUnit.SECONDS.toMillis(localTime.getLocalDateTimeZone().getRules().getOffset(LocalDateTime.now()).getTotalSeconds()))
                                 .$("email", c.getEmail())));
             });
         }

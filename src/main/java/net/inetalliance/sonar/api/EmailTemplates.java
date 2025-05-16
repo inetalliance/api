@@ -3,8 +3,8 @@ package net.inetalliance.sonar.api;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 import com.callgrove.obj.EmailTemplate;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.list.Searchable;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;

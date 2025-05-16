@@ -1,28 +1,27 @@
 package net.inetalliance.sonar.api;
 
+import com.callgrove.obj.Opportunity;
+import com.callgrove.obj.Site;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.val;
+import net.inetalliance.angular.AngularServlet;
+import net.inetalliance.potion.Locator;
+import net.inetalliance.sql.DateTimeInterval;
+import net.inetalliance.types.json.Json;
+import net.inetalliance.types.json.JsonMap;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.regex.Pattern;
+
+import static com.ameriglide.phenix.core.Strings.isEmpty;
 import static com.callgrove.Callgrove.getInterval;
-import static com.callgrove.obj.Call.inInterval;
-import static com.callgrove.obj.Call.isQueue;
-import static com.callgrove.obj.Call.withSite;
-import static net.inetalliance.funky.StringFun.isEmpty;
+import static com.callgrove.obj.Call.*;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.potion.Locator.forEach;
 import static net.inetalliance.sql.Aggregate.MIN;
-
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.Site;
-import java.util.Map;
-import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.potion.Locator;
-import net.inetalliance.types.json.Json;
-import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
-import org.joda.time.Interval;
 
 @WebServlet("/api/uniqueCid")
 public class UniqueCid
@@ -33,36 +32,36 @@ public class UniqueCid
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
-    final Interval interval = getInterval(request);
-    final Site atc = new Site(10117);
-    final Map<String, DateTime> firstCall =
-        $$(withSite(atc).and(isQueue), MIN, String.class, "callerid_number", DateTime.class,
+    val interval = getInterval(request);
+    val atc = new Site(10117);
+    val firstCall =
+        $$(withSite(atc).and(isQueue), MIN, String.class, "callerid_number", LocalDateTime.class,
             "created");
-    final DateMidnight start = interval.getStart().toDateMidnight();
-    final DateMidnight end = interval.getEnd().toDateMidnight();
-    DateMidnight i = start;
-    final JsonMap json = new JsonMap();
-    final Info total = new Info();
+    final var start = interval.start().toLocalDate();
+    final var end = interval.end().toLocalDate();
+    var i = start;
+    val json = new JsonMap();
+    val total = new Info();
     while (i.isBefore(end)) {
-      final Info info = classify(i.toInterval(), atc, firstCall);
+      val info = classify(new DateTimeInterval(i), atc, firstCall);
       total.add(info);
-      json.put(Json.dateFormat.print(i), info.toJson());
+      json.put(Json.format(i), info.toJson());
       i = i.plusDays(1);
     }
     respond(response, new JsonMap().$("total", total.toJson()).$("days", json));
   }
 
-  private Info classify(final Interval interval, final Site site,
-      final Map<String, DateTime> firstCall) {
-    final Info i = new Info();
+  private Info classify(final DateTimeInterval interval, final Site site,
+                        final Map<String, LocalDateTime> firstCall) {
+    val i = new Info();
     i.opps = Locator.count(Opportunity.createdInInterval(interval).and(Opportunity.withSite(site)));
 
     forEach(withSite(site).and(inInterval(interval)).and(isQueue), call -> {
-      final String number = call.getCallerId().getNumber();
+      val number = call.getCallerId().getNumber();
       if (isEmpty(number)) {
         i.anon++;
       } else {
-        final DateTime first = firstCall.get(number);
+        val first = firstCall.get(number);
         if (first.equals(call.getCreated())) {
           i.first++;
         } else {

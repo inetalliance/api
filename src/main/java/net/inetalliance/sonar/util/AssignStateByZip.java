@@ -1,17 +1,20 @@
 package net.inetalliance.sonar.util;
 
+import com.ameriglide.phenix.core.Strings;
 import com.callgrove.Callgrove;
 import com.callgrove.obj.AreaCodeTime;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.types.SaleSource;
+import lombok.val;
 import net.inetalliance.cli.Cli;
-import net.inetalliance.funky.StringFun;
-import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.DbCli;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.geopolitical.Country;
-import net.inetalliance.types.geopolitical.canada.Division;
+import net.inetalliance.types.geopolitical.canada.Province;
 import net.inetalliance.types.geopolitical.us.State;
+import net.inetalliance.util.ProgressMeter;
+
+import static com.ameriglide.phenix.core.Strings.isEmpty;
 
 public class AssignStateByZip extends DbCli {
     @Override
@@ -27,12 +30,12 @@ public class AssignStateByZip extends DbCli {
             var shipping = c.getShipping();
             if (shipping != null) {
                 var s = byZipCode(shipping.getPostalCode());
-                Division d  = null;
-                if (s == null && StringFun.isNotEmpty(shipping.getPhone())) {
+                Province d = null;
+                if (s == null && Strings.isNotEmpty(shipping.getPhone())) {
 
                     var areaCode = AreaCodeTime.getAreaCodeTime(shipping.getPhone());
-                    if(areaCode != null) {
-                        if(areaCode.getCountry() == Country.UNITED_STATES) {
+                    if (areaCode != null) {
+                        if (areaCode.getCountry() == Country.UNITED_STATES) {
                             s = areaCode.getUsState();
                         } else {
                             d = areaCode.getCaDivision();
@@ -40,8 +43,8 @@ public class AssignStateByZip extends DbCli {
                     }
                 }
                 if (s != null || d != null) {
-                    final var state = s;
-                    final var division = d;
+                    val state = s;
+                    val division = d;
                     Locator.update(o.getContact(), "AssignStateByZip", copy -> {
                         copy.getShipping().setState(state);
                         copy.getShipping().setCanadaDivision(division);
@@ -54,7 +57,7 @@ public class AssignStateByZip extends DbCli {
     }
 
     private State byZipCode(final String postalCode) {
-        if (StringFun.isEmpty(postalCode)) {
+        if (isEmpty(postalCode)) {
             return null;
         }
         try {

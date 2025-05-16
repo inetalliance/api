@@ -3,12 +3,13 @@ package net.inetalliance.sonar.reporting;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
+
+import java.time.LocalDateTime;
 import java.util.Set;
-import javax.servlet.annotation.WebServlet;
+import jakarta.servlet.annotation.WebServlet;
 import net.inetalliance.beejax.messages.Category;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateTime;
 
 @WebServlet("/reporting/reports/siteRevenue")
 public class SiteRevenue
@@ -32,7 +33,7 @@ public class SiteRevenue
 
   @Override
   protected Query<Site> allRows(final Set<Category> groups, final Agent loggedIn,
-      final DateTime intervalStart) {
+      final LocalDateTime intervalStart) {
     return Site.isActive;
   }
 }

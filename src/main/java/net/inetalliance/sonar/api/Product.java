@@ -1,26 +1,27 @@
 package net.inetalliance.sonar.api;
 
-import static net.inetalliance.funky.StringFun.isEmpty;
 
 import com.callgrove.Callgrove;
 import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.Site;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.val;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.list.Listable;
 import net.inetalliance.angular.list.Searchable;
 import net.inetalliance.beejax.messages.Coupon;
-import net.inetalliance.beejax.messages.ProductSearchResponse;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
+
+import java.util.regex.Pattern;
+
+import static com.ameriglide.phenix.core.Strings.isEmpty;
 
 @WebServlet("/api/product/*")
 public class Product
@@ -57,25 +58,25 @@ public class Product
   @Override
   protected void get(final HttpServletRequest request, final HttpServletResponse response)
       throws Exception {
-    final Matcher matcher = pattern.matcher(request.getRequestURI());
+    val matcher = pattern.matcher(request.getRequestURI());
     if (matcher.matches()) {
-      final String key = matcher.group(1);
+      val key = matcher.group(1);
       if (isEmpty(key)) {
-        final Site site = Locator.$(new Site(getParameter(request, "site", -1)));
+        val site = Locator.$(new Site(getParameter(request, "site", -1)));
         if (site == null) {
           throw new NotFoundException();
         }
         if (site.getBeejaxId() == null) {
           throw new NotFoundException("%s has no beejax id", site.getName());
         }
-        final String query = request.getParameter(Searchable.parameter);
+        val query = request.getParameter(Searchable.parameter);
         if (query == null) {
           respond(response, new JsonMap().$("products", JsonList.empty).$("hasMore", false));
         } else {
 
-          final int page = getParameter(request, Listable.page, 1);
-          final int pageSize = getParameter(request, Listable.pageSize, 20);
-          final ProductSearchResponse info =
+          val page = getParameter(request, Listable.page, 1);
+          val pageSize = getParameter(request, Listable.pageSize, 20);
+          val info =
               Callgrove.beejax
                   .productSearch(site.getBeejaxId(), 0, query, pageSize, (page - 1) * pageSize);
           respond(response,
@@ -83,10 +84,10 @@ public class Product
                   .$("hasMore", info.remaining > 0));
         }
       } else {
-        Site site = Locator.$(new Site(getParameter(request, "site", -1)));
+          var site = Locator.$(new Site(getParameter(request, "site", -1)));
         final Integer productId;
         if (site == null) {
-          final Opportunity o = Locator.$(new Opportunity(Integer.valueOf(key)));
+          val o = Locator.$(new Opportunity(Integer.valueOf(key)));
           if (o == null) {
             throw new NotFoundException("could not find opportunity with id %s", key);
           }

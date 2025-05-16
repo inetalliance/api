@@ -1,27 +1,21 @@
 package net.inetalliance.sonar;
 
-import com.callgrove.Callgrove;
+import com.ameriglide.phenix.core.Log;
 import net.inetalliance.angular.exception.BadRequestException;
-import net.inetalliance.log.Log;
 import net.inetalliance.types.json.JsonMap;
-import org.apache.http.NameValuePair;
-import org.apache.http.client.entity.UrlEncodedFormEntity;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.message.BasicNameValuePair;
-import org.apache.http.util.EntityUtils;
+import net.inetalliance.types.www.ContentType;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
+import java.net.http.HttpClient;
+import java.net.http.HttpRequest;
+import java.net.http.HttpResponse;
 
-import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.types.json.Json.pretty;
 
 public class YouTrack {
 
     public static final String api = "https://youtrack.inetalliance.net/rest";
-    private static final transient Log log = getInstance(YouTrack.class);
+    private static final Log log = new Log();
 
 
     public YouTrack() {
@@ -44,40 +38,38 @@ public class YouTrack {
 
     public synchronized JsonMap get(final String path)
             throws IOException {
-        final HttpGet request = new HttpGet(api + path);
-        try {
-            request.addHeader("Accept", "application/json");
-            log.debug("[YouTrack] requesting " + path);
-            final var response = Callgrove.http.execute(request);
-            final int code = response.getStatusLine().getStatusCode();
-            switch (code) {
-                case 200:
+        var req = HttpRequest.newBuilder()
+                .uri(java.net.URI.create(api + path))
+                .method("GET", HttpRequest.BodyPublishers.noBody())
+                .setHeader("Accept", "application/json")
+                .build();
+        try (var http = HttpClient.newHttpClient()) {
+            log.debug(()->"[YouTrack] requesting %s".formatted(path));
+            var res = http.send(req, HttpResponse.BodyHandlers.ofInputStream());
+            switch (res.statusCode()) {
+                case 200 -> {
                     log.debug("[YouTrack] Got response");
-                    return JsonMap.parse(response.getEntity().getContent());
-                case 401:
-                    EntityUtils.consumeQuietly(response.getEntity());
-                    log.debug("[YouTrack] Auth required, logging in");
-                    final HttpPost login = new HttpPost(api + "/user/login");
-                    final List<NameValuePair> data = new ArrayList<>(2);
-                    data.add(new BasicNameValuePair("login", "api"));
-                    data.add(new BasicNameValuePair("password", "4sa7ya,o"));
-                    login.setEntity(new UrlEncodedFormEntity(data));
-                    final var authResponse = Callgrove.http.execute(login);
-                    if (authResponse.getStatusLine().getStatusCode() == 200) {
+                    return JsonMap.parse(res.body());
+                }
+                case 401 -> {
+                    var login = HttpRequest.newBuilder()
+                            .uri(java.net.URI.create("%s/user/login".formatted(api)))
+                            .method("POST", HttpRequest.BodyPublishers.ofString("login=api&password=4sa7ya,o"))
+                            .setHeader("Content-Type", ContentType.URL_ENCODED.value)
+                            .build();
+                    var loginRes = http.send(login, HttpResponse.BodyHandlers.ofString());
+                    if (loginRes.statusCode() == 200) {
                         log.debug("[YouTrack] Logged in successfully as api");
-                        EntityUtils.consumeQuietly(authResponse.getEntity());
-                        return get(path);
+                        return JsonMap.parse(loginRes.body());
                     }
                     throw new BadRequestException("Could not login to youtrack: %s",
-                            authResponse.getStatusLine().getReasonPhrase());
-                default:
-                    throw new BadRequestException("Got back:", response.getStatusLine().getReasonPhrase());
-
+                            loginRes.statusCode());
+                }
+                default -> throw new BadRequestException("Got back:", res.statusCode());
             }
-        } finally {
-            request.releaseConnection();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
         }
     }
-
 }
 

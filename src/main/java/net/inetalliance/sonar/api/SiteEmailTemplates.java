@@ -4,8 +4,8 @@ import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 import com.callgrove.obj.Site;
 import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
 import net.inetalliance.types.json.Json;

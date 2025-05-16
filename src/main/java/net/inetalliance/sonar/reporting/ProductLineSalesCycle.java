@@ -1,15 +1,12 @@
 package net.inetalliance.sonar.reporting;
 
-import com.callgrove.obj.Agent;
-import com.callgrove.obj.Call;
-import com.callgrove.obj.DailyPerformance;
-import com.callgrove.obj.Opportunity;
-import com.callgrove.obj.ProductLine;
-import java.util.Set;
-import javax.servlet.annotation.WebServlet;
+import com.callgrove.obj.*;
+import jakarta.servlet.annotation.WebServlet;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
-import org.joda.time.DateTime;
+
+import java.time.LocalDateTime;
+import java.util.Set;
 
 @WebServlet("/reporting/reports/productLineSalesCycle")
 public class ProductLineSalesCycle
@@ -62,7 +59,7 @@ public class ProductLineSalesCycle
 
   @Override
   protected Query<Agent> allRows(final Set<ProductLine> groups, final Agent loggedIn,
-      final DateTime intervalStart) {
+                                 final LocalDateTime intervalStart) {
     return loggedIn.getViewableAgentsQuery().and(Agent.activeAfter(intervalStart))
         .and(Agent.isSales);
   }

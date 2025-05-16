@@ -1,24 +1,26 @@
 package net.inetalliance.sonar.reporting;
 
+import com.ameriglide.phenix.core.Enums;
+import com.ameriglide.phenix.core.Iterables;
+import com.ameriglide.phenix.core.Log;
 import com.callgrove.obj.*;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import jakarta.servlet.annotation.WebServlet;
+import lombok.val;
 import net.inetalliance.angular.exception.UnauthorizedException;
-import net.inetalliance.funky.Funky;
-import net.inetalliance.log.Log;
-import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
+import net.inetalliance.sql.DateTimeInterval;
 import net.inetalliance.types.Currency;
 import net.inetalliance.types.geopolitical.us.State;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
-import org.joda.time.Interval;
+import net.inetalliance.util.ProgressMeter;
 
-import javax.servlet.annotation.WebServlet;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -28,9 +30,6 @@ import static com.callgrove.types.SaleSource.PHONE_CALL;
 import static com.callgrove.types.SaleSource.SURVEY;
 import static java.util.Optional.ofNullable;
 import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.funky.StringFun.enumToCamelCase;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.log.Log.getInstance;
 import static net.inetalliance.potion.Locator.$$;
 import static net.inetalliance.potion.Locator.count;
 import static net.inetalliance.sql.Aggregate.SUM;
@@ -40,7 +39,7 @@ import static net.inetalliance.types.Currency.ZERO;
 public class StateClosing
         extends CachedGroupingRangeReport<State, Site> {
 
-    private static final transient Log log = getInstance(StateClosing.class);
+    private static final Log log = new Log();
     private final Info<Site> info;
 
     public StateClosing() {
@@ -60,7 +59,7 @@ public class StateClosing
 
     @Override
     protected Query<State> allRows(final Set<Site> groups, final Agent loggedIn,
-                                   final DateTime intervalStart) {
+                                   final LocalDateTime intervalStart) {
         throw new IllegalStateException();
     }
 
@@ -71,43 +70,31 @@ public class StateClosing
 
     @Override
     protected int getJobSize(final Agent loggedIn, final Set<Site> groups,
-                             final Interval interval) {
+                             final DateTimeInterval interval) {
         return State.values().length;
     }
 
     @Override
-    protected JsonMap generate(final EnumSet<SaleSource> sources,
-                               final EnumSet<ContactType> contactTypes,
-                               final Agent loggedIn, final ProgressMeter meter, final DateMidnight start,
-                               final DateMidnight end,
+    protected JsonMap generate(final Set<SaleSource> sources,
+                               final Set<ContactType> contactTypes,
+                               final Agent loggedIn, final ProgressMeter meter, final LocalDate start,
+                               final LocalDate end,
                                final Set<Site> sites, Collection<CallCenter> callCenters,
                                final Map<String, String[]> extras) {
-        if (loggedIn == null || !(loggedIn.isManager() || loggedIn.isTeamLeader())) {
-            log.warning("%s tried to access closing report data",
-                    loggedIn == null ? "Nobody?" : loggedIn.key);
-            throw new UnauthorizedException();
-        }
-        final String[] productLineIds = extras.get("productLine");
-        final Set<ProductLine> productLines;
-        if (productLineIds == null || productLineIds.length == 0 || isEmpty(productLineIds[0])) {
-            productLines = new HashSet<>();
-        } else {
-            productLines = Arrays.stream(productLineIds)
-                    .map(id -> Locator.$(new ProductLine(Integer.valueOf(id)))).collect(toSet());
-        }
-        final Interval interval = getReportingInterval(start, end);
+        var productLines = SurveyClosing.guard(loggedIn, extras, log);
+        var interval = getReportingInterval(start, end);
 
-        final Set<Site> visibleSites = loggedIn.getVisibleSites();
+        val visibleSites = loggedIn.getVisibleSites();
         if (sites != null && !sites.isEmpty()) {
-            for (final Site site : sites) {
+            for (val site : sites) {
                 if (!visibleSites.contains(site)) {
-                    log.warning("%s tried to access closing data for site %d", loggedIn.key, site.id);
+                    log.warn(()->"%s tried to access closing data for site %d".formatted(loggedIn.key, site.id));
                     throw new UnauthorizedException();
                 }
             }
         }
 
-        boolean hasSite = sites != null && !sites.isEmpty();
+        var hasSite = sites != null && !sites.isEmpty();
 
         final Query<Opportunity> base;
         if (productLines.isEmpty()) {
@@ -127,23 +114,23 @@ public class StateClosing
 
         final Set<String> queuesForProductLine =
                 productLines.stream().map(pl -> ProductLineClosing.getQueues(loggedIn, pl, sites)).flatMap(
-                        Funky::stream).collect(toSet());
-        final JsonList rows = new JsonList();
-        var states = new ArrayList<State>(State.values().length +1);
+                        Iterables::stream).collect(toSet());
+        val rows = new JsonList();
+        var states = new ArrayList<State>(State.values().length + 1);
         states.addAll(Arrays.asList(State.values()));
         states.add(null);
         states.forEach(state -> {
-            final var andAgent = base.and(Opportunity.withState(state));
-            final var row = new JsonMap().$("state", state == null ? "None" : state.getAbbreviation());
-            final var hasOpps = new AtomicBoolean(false);
+            val andAgent = base.and(Opportunity.withState(state));
+            val row = new JsonMap().$("state", state == null ? "None" : state.getAbbreviation());
+            val hasOpps = new AtomicBoolean(false);
             EnumSet.of(SURVEY, PHONE_CALL).forEach(source -> {
-                final var andSource = andAgent.and(withSaleSource(source));
-                final var andSoldInInterval = andSource.and(soldInInterval(interval));
-                final int count = count(andSource.and(createdInInterval(interval)));
+                val andSource = andAgent.and(withSaleSource(source));
+                val andSoldInInterval = andSource.and(soldInInterval(interval));
+                val count = count(andSource.and(createdInInterval(interval)));
                 if (count > 0) {
                     hasOpps.set(true);
                 }
-                row.$(enumToCamelCase(source), new JsonMap().$("count", count)
+                row.$(Enums.camel(source), new JsonMap().$("count", count)
                         .$("closes", count(andSoldInInterval))
                         .$("total",
                                 (ofNullable($$(andSoldInInterval, SUM, Currency.class,

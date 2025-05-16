@@ -1,15 +1,16 @@
 package net.inetalliance.sonar;
 
 import com.callgrove.DaemonThreadFactory;
+import jakarta.servlet.ServletConfig;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import net.inetalliance.angular.AngularServlet;
+import net.inetalliance.types.json.Json;
+
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import javax.servlet.ServletConfig;
-import javax.servlet.ServletException;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.types.json.Json;
 
 public abstract class JsonCronServlet
     extends AngularServlet

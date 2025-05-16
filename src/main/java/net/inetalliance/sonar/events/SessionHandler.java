@@ -1,57 +1,59 @@
 package net.inetalliance.sonar.events;
 
-import static net.inetalliance.angular.events.Events.send;
-import static net.inetalliance.util.shell.Shell.log;
-
+import com.ameriglide.phenix.core.Log;
 import com.callgrove.obj.Agent;
-import java.util.concurrent.ConcurrentHashMap;
-import javax.websocket.Session;
+import jakarta.websocket.Session;
+import lombok.val;
 import net.inetalliance.angular.events.Events;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 
+import java.util.concurrent.ConcurrentHashMap;
+
+import static net.inetalliance.angular.events.Events.send;
+
 public class SessionHandler
-    implements javax.websocket.MessageHandler.Whole<String> {
+        implements jakarta.websocket.MessageHandler.Whole<String> {
+    private static final Log log = new Log();
 
-  private static final ConcurrentHashMap<String, MessageHandler> handlers = new ConcurrentHashMap<>();
-  private final Session session;
+    private static final ConcurrentHashMap<String, MessageHandler> handlers = new ConcurrentHashMap<>();
+    private final Session session;
 
-  public SessionHandler(final Session session) {
-    this.session = session;
-    handlers.forEach((type, handler) -> send(session, type, handler.onConnect(session)));
-  }
+    public SessionHandler(final Session session) {
+        this.session = session;
+        handlers.forEach((type, handler) -> send(session, type, handler.onConnect(session)));
+    }
 
-  static Agent getAgent(final Session session) {
-    return Locator.$(new Agent(Events.getUser(session).getPhone()));
-  }
+    static Agent getAgent(final Session session) {
+        return Locator.$(new Agent(Events.getUser(session).getPhone()));
+    }
 
-  public static void init() {
-    Events.init();
-    handlers.put("hud", new HudHandler());
-    handlers.put("status", new StatusHandler());
-    handlers.put("reminder", new ReminderHandler());
-    handlers.put("ping", new PingHandler());
+    public static void init() {
+        handlers.put("hud", new HudHandler());
+        handlers.put("status", new StatusHandler());
+        handlers.put("reminder", new ReminderHandler());
+        handlers.put("ping", new PingHandler());
 
-  }
+    }
 
-  public static void destroy() {
-    handlers.values().forEach(MessageHandler::destroy);
-    Events.destroy();
-  }
+    public static void destroy() {
+        handlers.values().forEach(MessageHandler::destroy);
+        Events.destroy();
+    }
 
-  private static MessageHandler getHandler(final String type) {
-    return handlers.computeIfAbsent(type, key -> (session, msg) -> {
-      log.warning("received message of unknown type %s: %s", key, Json.pretty(msg));
-      return null;
-    });
-  }
+    private static MessageHandler getHandler(final String type) {
+        return handlers.computeIfAbsent(type, key -> (_, msg) -> {
+            log.warn(() -> "received message of unknown type %s: %s".formatted(key, Json.pretty(msg)));
+            return null;
+        });
+    }
 
-  @Override
-  public void onMessage(final String message) {
-    final JsonMap msg = JsonMap.parse(message);
-    final String type = msg.get("type");
-    send(session, type, getHandler(type).onMessage(session, msg.getMap("msg")));
+    @Override
+    public void onMessage(final String message) {
+        val msg = JsonMap.parse(message);
+        val type = msg.get("type");
+        send(session, type, getHandler(type).onMessage(session, msg.getMap("msg")));
 
-  }
+    }
 }

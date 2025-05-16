@@ -1,7 +1,7 @@
 package net.inetalliance.sonar.api;
 
 import com.callgrove.obj.ObjectionCategory;
-import javax.servlet.annotation.WebServlet;
+import jakarta.servlet.annotation.WebServlet;
 import net.inetalliance.angular.list.Listable;
 import net.inetalliance.sonar.ListableModel;
 

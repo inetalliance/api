@@ -4,9 +4,9 @@ import com.callgrove.obj.EmailTemplate;
 import java.io.PrintWriter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.types.www.ContentType;
@@ -17,7 +17,7 @@ public class EmailTemplatePreview
 
   private static final String BASE_CSS =
       "body { font-family: \"Helvetica Neue\",Helvetica,Arial," + "sans-serif; }";
-  private static Pattern pattern = Pattern.compile("/api/emailTemplatePreview/(\\d+)");
+  private static final Pattern pattern = Pattern.compile("/api/emailTemplatePreview/(\\d+)");
 
   public EmailTemplatePreview() {
   }

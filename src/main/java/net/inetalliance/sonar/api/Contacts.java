@@ -1,26 +1,24 @@
 package net.inetalliance.sonar.api;
 
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.potion.Locator.$1;
-import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
-
+import com.ameriglide.phenix.core.Log;
 import com.callgrove.obj.Call;
 import com.callgrove.obj.Contact;
-
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-
 import com.callgrove.obj.Opportunity;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.val;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.exception.BadRequestException;
 import net.inetalliance.angular.exception.NotFoundException;
-import net.inetalliance.log.Log;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
-import net.inetalliance.sql.OrderBy;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
+
+import static com.ameriglide.phenix.core.Strings.isEmpty;
+import static net.inetalliance.potion.Locator.$1;
+import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
 @WebServlet("/api/contact/*")
 public class Contacts
@@ -30,7 +28,7 @@ public class Contacts
         super(Contact.class);
     }
 
-    private static final Log log = Log.getInstance(Contacts.class);
+    private static final Log log = new Log();
 
     private static JsonMap summary(final Contact contact) {
         return new JsonMap().$("id", contact.id).$("name", contact.getFullName());
@@ -49,16 +47,16 @@ public class Contacts
 
     @Override
     public Query<Contact> all(final Class<Contact> type, final HttpServletRequest request) {
-        final String callId = request.getParameter("call");
+        val callId = request.getParameter("call");
         if (isEmpty(callId)) {
             throw new BadRequestException("can't query all contacts at once");
         }
-        final Call call = Locator.$(new Call(callId));
+        val call = Locator.$(new Call(callId));
         if (call == null) {
             throw new NotFoundException("Could not find call %s", callId);
         }
         final Query<Contact> q;
-        final String cid =
+        val cid =
                 call.getCallerId() == null || isEmpty(call.getCallerId().getNumber()) ? null
                         : call.getCallerId().getNumber();
         if (call.getContact() != null) {
@@ -73,7 +71,7 @@ public class Contacts
 
     @Override
     protected Json toJson(Key<Contact> key, Contact contact, HttpServletRequest request) {
-        if (request.getParameter("lead") != null){
+        if (request.getParameter("lead") != null) {
             return toJson(request, contact);
         }
         return super.toJson(key, contact, request);

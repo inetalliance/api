@@ -1,45 +1,48 @@
 package net.inetalliance.sonar.api;
 
+import com.ameriglide.phenix.core.Strings;
 import com.callgrove.obj.*;
 import com.callgrove.types.ContactType;
 import com.callgrove.types.SaleSource;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.val;
 import net.inetalliance.angular.Key;
 import net.inetalliance.angular.exception.ForbiddenException;
 import net.inetalliance.angular.exception.NotFoundException;
 import net.inetalliance.angular.exception.UnauthorizedException;
-import net.inetalliance.funky.Funky;
-import net.inetalliance.funky.StringFun;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.info.Info;
-import net.inetalliance.potion.query.*;
+import net.inetalliance.potion.query.DelegatingQuery;
+import net.inetalliance.potion.query.Join;
+import net.inetalliance.potion.query.Query;
+import net.inetalliance.potion.query.Search;
 import net.inetalliance.sonar.ListableModel;
 import net.inetalliance.sonar.events.ReminderHandler;
 import net.inetalliance.sql.*;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.Interval;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import java.io.IOException;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.temporal.TemporalAdjusters;
 import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import static com.ameriglide.phenix.core.Strings.isEmpty;
+import static com.ameriglide.phenix.core.Strings.isNotEmpty;
 import static com.callgrove.obj.Opportunity.*;
 import static com.callgrove.types.ContactType.DEALER;
-import static java.lang.System.currentTimeMillis;
 import static java.util.regex.Pattern.CASE_INSENSITIVE;
 import static java.util.regex.Pattern.compile;
 import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toSet;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 import static net.inetalliance.sql.OrderBy.Direction.DESCENDING;
 
@@ -56,9 +59,9 @@ public class Leads
     }
 
     public static JsonMap json(Opportunity o) {
-        final JsonMap json = Info.$(o).toJson(o);
+        val json = Info.$(o).toJson(o);
         if (o.id != null) {
-            final Contact c = o.getContact();
+            val c = o.getContact();
             json.put("extra", new JsonMap().$("contact", new JsonMap().$("name", c.getFullName())
                             .$("state", c.getState() == null
                                     ? null
@@ -79,24 +82,28 @@ public class Leads
                             .$("abbreviation", o.getSite().getAbbreviation())
                             .$("uri", o.getSite().getUri())));
         }
-        final Contact contact = o.getContact();
-        final String phone = contact.getPhone();
+        val contact = o.getContact();
+        val phone = contact.getPhone();
         if (isNotEmpty(phone)) {
-            final AreaCodeTime time = AreaCodeTime.getAreaCodeTime(phone);
-            json.put("localTime",
-                    time == null ? null : time.getDateTimeZone().getOffset(currentTimeMillis()));
+            val time = AreaCodeTime.getAreaCodeTime(phone);
+            if (time != null) {
+                var tz = time.getLocalDateTimeZone();
+                json.put("localTime",
+                        TimeUnit.SECONDS.toMillis(tz.getRules().getOffset(Instant.now()).getTotalSeconds()));
+
+            }
         }
         return json;
 
     }
 
     static JsonMap getFilters(final HttpServletRequest request) {
-        final JsonMap filters = new JsonMap();
-        final String[] ss = request.getParameterValues("s");
+        val filters = new JsonMap();
+        val ss = request.getParameterValues("s");
         if (ss != null && ss.length > 0) {
-            final JsonMap labels = new JsonMap();
-            for (final String s : ss) {
-                final Site site = Locator.$(new Site(Integer.valueOf(s)));
+            val labels = new JsonMap();
+            for (val s : ss) {
+                val site = Locator.$(new Site(Integer.valueOf(s)));
                 if (site == null) {
                     throw new NotFoundException("Could not find site with id %s", s);
                 }
@@ -104,29 +111,29 @@ public class Leads
             }
             filters.put("s", labels);
         }
-        final String[] contactTypes = request.getParameterValues("type");
+        val contactTypes = request.getParameterValues("type");
         if (contactTypes != null && contactTypes.length > 0) {
-            final JsonMap labels = new JsonMap();
-            for (final String contactTypeName : contactTypes) {
-                final ContactType contactName = ContactType.valueOf(contactTypeName);
+            val labels = new JsonMap();
+            for (val contactTypeName : contactTypes) {
+                val contactName = ContactType.valueOf(contactTypeName);
                 labels.put(contactTypeName, contactName.getLocalizedName().toString());
             }
             filters.put("type", labels);
         }
-        final String[] sources = request.getParameterValues("src");
+        val sources = request.getParameterValues("src");
         if (sources != null && sources.length > 0) {
-            final JsonMap labels = new JsonMap();
-            for (final String sourceKey : sources) {
-                final SaleSource source = SaleSource.valueOf(sourceKey);
+            val labels = new JsonMap();
+            for (val sourceKey : sources) {
+                val source = SaleSource.valueOf(sourceKey);
                 labels.put(sourceKey, source.getLocalizedName().toString());
             }
             filters.put("src", labels);
         }
-        final String[] pls = request.getParameterValues("pl");
+        val pls = request.getParameterValues("pl");
         if (pls != null && pls.length > 0) {
-            final JsonMap labels = new JsonMap();
-            for (final String pl : pls) {
-                final ProductLine productLine = Locator.$(new ProductLine(Integer.valueOf(pl)));
+            val labels = new JsonMap();
+            for (val pl : pls) {
+                val productLine = Locator.$(new ProductLine(Integer.valueOf(pl)));
                 if (productLine == null) {
                     throw new NotFoundException("Could not find product line with id %s", pl);
                 }
@@ -134,11 +141,11 @@ public class Leads
             }
             filters.put("pl", labels);
         }
-        final String[] as = request.getParameterValues("a");
+        val as = request.getParameterValues("a");
         if (as != null && as.length > 0) {
-            final JsonMap labels = new JsonMap();
-            for (final String a : as) {
-                final Agent agent = Locator.$(new Agent(a));
+            val labels = new JsonMap();
+            for (val a : as) {
+                val agent = Locator.$(new Agent(a));
                 if (agent == null) {
                     throw new NotFoundException("Could not find agent with key %s", a);
                 }
@@ -155,9 +162,12 @@ public class Leads
         searchQuery = searchQuery.replaceAll("[-()]", "");
         searchQuery = spaces.matcher(searchQuery).replaceAll(" ");
         searchQuery = or.matcher(searchQuery).replaceAll("|");
-        final String[] terms = space.split(searchQuery);
-        final SortedQuery<Opportunity> delegate = query
-                .and(new Query<>(Opportunity.class, Funky.unsupported(),
+        val terms = space.split(searchQuery);
+        val delegate = query
+                .and(new Query<>(Opportunity.class,
+                        _ -> {
+                            throw new UnsupportedOperationException();
+                        },
                         (namer, table) -> new ColumnWhere(table, "contact",
                                 namer.name(
                                         Contact.class),
@@ -189,11 +199,11 @@ public class Leads
 
     @Override
     public Query<Opportunity> all(final Class<Opportunity> type, final HttpServletRequest request) {
-        final boolean support = request.getParameter("support") != null;
-        final boolean review = request.getParameter("review") != null;
-        final boolean asap = request.getParameter("asap") != null;
-        final SortField sort = SortField.from(request);
-        final Agent loggedIn = Startup.getAgent(request);
+        val support = request.getParameter("support") != null;
+        val review = request.getParameter("review") != null;
+        val asap = request.getParameter("asap") != null;
+        val sort = SortField.from(request);
+        val loggedIn = Startup.getAgent(request);
         if (loggedIn == null) {
             throw new UnauthorizedException();
         }
@@ -205,16 +215,16 @@ public class Leads
                 : review
                 ? Query.all(Opportunity.class).orderBy(sort.field, sort.direction)
                 : Opportunity.withAgent(Startup.getAgent(request)).orderBy(sort.field, sort.direction);
-        final String[] pls = request.getParameterValues("pl");
+        val pls = request.getParameterValues("pl");
         if (pls != null && pls.length > 0) {
             query = query
                     .and(withProductLineIdIn(Arrays.stream(pls).map(Integer::valueOf).collect(toList())));
         }
-        final String[] ss = request.getParameterValues("s");
+        val ss = request.getParameterValues("s");
         if (ss != null && ss.length > 0) {
             query = query.and(withSiteIdIn(Arrays.stream(ss).map(Integer::valueOf).collect(toList())));
         }
-        final String[] contactTypes = request.getParameterValues("type");
+        val contactTypes = request.getParameterValues("type");
         if (contactTypes != null && contactTypes.length > 0) {
             query = query.and(Opportunity.withContactTypes(Arrays.stream(contactTypes)
                     .map(ContactType::valueOf)
@@ -222,7 +232,7 @@ public class Leads
                             () -> EnumSet.noneOf(ContactType.class)))));
         }
 
-        final String[] sources = request.getParameterValues("src");
+        val sources = request.getParameterValues("src");
         if (sources != null && sources.length > 0) {
             query = query.and(Opportunity.withSources(Arrays.stream(sources)
                     .map(SaleSource::valueOf)
@@ -230,36 +240,29 @@ public class Leads
                             () -> EnumSet.noneOf(SaleSource.class)))));
         }
 
-        final String q = request.getParameter("q");
-        boolean onlySold = false;
+        val q = request.getParameter("q");
+        var onlySold = false;
 
-        final String stage = request.getParameter("st");
-        if (StringFun.isNotEmpty(stage)) {
-            switch (stage) {
-                case "CLOSED":
-                    query = query.and(isClosed);
-                    break;
-                case "SOLD":
+        val stage = request.getParameter("st");
+        if (Strings.isNotEmpty(stage)) {
+            query = switch (stage) {
+                case "CLOSED" -> query.and(isClosed);
+                case "SOLD" -> {
                     onlySold = true;
-                    query = query.and(isSold);
-                    break;
-                case "DEAD":
-                    query = query.and(isDead);
-                    break;
-                default:
-                case "OPEN":
-                    query = query.and(isActive);
-                    break;
-            }
+                    yield query.and(isSold);
+                }
+                case "DEAD" -> query.and(isDead);
+                default -> query.and(isActive);
+            };
         } else if (isEmpty(q) && !(support || review)) {
             query = query.and(isActive);
         }
 
         if (support || review || asap) {
-            final String[] as = request.getParameterValues("a");
+            val as = request.getParameterValues("a");
             if (as != null && as.length > 0) {
                 if (review && loggedIn.isTeamLeader()) {
-                    Set<String> viewableKeys = loggedIn.getViewableAgents().stream().map(a -> a.key)
+                    var viewableKeys = loggedIn.getViewableAgents().stream().map(a -> a.key)
                             .collect(toSet());
                     Arrays.stream(as).filter(s -> !viewableKeys.contains(s)).findFirst().ifPresent(a -> {
                         throw new ForbiddenException("%s tried to look at non-subordinates: %s in %s",
@@ -274,22 +277,22 @@ public class Leads
                 query = query.and(uncontacted).orderBy("created", ASCENDING);
             }
         }
-        final Range ec = getParameter(request, Range.class, "ec");
+        val ec = getParameter(request, Range.class, "ec");
         if (ec != null) {
             if (onlySold) {
-                query = query.and(Opportunity.soldInInterval(ec.toInterval()));
+                query = query.and(Opportunity.soldInInterval(ec.toDateTimeInterval()));
 
             } else {
-                query = query.and(Opportunity.estimatedCloseInInterval(ec.toInterval()));
+                query = query.and(Opportunity.estimatedCloseInInterval(ec.toDateTimeInterval()));
             }
         }
-        final Range sd = getParameter(request, Range.class, "sd");
+        val sd = getParameter(request, Range.class, "sd");
         if (sd != null) {
-            query = query.and(Opportunity.soldInInterval(sd.toInterval()));
+            query = query.and(Opportunity.soldInInterval(sd.toDateTimeInterval()));
         }
-        final Range c = getParameter(request, Range.class, "c");
+        val c = getParameter(request, Range.class, "c");
         if (c != null) {
-            query = query.and(Opportunity.createdInInterval(c.toInterval()));
+            query = query.and(Opportunity.createdInInterval(c.toDateTimeInterval()));
         }
         if (isEmpty(q)) {
             return query;
@@ -304,8 +307,7 @@ public class Leads
 
     @Override
     protected Json update(final Key<Opportunity> key, final HttpServletRequest request,
-                          final HttpServletResponse response, final Opportunity opportunity, final JsonMap data)
-            throws IOException {
+                          final HttpServletResponse response, final Opportunity opportunity, final JsonMap data) {
         try {
             return super.update(key, request, response, opportunity, data);
         } finally {
@@ -323,7 +325,7 @@ public class Leads
 
     @Override
     protected Json getAll(final HttpServletRequest request) {
-        final JsonMap map = (JsonMap) super.getAll(request);
+        val map = (JsonMap) super.getAll(request);
         map.$("filters", getFilters(request));
         return map;
 
@@ -341,7 +343,7 @@ public class Leads
         }
 
         static SortField from(final HttpServletRequest request) {
-            final String raw = request.getParameter("sort");
+            val raw = request.getParameter("sort");
             if (raw != null) {
                 switch (raw) {
                     case "estimatedClose":
@@ -358,58 +360,62 @@ public class Leads
     public enum Range {
         DAY() {
             @Override
-            public Interval toInterval() {
-                return new DateMidnight().toInterval();
+            public DateInterval toDateInterval() {
+                return new DateTimeInterval(LocalDate.now(),LocalDate.now().plusDays(1)).toDateInterval();
             }
         },
         WEEK() {
             @Override
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight().withDayOfWeek(1);
-                return new Interval(start, start.plusWeeks(1));
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now().with(TemporalAdjusters.nextOrSame(DayOfWeek.of(1)));
+                return new DateInterval(start, start.plusWeeks(1));
             }
         },
         MONTH() {
             @Override
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight().withDayOfMonth(1);
-                return new Interval(start, start.plusMonths(1));
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now().withDayOfMonth(1);
+                return new DateInterval(start, start.plusMonths(1));
             }
         },
         YEAR() {
             @Override
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight().withDayOfYear(1);
-                return new Interval(start, start.plusYears(1));
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now().withDayOfYear(1);
+                return new DateInterval(start, start.plusYears(1));
             }
         },
         N30() {
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight();
-                return new Interval(start, start.plusDays(30));
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now();
+                return new DateInterval(start, start.plusDays(30));
             }
         },
         N90() {
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight();
-                return new Interval(start, start.plusDays(90));
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now();
+                return new DateInterval(start, start.plusDays(90));
             }
         },
         L30() {
             @Override
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight();
-                return new Interval(start.minusDays(30), start);
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now();
+                return new DateInterval(start.minusDays(30), start);
             }
         },
         L90() {
             @Override
-            public Interval toInterval() {
-                final DateMidnight start = new DateMidnight();
-                return new Interval(start.minusDays(90), start);
+            public DateInterval toDateInterval() {
+                val start = LocalDate.now();
+                return new DateInterval(start.minusDays(90), start);
             }
         };
 
-        abstract public Interval toInterval();
+        abstract public DateInterval toDateInterval();
+
+        public DateTimeInterval toDateTimeInterval() {
+            return toDateInterval().atStartOfDay();
+        }
     }
 }

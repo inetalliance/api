@@ -2,8 +2,8 @@ package net.inetalliance.sonar.api;
 
 import com.callgrove.obj.Affiliate;
 import com.callgrove.obj.Agent;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.angular.exception.UnauthorizedException;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;

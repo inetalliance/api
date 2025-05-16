@@ -11,16 +11,19 @@ import com.callgrove.obj.Opportunity;
 import com.callgrove.obj.ProductLine;
 import com.callgrove.obj.Queue;
 import com.callgrove.obj.Site;
+
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
-import javax.servlet.annotation.WebServlet;
+import jakarta.servlet.annotation.WebServlet;
+import lombok.val;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.potion.query.Query;
+import net.inetalliance.sql.DateTimeInterval;
 import net.inetalliance.types.json.JsonMap;
-import org.joda.time.DateTime;
-import org.joda.time.Interval;
+import org.jooq.types.Interval;
 
 @WebServlet("/reporting/reports/sitePerformance")
 public class SitePerformance
@@ -41,7 +44,7 @@ public class SitePerformance
   @Override
   protected void addRowQueues(final Map<Integer, Set<String>> rowQueues) {
     forEach(Query.all(Queue.class), queue -> {
-      final ProductLine productLine = queue.getProductLine();
+      val productLine = queue.getProductLine();
       if (productLine != null) {
         rowQueues.computeIfAbsent(productLine.id, k -> new HashSet<>()).add(queue.key);
       }
@@ -52,7 +55,7 @@ public class SitePerformance
   @Override
   protected void addGroupQueues(final Map<Integer, Set<String>> groupQueues) {
     forEach(Query.all(Site.class), site -> {
-      Set<String> siteQueues = groupQueues.computeIfAbsent(site.id, i -> new HashSet<>());
+        var siteQueues = groupQueues.computeIfAbsent(site.id, i -> new HashSet<>());
       site.getQueues().forEach(q -> siteQueues.add(q.key));
     });
   }
@@ -78,12 +81,12 @@ public class SitePerformance
   }
 
   @Override
-  protected void addExtra(final JsonMap json, final Map<String, Interval> intervals,
+  protected void addExtra(final JsonMap json, final Map<String, DateTimeInterval> intervals,
       final Set<Site> sites) {
-    final JsonMap unassigned = new JsonMap();
-    for (final Map.Entry<String, Interval> entry : intervals.entrySet()) {
-      final Interval interval = entry.getValue();
-      final Integer totalVisits =
+    val unassigned = new JsonMap();
+    for (val entry : intervals.entrySet()) {
+      val interval = entry.getValue();
+      val totalVisits =
           $$(DailySiteVisits.withSiteIn(sites).and(DailySiteVisits.inInterval(interval)), SUM,
               Integer.class,
               "visits");
@@ -108,7 +111,7 @@ public class SitePerformance
 
   @Override
   protected Query<ProductLine> allRows(final Set<Site> groups, final Agent loggedIn,
-      final DateTime intervalStart) {
+      final LocalDateTime intervalStart) {
     // don't show vehicle conversion data in reports unless ATC is included in the report
     var wavSites = Set.of(10117,10050); // ATC and AGR
     return groups.stream().anyMatch(g -> wavSites.contains(g.id))

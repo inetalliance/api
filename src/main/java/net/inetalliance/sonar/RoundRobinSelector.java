@@ -1,26 +1,31 @@
 package net.inetalliance.sonar;
 
+import com.ameriglide.phenix.core.Dates;
 import com.callgrove.jobs.Hud;
 import com.callgrove.obj.Agent;
 import com.callgrove.obj.SkillRoute;
 import com.callgrove.types.Tier;
 import org.jetbrains.annotations.NotNull;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeConstants;
 
-import java.util.*;
+import java.time.DayOfWeek;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 import static java.util.Collections.sort;
 import static java.util.Collections.synchronizedMap;
 
 public class RoundRobinSelector {
-    private static final Map<Integer,RoundRobinSelector> selectors = synchronizedMap(new HashMap<>());
+    private static final Map<Integer, RoundRobinSelector> selectors = synchronizedMap(new HashMap<>());
     private final List<Slot> queue;
     private final SkillRoute route;
 
     public static RoundRobinSelector $(final SkillRoute route) {
-        return selectors.computeIfAbsent(route.id,id-> new RoundRobinSelector(route));
+        return selectors.computeIfAbsent(route.id, _ -> new RoundRobinSelector(route));
     }
+
     private RoundRobinSelector(final SkillRoute route) {
         this.route = route;
         this.queue = new ArrayList<>();
@@ -28,7 +33,7 @@ public class RoundRobinSelector {
     }
 
     public static void refresh(SkillRoute route) {
-        if(selectors.containsKey(route.id)) {
+        if (selectors.containsKey(route.id)) {
             selectors.get(route.id).refresh();
         }
     }
@@ -51,16 +56,17 @@ public class RoundRobinSelector {
 
         @Override
         public String toString() {
-            return String.format("%s: %s [%d]", tier, agent, lastSelection.getMillis());
+            return String.format("%s: %s [%d]", tier, agent, Dates.toEpochMilli(lastSelection));
         }
 
-        String agent;
-        Tier tier;
-        DateTime lastSelection = DateTime.now().minusYears(10);
+        final String agent;
+        final Tier tier;
+        LocalDateTime lastSelection = LocalDateTime.now().minusYears(10);
 
         @Override
         public int compareTo(@NotNull Slot slot) {
-            if (lastSelection.plusMinutes(5).isAfterNow() || slot.lastSelection.plusMinutes(5).isAfterNow()) {
+            var now = LocalDateTime.now();
+            if (lastSelection.plusMinutes(5).isAfter(now) || slot.lastSelection.plusMinutes(5).isAfter(now)) {
                 return lastSelection.compareTo(slot.lastSelection);
             }
             var c = this.tier.compareTo(slot.tier);
@@ -81,13 +87,13 @@ public class RoundRobinSelector {
 
     private String select(final int retries) {
         sort(queue);
-        var slot = queue.get(0);
-        slot.lastSelection = new DateTime();
-        var today = new DateTime();
-        var hour = today.getHourOfDay();
-        var afterHours = hour < 7 || hour > 19  ||
-                today.getDayOfWeek() == DateTimeConstants.SATURDAY ||
-                today.getDayOfWeek() == DateTimeConstants.SUNDAY;
+        var slot = queue.getFirst();
+        var now = LocalDateTime.now();
+        slot.lastSelection = now;
+        var hour = now.getHour();
+        var afterHours = hour < 7 || hour > 19 ||
+                now.getDayOfWeek() == DayOfWeek.SATURDAY ||
+                now.getDayOfWeek() == DayOfWeek.SUNDAY;
         if (afterHours || retries > queue.size() || Hud.available(slot.agent)) {
             return slot.agent;
         }

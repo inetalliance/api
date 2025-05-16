@@ -3,8 +3,8 @@ package net.inetalliance.sonar.api;
 import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 import com.callgrove.obj.SiteGroup;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.ListableModel;
 

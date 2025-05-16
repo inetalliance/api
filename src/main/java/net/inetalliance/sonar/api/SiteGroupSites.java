@@ -1,14 +1,15 @@
 package net.inetalliance.sonar.api;
 
-import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
-
 import com.callgrove.obj.Site;
 import com.callgrove.obj.SiteGroup;
-import java.util.Collection;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.types.json.JsonInteger;
+
+import java.util.Collection;
+
+import static net.inetalliance.sql.OrderBy.Direction.ASCENDING;
 
 @WebServlet("/api/siteGroup/site")
 public class SiteGroupSites

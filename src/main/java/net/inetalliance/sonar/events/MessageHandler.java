@@ -1,6 +1,6 @@
 package net.inetalliance.sonar.events;
 
-import javax.websocket.Session;
+import jakarta.websocket.Session;
 import net.inetalliance.types.json.JsonMap;
 
 public interface MessageHandler {

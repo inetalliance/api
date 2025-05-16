@@ -1,15 +1,15 @@
 package net.inetalliance.sonar.reporting;
 
-import static net.inetalliance.potion.Locator.$;
-
 import com.callgrove.obj.Agent;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
 import net.inetalliance.potion.info.Info;
 import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonString;
 import net.inetalliance.util.security.auth.Authorized;
+
+import static net.inetalliance.potion.Locator.$;
 
 @WebServlet({"/reporting/login", "/reporting/logout"})
 public class Auth

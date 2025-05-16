@@ -1,16 +1,17 @@
 package net.inetalliance.sonar.api;
 
 import com.callgrove.Callgrove;
-import java.util.stream.Collectors;
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import net.inetalliance.angular.AngularServlet;
 import net.inetalliance.angular.list.Listable;
 import net.inetalliance.angular.list.Searchable;
 import net.inetalliance.beejax.messages.CategorySearchResponse;
 import net.inetalliance.types.json.JsonList;
 import net.inetalliance.types.json.JsonMap;
+
+import java.util.stream.Collectors;
 
 @WebServlet("/api/categorySearch")
 public class CategorySearch

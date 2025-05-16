@@ -1,5 +1,6 @@
 package net.inetalliance.sonar.webhook;
 
+import com.ameriglide.phenix.core.Log;
 import com.callgrove.obj.*;
 import com.callgrove.obj.Site.SiteQueue;
 import com.callgrove.types.Address;
@@ -8,30 +9,33 @@ import com.callgrove.types.SaleSource;
 import com.callgrove.types.SalesStage;
 import com.slack.api.Slack;
 import com.slack.api.methods.request.chat.ChatPostMessageRequest;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lombok.val;
 import net.inetalliance.angular.AngularServlet;
-import net.inetalliance.log.Log;
-import net.inetalliance.log.progress.ProgressMeter;
 import net.inetalliance.potion.Locator;
 import net.inetalliance.potion.query.Query;
 import net.inetalliance.sonar.RoundRobinSelector;
 import net.inetalliance.types.Currency;
-import net.inetalliance.types.geopolitical.canada.Division;
+import net.inetalliance.types.geopolitical.canada.Province;
 import net.inetalliance.types.geopolitical.us.State;
+import net.inetalliance.types.json.Json;
 import net.inetalliance.types.json.JsonMap;
 import net.inetalliance.types.struct.maps.LazyMap;
-import org.joda.time.DateMidnight;
-import org.joda.time.DateTime;
-import org.joda.time.DateTimeConstants;
+import net.inetalliance.util.ProgressMeter;
 
-import javax.servlet.annotation.WebServlet;
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 
+import static com.ameriglide.phenix.core.Strings.isEmpty;
+import static com.ameriglide.phenix.core.Strings.isNotEmpty;
 import static com.callgrove.obj.ProductLine.withNameLike;
 import static com.callgrove.obj.Site.withAbbreviation;
 import static com.callgrove.types.Tier.NEVER;
@@ -40,24 +44,21 @@ import static java.lang.String.format;
 import static java.util.Collections.shuffle;
 import static java.util.EnumSet.complementOf;
 import static java.util.EnumSet.of;
-import static net.inetalliance.funky.StringFun.isEmpty;
-import static net.inetalliance.funky.StringFun.isNotEmpty;
-import static net.inetalliance.potion.Locator.*;
-import static net.inetalliance.types.json.Json.dateTimeFormat2;
+import static net.inetalliance.potion.Locator.$1;
 
 
 @WebServlet("/hook/facebookLead")
 public class FacebookLead
         extends AngularServlet {
 
-    private static final transient Log log = Log.getInstance(FacebookLead.class);
+    private static final Log log = new Log();
     public static final String AMG_TOKEN = "SLACK_API_TOKEN_REDACTED";
     private final Slack slack = Slack.getInstance();
 
     private final Map<Integer, SkillRoute> routes = new HashMap<>();
     private final Map<Integer, RoundRobinSelector> selectors = new LazyMap<>(
             new HashMap<>(), id -> RoundRobinSelector.$(routes.get(id)));
-    private static final RoundRobinSelector selector = RoundRobinSelector.$($(new SkillRoute(10128)));
+    private static final RoundRobinSelector selector = RoundRobinSelector.$(Locator.$(new SkillRoute(10128)));
 
 
     private static String extractPhone(final String value) {
@@ -86,38 +87,38 @@ public class FacebookLead
     }
 
     public Agent getAgent(final int emailQueueId) {
-        final var emailQueue = $(new EmailQueue(emailQueueId));
+        val emailQueue = Locator.$(new EmailQueue(emailQueueId));
         if (emailQueue == null) {
             throw new NullPointerException();
         }
-        final var queue = $(emailQueue.getQueue());
+        val queue = Locator.$(emailQueue.getQueue());
         if (queue == null) {
             throw new NullPointerException(
                     format("Email queue \"%s\" does not have a call queue associated with it!",
                             emailQueue.getName()));
         }
-        final var skillRoute = $(queue.getSkillRoute());
+        val skillRoute = Locator.$(queue.getSkillRoute());
         if (skillRoute == null) {
             throw new NullPointerException(
                     format("Email queue \"%s\" has a call queue (%s), but no skill route!",
                             emailQueue.getName(),
                             queue.getName()));
         }
-        final var siteQueue = $1(SiteQueue.withQueue(queue));
+        val siteQueue = $1(SiteQueue.withQueue(queue));
         if (siteQueue != null) {
-            final var site = siteQueue.site;
+            val site = siteQueue.site;
             if (site.isDistributor()) {
-                return $(new Agent("7006")); // mat
+                return Locator.$(new Agent("7006")); // mat
             } else {
-                final var members = skillRoute.getConfiguredMembers();
+                val members = skillRoute.getConfiguredMembers();
                 members.remove(NEVER);
-                for (final var tier : complementOf(of(NEVER))) {
+                for (val tier : complementOf(of(NEVER))) {
                     if (!members.containsKey(tier)) {
                         continue;
                     }
-                    final var agents = new ArrayList<>(members.get(tier));
+                    val agents = new ArrayList<>(members.get(tier));
                     shuffle(agents);
-                    for (final var agent : agents) {
+                    for (val agent : agents) {
                         if (!agent.isPaused() && !agent.isForwarded()) {
                             return agent;
                         }
@@ -127,18 +128,18 @@ public class FacebookLead
                     log.error("No agents configured for %s", queue.key);
                     throw new RuntimeException();
                 } else {
-                    log.warning("No agent logged in to %s, defaulting to random agents by priority",
-                            queue.key);
-                    for (final var tier : complementOf(of(NEVER))) {
+                    log.warn(() -> "No agent logged in to %s, defaulting to random agents by priority".formatted(
+                            queue.key));
+                    for (val tier : complementOf(of(NEVER))) {
                         if (!members.containsKey(tier)) {
                             continue;
                         }
-                        final var agents = new ArrayList<>(members.get(tier));
+                        val agents = new ArrayList<>(members.get(tier));
                         shuffle(agents);
-                        return agents.iterator().next();
+                        return agents.getFirst();
                     }
                 }
-                log.error("This really shouldn't ever happen. Facepalm.", queue.key);
+                log.error(()->"This really shouldn't ever happen. queue: %s".formatted(queue.key));
             }
             throw new IllegalStateException();
         }
@@ -149,16 +150,16 @@ public class FacebookLead
     @Override
     protected void post(final HttpServletRequest request, final HttpServletResponse response) {
         try {
-            log.info("Processing webhook from Zapier");
-            final var json = JsonMap.parse(request.getInputStream());
+            log.info(()->"Processing webhook from Zapier");
+            val json = JsonMap.parse(request.getInputStream());
 
-            final var fullName = json.get("fullName");
+            val fullName = json.get("fullName");
             final Contact contact;
-            final var email = json.get("email");
-            final var zip = json.get("zip");
+            val email = json.get("email");
+            val zip = json.get("zip");
             var phone = extractPhone(json.get("phone"));
             var existingContact = $1(Contact.withEmail(email));
-            var provinceAbbrevitaion = json.get("province");
+            var provinceAbbreviation = json.get("province");
             var company = json.get("company");
             var state = json.get("state");
             var city = json.get("city");
@@ -166,7 +167,7 @@ public class FacebookLead
 
             if (existingContact == null) {
                 contact = new Contact();
-                var split = fullName.split("[ ]", 2);
+                var split = fullName.split(" ", 2);
                 contact.setFirstName(split[0]);
                 contact.setLastName(split.length == 2 ? split[1] : "");
                 contact.setCompany(company);
@@ -174,10 +175,10 @@ public class FacebookLead
                 final Address address = new Address();
                 address.setPhone(phone);
                 address.setPostalCode(zip);
-                if (isNotEmpty(provinceAbbrevitaion)) {
-                    address.setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
+                if (isNotEmpty(provinceAbbreviation)) {
+                    address.setCanadaDivision(Province.fromAbbreviation(provinceAbbreviation));
                 }
-                if(state != null) {
+                if (state != null) {
                     address.setState(State.fromAbbreviation(state));
                 }
                 address.setCity(city);
@@ -188,41 +189,37 @@ public class FacebookLead
                             address.setState(areaCode.getUsState());
                             break;
                         case CANADA:
-                            if(address.getCanadaDivision() == null) {
-                                address.setCanadaDivision(areaCode.getCaDivision());
-                            }
+                            address.setCanadaDivision(areaCode.getCaDivision());
                             break;
                     }
                 }
                 contact.setBilling(address);
                 contact.setShipping(address);
                 contact.setEmail(email);
-                create("FacebookLead", contact);
+                Locator.create("FacebookLead", contact);
             } else {
                 if (isEmpty(existingContact.getShipping().getPhone())) {
-                    update(existingContact, "FacebookLead", copy -> {
+                    Locator.update(existingContact, "FacebookLead", copy -> {
                         var address = copy.getShipping();
                         address.setPhone(phone);
-                        if(state != null) {
+                        if (state != null) {
                             address.setState(State.fromAbbreviation(state));
                         }
                         address.setCity(city);
                         var areaCode = AreaCodeTime.getAreaCodeTime(phone);
                         if (address.getState() == null && address.getCanadaDivision() == null && areaCode != null) {
                             switch (areaCode.getCountry()) {
-                                case UNITED_STATES:
-                                    copy.getShipping().setState(areaCode.getUsState());
-                                    break;
-                                case CANADA:
-                                    if(copy.getShipping().getCanadaDivision() == null) {
+                                case UNITED_STATES -> copy.getShipping().setState(areaCode.getUsState());
+                                case CANADA -> {
+                                    if (copy.getShipping().getCanadaDivision() == null) {
                                         copy.getShipping().setCanadaDivision(areaCode.getCaDivision());
                                     }
-                                    break;
+                                }
                             }
                         }
                         copy.setCompany(company);
-                        if(isNotEmpty(provinceAbbrevitaion)) {
-                            copy.getShipping().setCanadaDivision(Division.fromAbbreviation(provinceAbbrevitaion));
+                        if (isNotEmpty(provinceAbbreviation)) {
+                            copy.getShipping().setCanadaDivision(Province.fromAbbreviation(provinceAbbreviation));
                         }
                         if (isNotEmpty(zip)) {
                             copy.getShipping().setPostalCode(zip);
@@ -232,14 +229,11 @@ public class FacebookLead
                 contact = existingContact;
             }
 
-            final var site = $1(withAbbreviation(json.get("site")));
-            if(site.id == 42) {
-
-            }
-            final var amount = new Currency(json.getDouble("amount"));
-            final var fullDate = json.get("date");
-            final var date = dateTimeFormat2.parseDateTime(fullDate.split("[+]", 2)[0]);
-            final var productLine = $1(withNameLike(json.get("productLine")));
+            val site = $1(withAbbreviation(json.get("site")));
+            val amount = new Currency(json.getDouble("amount"));
+            val fullDate = json.get("date");
+            val date = Json.parseDate(fullDate.split("[+]", 2)[0]);
+            val productLine = $1(withNameLike(json.get("productLine")));
 
             if (productLine == null) {
                 response.setStatus(HttpServletResponse.SC_BAD_REQUEST);
@@ -268,8 +262,8 @@ public class FacebookLead
                 opp.setSite(site);
                 opp.setCreated(date);
                 opp.setReminder(date);
-                opp.setEstimatedClose(new DateMidnight());
-                create("FacebookLead", opp);
+                opp.setEstimatedClose(LocalDate.now());
+                Locator.create("FacebookLead", opp);
             } else {
                 Locator.update(existingOpp, "FacebookLead", copy -> {
                     copy.setReminder(date);
@@ -285,19 +279,19 @@ public class FacebookLead
                     agent = opp.getAssignedTo();
                 }
             }
-            final var link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
-            final var msg = format("%s %s Lead *%s* %s => %s",
+            val link = String.format("https://crm.inetalliance.net/#/lead/%d", opp.id);
+            val msg = format("%s %s Lead *%s* %s => %s",
                     reassigned ? "Reassigned " : (existingOpp == null ? "New" : "Updated"),
                     opp.getSource() == SaleSource.SOCIAL ? "Facebook" : "Form",
                     contact.getFullName(), link, agent.getFirstNameLastInitial());
 
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                     .channel("@" + agent.getSlackName())
-                    .token(System.getenv("SLACK_API_TOKEN"))
+                    .token(AMG_TOKEN)
                     .text(msg).build());
             slack.methods().chatPostMessage(ChatPostMessageRequest.builder()
                     .channel("#digital-leads")
-                    .token(System.getenv("SLACK_API_TOKEN"))
+                    .token(AMG_TOKEN)
                     .text(msg).build());
 
             respond(response,
@@ -310,19 +304,18 @@ public class FacebookLead
     }
 
     private boolean isAfterHours() {
-        var now = new DateTime();
-        switch (now.getDayOfWeek()) {
-            case DateTimeConstants.SATURDAY:
-            case DateTimeConstants.SUNDAY:
-                return true;
-            default:
-                var h = now.getHourOfDay();
-                return h <= 7 || h >= 20;
-        }
+        var now = LocalDateTime.now();
+        return switch (now.getDayOfWeek()) {
+            case DayOfWeek.SATURDAY, DayOfWeek.SUNDAY -> true;
+            default -> {
+                var h = now.getHour();
+                yield h <= 7 || h >= 20;
+            }
+        };
     }
 
     private Agent getAgent(final Integer product) {
-        return $(new Agent((isAfterHours() ? selector : selectors.get(product)).select()));
+        return Locator.$(new Agent((isAfterHours() ? selector : selectors.get(product)).select()));
     }
 
     @Override
@@ -330,15 +323,13 @@ public class FacebookLead
         var ag = Locator.$(new Site(42));
         var digi = Locator.$(new SkillRoute(10128));
         ag.getQueues().forEach(q -> routes.put(q.getProductLine().id, digi));
-        routes.forEach((p, s) -> {
-            log.info("DigiLead %s -> %s", Locator.$(new ProductLine(p)).getName(), s.getName());
-        });
+        routes.forEach((p, s) -> log.info("DigiLead %s -> %s", Locator.$(new ProductLine(p)).getName(), s.getName()));
     }
 
     public static void main(String[] args) {
         var q = Query.eq(Contact.class, "state", null)
                 .and(Query.eq(Contact.class, "shipping_phone", null).negate());
-        var total = count(q);
+        var total = Locator.count(q);
         var meter = new ProgressMeter(total);
         var updated = new AtomicInteger(0);
         Locator.forEach(q, c -> {
