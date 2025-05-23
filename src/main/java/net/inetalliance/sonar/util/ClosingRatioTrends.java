@@ -54,15 +54,7 @@ public class ClosingRatioTrends extends DbCli {
                         .and(Call.isAnswered)
                         .and(Call.isBusinessHours)
                         .and(Call.inInterval(interval)));
-        /* todo: figure out what this is
-
-        final int sales = count(Opportunity.withProductLine(sl)
-            .and(Opportunity.withSite(site))
-            .and(Opportunity.soldInInterval(interval)));
-
-         */
                 val calls = count(Call.isBusinessHours.and(Call.withQueueIn(siteQueues.get(site)).and(Call.isQueue).and(Call.inInterval(interval))));
-
                 val ratio = (double) sales / calls;
                 data.computeIfAbsent(site, s -> new LinkedList<>()).add(ratio);
             }
