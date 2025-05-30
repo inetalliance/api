@@ -44,7 +44,7 @@ public class Product
         .$("price", product.price)
         .$("minCouponPrice", product.minCouponPrice)
         .$("coupons", JsonList.collect(product.coupons, Product::couponJson))
-        .$("tags", Json.Factory.$(product.tags));
+        .$("tags", Json.from(product.tags));
 
   }
 
